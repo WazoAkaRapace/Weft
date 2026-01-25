@@ -1,6 +1,8 @@
 console.log('Weft Server starting...');
 
 import { auth } from './lib/auth.js';
+import { db } from './db/index.js';
+import { users } from './db/schema.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -64,6 +66,118 @@ const authRoutes = async (request: Request) => {
   return null;
 };
 
+/**
+ * Check if any users exist in the database
+ * This endpoint is used to determine if onboarding is needed
+ */
+async function checkUsersExist(): Promise<boolean> {
+  try {
+    const result = await db.select({ id: users.id }).from(users).limit(1);
+    return result.length > 0;
+  } catch (error) {
+    console.error('Error checking users:', error);
+    // Return false on error to allow onboarding (safer default)
+    return false;
+  }
+}
+
+/**
+ * API endpoint to check if any users exist
+ * GET /api/setup/check-users
+ */
+async function handleCheckUsers(): Promise<Response> {
+  const hasUsers = await checkUsersExist();
+  return Response.json({ hasUsers });
+}
+
+/**
+ * Create the first user (onboarding)
+ * POST /api/setup/create-first-user
+ *
+ * This endpoint is only accessible when no users exist yet.
+ * It creates the first user account and then prevents further access.
+ */
+async function handleCreateFirstUser(request: Request): Promise<Response> {
+  // Check if users already exist
+  const hasUsers = await checkUsersExist();
+  if (hasUsers) {
+    return Response.json(
+      { error: 'Setup already completed', message: 'Users already exist in the system' },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const body = (await request.json()) as {
+      name?: string;
+      username?: string;
+      email?: string;
+      password?: string;
+    };
+    const { name, username, email, password } = body;
+
+    // Validate required fields
+    if (!name || !username || !email || !password) {
+      return Response.json(
+        { error: 'Missing required fields', message: 'name, username, email, and password are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate input
+    if (!email.includes('@')) {
+      return Response.json(
+        { error: 'Invalid email', message: 'Please provide a valid email address' },
+        { status: 400 }
+      );
+    }
+
+    if (password.length < 8) {
+      return Response.json(
+        { error: 'Password too short', message: 'Password must be at least 8 characters long' },
+        { status: 400 }
+      );
+    }
+
+    // Use BetterAuth's sign-up endpoint to create the user
+    // This ensures the user is created with proper password hashing
+    const signUpUrl = new URL('/api/auth/sign-up/email', 'http://localhost:3001');
+    const signUpRequest = new Request(signUpUrl.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password,
+        name,
+        username,
+      }),
+    });
+
+    const signUpResponse = await auth.handler(signUpRequest);
+
+    if (!signUpResponse.ok) {
+      const errorData = (await signUpResponse.json().catch(() => ({}))) as {
+        message?: string;
+      };
+      return Response.json(
+        { error: 'Failed to create user', message: errorData.message || 'Unknown error' },
+        { status: signUpResponse.status }
+      );
+    }
+
+    return Response.json({
+      success: true,
+      message: 'First user created successfully',
+    });
+  } catch (error) {
+    console.error('Error creating first user:', error);
+    return Response.json(
+      { error: 'Internal server error', message: 'Failed to create user' },
+      { status: 500 }
+    );
+  }
+}
+
 // Main HTTP server using Bun
 const server = Bun.serve({
   port: PORT,
@@ -79,6 +193,15 @@ const server = Bun.serve({
     const authResponse = await authRoutes(request);
     if (authResponse) {
       return authResponse;
+    }
+
+    // Setup/Onboarding endpoints
+    if (url.pathname === '/api/setup/check-users' && request.method === 'GET') {
+      return addCorsHeaders(await handleCheckUsers(), request);
+    }
+
+    if (url.pathname === '/api/setup/create-first-user' && request.method === 'POST') {
+      return addCorsHeaders(await handleCreateFirstUser(request), request);
     }
 
     // Health check endpoint
