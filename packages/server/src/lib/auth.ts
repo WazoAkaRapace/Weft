@@ -23,10 +23,14 @@ interface EmailCallbackParams {
  * Environment variables:
  * - BETTER_AUTH_SECRET: Secret key for encryption (required, min 32 chars)
  * - BETTER_AUTH_URL: Base URL of the auth server (e.g., http://localhost:3001)
+ * - FRONTEND_URL: Frontend URL for trusted origins (e.g., http://localhost:3000)
  */
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET || 'development-secret-key-change-in-production-min-32-chars',
   baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3001',
+  trustedOrigins: process.env.FRONTEND_URL
+    ? [process.env.FRONTEND_URL]
+    : ['http://localhost:3000', 'http://localhost:3001'],
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {
