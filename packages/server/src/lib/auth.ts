@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { createAuthMiddleware, APIError } from 'better-auth/api';
 import { db } from '../db/index.js';
 import * as schema from '../db/schema.js';
 
@@ -70,6 +71,23 @@ export const auth = betterAuth({
       // Use crypto.randomUUID() to generate proper UUID v4 IDs
       generateId: () => crypto.randomUUID(),
     },
+  },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      // Block signup if at least one user already exists
+      if (ctx.path === '/sign-up/email') {
+        const existingUsers = await db
+          .select({ id: schema.users.id })
+          .from(schema.users)
+          .limit(1);
+
+        if (existingUsers.length > 0) {
+          throw new APIError('FORBIDDEN', {
+            message: 'Registration is disabled. A user already exists in the system.',
+          });
+        }
+      }
+    }),
   },
 });
 

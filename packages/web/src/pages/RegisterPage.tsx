@@ -1,6 +1,12 @@
-import { useState, FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, FormEvent, useEffect } from 'react';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { authClient } from '../lib/auth';
+
+const API_BASE_URL = 'http://localhost:3001';
+
+interface CheckUsersResponse {
+  hasUsers: boolean;
+}
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -10,6 +16,49 @@ export function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [hasUsers, setHasUsers] = useState<boolean | null>(null);
+  const [isCheckingUsers, setIsCheckingUsers] = useState(true);
+
+  useEffect(() => {
+    const checkUsers = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/setup/check-users`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data: CheckUsersResponse = await response.json();
+          setHasUsers(data.hasUsers);
+        } else {
+          setHasUsers(false);
+        }
+      } catch (error) {
+        console.error('Failed to check users:', error);
+        setHasUsers(false);
+      } finally {
+        setIsCheckingUsers(false);
+      }
+    };
+
+    checkUsers();
+  }, []);
+
+  // Show loading while checking if users exist
+  if (isCheckingUsers) {
+    return (
+      <div className="auth-container">
+        <div className="auth-card">
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If users already exist, redirect to login
+  if (hasUsers) {
+    return <Navigate to="/login" replace />;
+  }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
