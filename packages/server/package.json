@@ -22,6 +22,7 @@
     "postgres": "^3.4.8"
   },
   "devDependencies": {
+    "@types/bun": "latest",
     "@types/node": "^22.10.5",
     "@types/pg": "^8.16.0",
     "drizzle-kit": "^0.31.8",
