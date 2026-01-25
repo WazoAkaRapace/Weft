@@ -1,11 +1,12 @@
 # =============================================================================
 # Weft Docker Compose Configuration
 # =============================================================================
-# Development environment with PostgreSQL, Redis, and Backend services.
+# Development environment with PostgreSQL, Redis, Frontend, and Backend services.
 #
 # Services:
 #   - db: PostgreSQL 16 database
 #   - redis: Redis 7 cache
+#   - frontend: React + Vite frontend service (nginx)
 #   - backend: Node.js/Bun backend service
 #
 # Usage:
@@ -102,12 +103,35 @@ services:
       - "1000"
 
   # ---------------------------------------------------------------------------
+  # Frontend Service
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ..
+      dockerfile: packages/web/Dockerfile
+      target: production
+    container_name: weft-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - weft-network
+
+  # ---------------------------------------------------------------------------
   # Backend Service
   # ---------------------------------------------------------------------------
   backend:
     build:
       context: ..
-      dockerfile: docker/Dockerfile
+      dockerfile: packages/server/Dockerfile
       target: production
     container_name: weft-backend
     restart: unless-stopped
@@ -123,10 +147,6 @@ services:
       REDIS_URL: redis://redis:6379
     ports:
       - "${BACKEND_PORT:-4000}:4000"
-    volumes:
-      # Mount source for development (comment out for production)
-      - ../packages/server/src:/app/packages/server/src:ro
-      - ../packages/shared/src:/app/packages/shared/src:ro
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/"]
       interval: 30s
