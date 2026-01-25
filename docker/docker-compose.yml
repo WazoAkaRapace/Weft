@@ -148,8 +148,11 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3001}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-development-secret-key-change-in-production-min-32-chars}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      UPLOAD_DIR: /app/uploads
     ports:
       - "${BACKEND_PORT:-3001}:3001"
+    volumes:
+      - uploads_data:/app/uploads
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/"]
       interval: 30s
@@ -168,6 +171,9 @@ volumes:
     driver: local
   redis_data:
     name: weft_redis_data
+    driver: local
+  uploads_data:
+    name: weft_uploads_data
     driver: local
 
 # ---------------------------------------------------------------------------
