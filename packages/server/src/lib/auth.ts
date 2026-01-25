@@ -48,10 +48,6 @@ export const auth = betterAuth({
       // TODO: Implement email sending for password reset
       console.log('Password reset requested for:', user.email, 'URL:', url);
     },
-    sendVerificationEmail: async ({ user, url }: EmailCallbackParams) => {
-      // TODO: Implement email sending for verification
-      console.log('Verification email for:', user.email, 'URL:', url);
-    },
   },
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
