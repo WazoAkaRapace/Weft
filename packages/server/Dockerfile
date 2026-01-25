@@ -79,12 +79,12 @@ RUN pnpm build
 FROM node:20-bullseye-slim AS production
 WORKDIR /app
 
-# Install Bun and wget (install globally for all users)
-RUN curl -fsSL https://bun.sh/install | bash && \
+# Install dependencies and Bun
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl wget ca-certificates unzip && \
+    curl -fsSL https://bun.sh/install | bash && \
     mv /root/.bun/bin/bun /usr/local/bin/bun && \
     rm -rf /root/.bun && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends wget && \
     rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -95,16 +95,18 @@ RUN groupadd -g 1001 nodejs && \
 ENV NODE_ENV=production
 ENV PORT=4000
 
-# Copy built application from builder
-COPY --from=builder --chown=bun:nodejs /app/packages/server/dist ./dist
-COPY --from=builder --chown=bun:nodejs /app/packages/shared/dist ./packages/shared/dist
-COPY --from=builder --chown=bun:nodejs /app/packages/server/package.json ./package.json
-COPY --from=builder --chown=bun:nodejs /app/packages/shared/package.json ./packages/shared/package.json
+# Copy package files for workspace
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/server/package.json ./packages/server/
+COPY packages/shared/package.json ./packages/shared/
 
 # Install production dependencies
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN corepack enable && corepack prepare pnpm@latest --activate
 RUN pnpm install --prod --no-frozen-lockfile
+
+# Copy built application from builder (preserve workspace structure)
+COPY --from=builder --chown=bun:nodejs /app/packages/server/dist ./packages/server/dist
+COPY --from=builder --chown=bun:nodejs /app/packages/shared/dist ./packages/shared/dist
 
 # Switch to non-root user
 USER bun
@@ -116,5 +118,6 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:4000/ || exit 1
 
-# Start the server
+# Start the server from the server package directory
+WORKDIR /app/packages/server
 CMD ["bun", "dist/index.js"]
