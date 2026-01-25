@@ -194,9 +194,19 @@ DATABASE_URL=postgresql://user:password@host:5432/weft
 - **Frontend:** React + Vite
 - **Language:** TypeScript
 
-## Additional Resources
+## Additional Documentation
+
+For more detailed project information, refer to the **[spec/](./spec/)** directory which contains:
+
+- **Architecture** (`spec/ARCHITECTURE.md`) - Monorepo structure and design decisions
+- **Setup Guide** (`spec/SETUP.md`) - Detailed setup and development instructions
+- **Database** (`spec/DATABASE.md`) - Database schema, operations, and migrations
+- **Docker** (`spec/DOCKER.md`) - Docker configuration and development environment
+- **Recording Feature** (`spec/RECORDING.md`) - Video recording implementation details
+- **Contributing** (`spec/CONTRIBUTING.md`) - Contribution guidelines and code style
+
+## External Resources
 
 - [Turborepo Documentation](https://turbo.build/repo/docs)
 - [Drizzle ORM Documentation](https://orm.drizzle.team/)
 - [pnpm Documentation](https://pnpm.io/)
-- [See DATABASE.md](./DATABASE.md) for detailed database schema and operations
