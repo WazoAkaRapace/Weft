@@ -277,3 +277,420 @@ body {
 .secondary-button:hover {
   background-color: #f0f7ff;
 }
+
+/* New Entry Button */
+.new-entry-button {
+  padding: 0.5rem 1rem;
+  background-color: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.new-entry-button:hover {
+  background-color: #0052a3;
+}
+
+/* Recording Page Styles */
+.recording-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.recording-container {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 600px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Idle State */
+.recording-idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem 1rem;
+}
+
+.recording-idle h2 {
+  font-size: 1.5rem;
+  color: #111;
+  margin-bottom: 0.5rem;
+}
+
+.recording-idle p {
+  color: #666;
+  text-align: center;
+  max-width: 400px;
+}
+
+/* Recording State */
+.recording-active {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Streaming Indicator */
+.streaming-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background-color: #fff5f5;
+  border-radius: 4px;
+  border: 1px solid #fee;
+}
+
+.streaming-dot {
+  width: 12px;
+  height: 12px;
+  background-color: #ff0000;
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+.streaming-text {
+  color: #cc0000;
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+}
+
+/* Timer Display */
+.timer-display {
+  text-align: center;
+  padding: 1.5rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.timer-value {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #111;
+  font-feature-settings: 'tnum';
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.timer-label {
+  font-size: 0.875rem;
+  color: #666;
+  margin-top: 0.5rem;
+}
+
+/* Upload Progress */
+.upload-progress {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background-color: #f0f7ff;
+  border-radius: 4px;
+}
+
+.upload-label {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.upload-value {
+  font-weight: 600;
+  color: #0066cc;
+  font-size: 0.875rem;
+}
+
+/* Recording Controls */
+.recording-controls {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.recording-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.recording-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.start-button {
+  background-color: #0066cc;
+  color: white;
+  padding: 1rem 2rem;
+  font-size: 1.125rem;
+}
+
+.start-button:hover:not(:disabled) {
+  background-color: #0052a3;
+}
+
+.stop-button {
+  background-color: #cc0000;
+  color: white;
+}
+
+.stop-button:hover:not(:disabled) {
+  background-color: #a30000;
+}
+
+.pause-button {
+  background-color: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+.pause-button:hover:not(:disabled) {
+  background-color: #ebebeb;
+}
+
+.resume-button {
+  background-color: #0066cc;
+  color: white;
+}
+
+.resume-button:hover:not(:disabled) {
+  background-color: #0052a3;
+}
+
+.cancel-button {
+  background-color: transparent;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background-color: #f5f5f5;
+  border-color: #999;
+}
+
+/* Complete State */
+.recording-complete {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.complete-header {
+  text-align: center;
+}
+
+.complete-header h2 {
+  font-size: 1.5rem;
+  color: #111;
+  margin-bottom: 0.5rem;
+}
+
+.complete-header p {
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.success-icon {
+  width: 64px;
+  height: 64px;
+  background-color: #e6f7e6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  color: #22c55e;
+  font-size: 2rem;
+}
+
+/* Title Input */
+.title-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.title-input-group label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.title-input-group input {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.title-input-group input:focus {
+  outline: none;
+  border-color: #0066cc;
+}
+
+.title-input-group input.error {
+  border-color: #cc0000;
+}
+
+.title-error {
+  color: #cc0000;
+  font-size: 0.875rem;
+}
+
+.title-hint {
+  color: #999;
+  font-size: 0.75rem;
+}
+
+/* Save Button */
+.save-button {
+  padding: 0.75rem 1.5rem;
+  background-color: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+}
+
+.save-button:hover:not(:disabled) {
+  background-color: #0052a3;
+}
+
+.save-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Error Display */
+.recording-error {
+  background-color: #fee;
+  border: 1px solid #fcc;
+  border-radius: 4px;
+  padding: 0.75rem;
+  color: #c00;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.error-icon {
+  flex-shrink: 0;
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .recording-page {
+    background-color: #1a1a1a;
+  }
+
+  .recording-container {
+    background: #2a2a2a;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .recording-idle h2,
+  .timer-value,
+  .complete-header h2 {
+    color: #fff;
+  }
+
+  .recording-idle p,
+  .timer-label,
+  .complete-header p,
+  .upload-label {
+    color: #aaa;
+  }
+
+  .streaming-indicator {
+    background-color: #3a1a1a;
+    border-color: #5a2a2a;
+  }
+
+  .timer-display {
+    background-color: #333;
+  }
+
+  .upload-progress {
+    background-color: #1a2a3a;
+  }
+
+  .pause-button {
+    background-color: #333;
+    color: #fff;
+    border-color: #555;
+  }
+
+  .pause-button:hover:not(:disabled) {
+    background-color: #444;
+  }
+
+  .cancel-button {
+    color: #aaa;
+    border-color: #555;
+  }
+
+  .cancel-button:hover:not(:disabled) {
+    background-color: #333;
+    border-color: #777;
+  }
+
+  .title-input-group label {
+    color: #ddd;
+  }
+
+  .title-input-group input {
+    background-color: #333;
+    border-color: #555;
+    color: #fff;
+  }
+
+  .title-input-group input:focus {
+    border-color: #0066cc;
+  }
+
+  .recording-error {
+    background-color: #3a1a1a;
+    border-color: #5a2a2a;
+  }
+}

@@ -4,6 +4,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { RecordingPage } from './pages/RecordingPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { OnboardingGuard } from './components/OnboardingGuard';
 import { OnboardingRouteGuard } from './components/OnboardingRouteGuard';
@@ -50,6 +51,16 @@ export function App() {
           element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Recording - protected route */}
+        <Route
+          path="/record"
+          element={
+            <ProtectedRoute>
+              <RecordingPage />
             </ProtectedRoute>
           }
         />
