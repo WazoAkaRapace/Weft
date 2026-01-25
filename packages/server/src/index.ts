@@ -1,9 +1,9 @@
 console.log('Weft Server starting...');
 
-// Example: Basic HTTP server
+// Basic HTTP server using Bun
 const server = Bun.serve({
-  port: 3001,
-  fetch(_req) {
+  port: process.env.PORT || 3001,
+  fetch() {
     return new Response('Weft Server is running!');
   },
 });
