@@ -58,3 +58,8 @@ export interface SignUpCredentials extends SignInCredentials {
   username?: string;
   name?: string;
 }
+
+/**
+ * Video streaming types
+ */
+export * from './video.js';

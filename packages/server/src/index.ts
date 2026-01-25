@@ -4,6 +4,14 @@ import { auth } from './lib/auth.js';
 import { db, closeDatabase } from './db/index.js';
 import { users } from './db/schema.js';
 import { runMigrations } from './db/migrate.js';
+import {
+  handleStreamInit,
+  handleStreamUpload,
+  handleGetJournals,
+  handleGetJournal,
+  handleDeleteJournal,
+  handleUpdateJournal,
+} from './routes/journals.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -49,9 +57,25 @@ const authRoutes = async (request: Request) => {
 
   // Better Auth handles its own routing via the auth instance
   if (url.pathname.startsWith(authPath)) {
+    // Debug: Log the request
+    console.log('[Auth] Request:', {
+      method: request.method,
+      pathname: url.pathname,
+      cookies: request.headers.get('cookie'),
+    });
+
     // Pass the request directly to auth.handler
     // BetterAuth will handle the routing based on the pathname
     const response = await auth.handler(request);
+
+    // Debug: Log the response body for get-session
+    const responseBody = await response.clone().text().catch(() => '[could not read body]');
+    console.log('[Auth] Response:', {
+      status: response.status,
+      headers: Object.fromEntries(response.headers.entries()),
+      body: responseBody,
+    });
+
     return addCorsHeaders(response, request);
   }
 
@@ -199,6 +223,35 @@ const server = Bun.serve({
       return addCorsHeaders(await handleCreateFirstUser(request), request);
     }
 
+    // Journal stream endpoints
+    if (url.pathname === '/api/journals/stream/init' && request.method === 'POST') {
+      return addCorsHeaders(await handleStreamInit(request), request);
+    }
+
+    if (url.pathname === '/api/journals/stream' && request.method === 'POST') {
+      return addCorsHeaders(await handleStreamUpload(request), request);
+    }
+
+    // Journal CRUD endpoints
+    if (url.pathname === '/api/journals' && request.method === 'GET') {
+      return addCorsHeaders(await handleGetJournals(request), request);
+    }
+
+    if (url.pathname.startsWith('/api/journals/') && request.method === 'GET') {
+      const journalId = url.pathname.split('/').pop() || '';
+      return addCorsHeaders(await handleGetJournal(request, journalId), request);
+    }
+
+    if (url.pathname.startsWith('/api/journals/') && request.method === 'DELETE') {
+      const journalId = url.pathname.split('/').pop() || '';
+      return addCorsHeaders(await handleDeleteJournal(request, journalId), request);
+    }
+
+    if (url.pathname.startsWith('/api/journals/') && request.method === 'PUT') {
+      const journalId = url.pathname.split('/').pop() || '';
+      return addCorsHeaders(await handleUpdateJournal(request, journalId), request);
+    }
+
     // Health check endpoint
     if (url.pathname === '/health') {
       return addCorsHeaders(
@@ -208,6 +261,33 @@ const server = Bun.serve({
         ),
         request
       );
+    }
+
+    // Debug endpoint to check session
+    if (url.pathname === '/api/debug/session' && request.method === 'GET') {
+      try {
+        const session = await auth.api.getSession({
+          headers: request.headers,
+        });
+
+        return addCorsHeaders(
+          Response.json({
+            session: session,
+            cookies: request.headers.get('cookie'),
+            cookieHeader: request.headers.get('cookie'),
+          }),
+          request
+        );
+      } catch (error) {
+        return addCorsHeaders(
+          Response.json({
+            error: 'Failed to get session',
+            details: error instanceof Error ? error.message : String(error),
+            cookies: request.headers.get('cookie'),
+          }),
+          request
+        );
+      }
     }
 
     // 404 for unknown routes

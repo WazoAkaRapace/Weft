@@ -53,12 +53,10 @@ export const auth = betterAuth({
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24, // 1 day
     cookieCache: {
-      enabled: true,
-      maxAge: 5 * 60, // 5 minutes
+      enabled: false, // Disable cookie cache to prevent issues
     },
   },
   advanced: {
-    cookiePrefix: 'weft',
     crossSubDomainCookies: {
       enabled: false,
     },
@@ -70,6 +68,14 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      // Debug logging
+      console.log('[Auth Hook] Request:', {
+        path: ctx.path,
+        method: ctx.method,
+        body: ctx.body,
+        headers: ctx.headers,
+      });
+
       // Block signup if at least one user already exists
       if (ctx.path === '/sign-up/email') {
         const existingUsers = await db

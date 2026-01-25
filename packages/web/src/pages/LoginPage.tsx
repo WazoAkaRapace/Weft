@@ -1,9 +1,10 @@
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authClient } from '../lib/auth';
+import { authClient, useSession } from '../lib/auth';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { refetch } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -15,21 +16,27 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await authClient.signIn.email({
+      const { data, error: signInError } = await authClient.signIn.email({
         email,
         password,
+        callbackURL: '/dashboard',
       });
 
-      if (error) {
-        setError(error.message || 'Failed to sign in');
+      if (signInError) {
+        setError(signInError.message || 'Failed to sign in');
+        setIsLoading(false);
         return;
       }
 
-      // Redirect to dashboard on successful login
-      navigate('/dashboard');
+      // Refetch session to ensure it's updated before navigation
+      await refetch();
+
+      // Small delay to ensure session is properly set
+      setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 100);
     } catch (err) {
       setError('An unexpected error occurred');
-    } finally {
       setIsLoading(false);
     }
   };

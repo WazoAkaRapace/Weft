@@ -6,7 +6,11 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { data: session, isPending } = useSession();
+  // Explicitly request session from server
+  const { data: session, isPending } = useSession({
+    // Ensure we fetch from server, not just cache
+    refetchOnMount: true,
+  });
 
   if (isPending) {
     return (
