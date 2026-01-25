@@ -79,12 +79,13 @@ RUN pnpm build
 FROM node:20-bullseye-slim AS production
 WORKDIR /app
 
-# Install Bun and wget
+# Install Bun and wget (install globally for all users)
 RUN curl -fsSL https://bun.sh/install | bash && \
+    mv /root/.bun/bin/bun /usr/local/bin/bun && \
+    rm -rf /root/.bun && \
     apt-get update && \
     apt-get install -y --no-install-recommends wget && \
     rm -rf /var/lib/apt/lists/*
-ENV PATH="/root/.bun/bin:${PATH}"
 
 # Create non-root user
 RUN groupadd -g 1001 nodejs && \
