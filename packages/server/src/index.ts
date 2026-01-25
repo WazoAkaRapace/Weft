@@ -1,8 +1,9 @@
 console.log('Weft Server starting...');
 
 import { auth } from './lib/auth.js';
-import { db } from './db/index.js';
+import { db, closeDatabase } from './db/index.js';
 import { users } from './db/schema.js';
+import { runMigrations } from './db/migrate.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -169,6 +170,9 @@ async function handleCreateFirstUser(request: Request): Promise<Response> {
   }
 }
 
+// Run migrations on startup
+await runMigrations();
+
 // Main HTTP server using Bun
 const server = Bun.serve({
   port: PORT,
@@ -219,3 +223,16 @@ const server = Bun.serve({
 
 console.log(`Server listening on http://localhost:${server.port}`);
 console.log(`Better Auth endpoints available at http://localhost:${server.port}/api/auth/*`);
+
+// Graceful shutdown handler
+process.on('SIGINT', async () => {
+  console.log('\nShutting down gracefully...');
+  await closeDatabase();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\nShutting down gracefully...');
+  await closeDatabase();
+  process.exit(0);
+});
