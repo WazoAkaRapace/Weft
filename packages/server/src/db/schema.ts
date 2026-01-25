@@ -118,10 +118,7 @@ export const journals = pgTable(
   (table) => ({
     userIdIdx: index('journals_user_id_idx').on(table.userId),
     createdAtIdx: index('journals_created_at_idx').on(table.createdAt),
-    titleTextSearchIdx: index('journals_title_text_search_idx').using(
-      'gin',
-      table.title
-    ),
+    titleIdx: index('journals_title_idx').on(table.title),
   })
 );
 
@@ -147,7 +144,6 @@ export const transcripts = pgTable(
   },
   (table) => ({
     journalIdIdx: index('transcripts_journal_id_idx').on(table.journalId),
-    textSearchIdx: index('transcripts_text_search_idx').using('gin', table.text),
   })
 );
 

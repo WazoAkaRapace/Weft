@@ -230,8 +230,8 @@
           "method": "btree",
           "with": {}
         },
-        "journals_title_text_search_idx": {
-          "name": "journals_title_text_search_idx",
+        "journals_title_idx": {
+          "name": "journals_title_idx",
           "columns": [
             {
               "expression": "title",
@@ -242,7 +242,7 @@
           ],
           "isUnique": false,
           "concurrently": false,
-          "method": "gin",
+          "method": "btree",
           "with": {}
         }
       },
@@ -555,21 +555,6 @@
           "isUnique": false,
           "concurrently": false,
           "method": "btree",
-          "with": {}
-        },
-        "transcripts_text_search_idx": {
-          "name": "transcripts_text_search_idx",
-          "columns": [
-            {
-              "expression": "text",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "gin",
           "with": {}
         }
       },

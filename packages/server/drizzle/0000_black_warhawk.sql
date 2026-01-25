@@ -82,7 +82,7 @@ CREATE INDEX "accounts_user_id_idx" ON "accounts" USING btree ("user_id");--> st
 CREATE INDEX "accounts_provider_idx" ON "accounts" USING btree ("provider_id","account_id");--> statement-breakpoint
 CREATE INDEX "journals_user_id_idx" ON "journals" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "journals_created_at_idx" ON "journals" USING btree ("created_at");--> statement-breakpoint
-CREATE INDEX "journals_title_text_search_idx" ON "journals" USING gin ("title");--> statement-breakpoint
+CREATE INDEX "journals_title_idx" ON "journals" USING btree ("title");--> statement-breakpoint
 CREATE INDEX "sessions_user_id_idx" ON "sessions" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "sessions_token_idx" ON "sessions" USING btree ("token");--> statement-breakpoint
 CREATE INDEX "sessions_expires_at_idx" ON "sessions" USING btree ("expires_at");--> statement-breakpoint
@@ -90,7 +90,6 @@ CREATE INDEX "tags_journal_id_idx" ON "tags" USING btree ("journal_id");--> stat
 CREATE INDEX "tags_tag_idx" ON "tags" USING btree ("tag");--> statement-breakpoint
 CREATE INDEX "tags_journal_tag_idx" ON "tags" USING btree ("journal_id","tag");--> statement-breakpoint
 CREATE INDEX "transcripts_journal_id_idx" ON "transcripts" USING btree ("journal_id");--> statement-breakpoint
-CREATE INDEX "transcripts_text_search_idx" ON "transcripts" USING gin ("text");--> statement-breakpoint
 CREATE INDEX "users_username_idx" ON "users" USING btree ("username");--> statement-breakpoint
 CREATE INDEX "users_email_idx" ON "users" USING btree ("email");--> statement-breakpoint
 CREATE INDEX "users_created_at_idx" ON "users" USING btree ("created_at");--> statement-breakpoint
