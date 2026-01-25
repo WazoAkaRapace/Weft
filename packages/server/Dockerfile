@@ -59,6 +59,7 @@ COPY turbo.json ./
 
 # Copy source code
 COPY packages/server/src ./packages/server/src
+COPY packages/server/drizzle ./packages/server/drizzle
 COPY packages/shared/src ./packages/shared/src
 
 # Install corepack and pnpm
@@ -106,6 +107,7 @@ RUN pnpm install --prod --no-frozen-lockfile
 
 # Copy built application from builder (preserve workspace structure)
 COPY --from=builder --chown=bun:nodejs /app/packages/server/dist ./packages/server/dist
+COPY --from=builder --chown=bun:nodejs /app/packages/server/drizzle ./packages/server/drizzle
 COPY --from=builder --chown=bun:nodejs /app/packages/shared/dist ./packages/shared/dist
 
 # Switch to non-root user
