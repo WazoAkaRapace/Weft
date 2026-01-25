@@ -10,7 +10,7 @@ import { auth } from '../lib/auth.js';
 import { db } from '../db/index.js';
 import { journals } from '../db/schema.js';
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile, unlink } from 'node:fs/promises';
+import { mkdir, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { eq } from 'drizzle-orm';
@@ -176,9 +176,8 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
     const finalFileName = `${streamId}.${ext}`;
     const finalFilePath = path.join(UPLOAD_DIR, finalFileName);
 
-    // Read stream and write to file
-    const reader = request.body?.getReader();
-    if (!reader) {
+    // Convert Web Streams API to Node.js ReadableStream
+    if (!request.body) {
       return new Response(
         JSON.stringify({
           error: 'No request body',
@@ -188,21 +187,24 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
       );
     }
 
-    const chunks: Uint8Array[] = [];
+    // Use Bun.file() to handle the stream efficiently
+    const fileWriter = Bun.file(finalFilePath).writer();
+    const reader = request.body.getReader();
     let totalBytes = 0;
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      chunks.push(value);
-      totalBytes += value.length;
-      streamData.bytesReceived = totalBytes;
+        // Write chunk directly to file
+        await fileWriter.write(value);
+        totalBytes += value.length;
+        streamData.bytesReceived = totalBytes;
+      }
+    } finally {
+      await fileWriter.end();
     }
-
-    // Combine chunks and write to file
-    const fileBuffer = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
-    await writeFile(finalFilePath, fileBuffer);
 
     // Calculate duration from timing
     const duration = Math.max(1, Math.round((Date.now() - streamData.startTime) / 1000));

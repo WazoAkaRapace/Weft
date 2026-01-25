@@ -287,12 +287,15 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
           headers: {
             'Content-Type': codec,
             'X-Stream-ID': initStreamId,
+            'Connection': 'close',
           },
           body: readableStream,
           signal: abortControllerRef.current.signal,
           credentials: 'include',
           // @ts-expect-error - duplex is required for streaming but not in TS types yet
           duplex: 'half',
+          // @ts-expect-error - disable prefetch to avoid HTTP/2 streaming issues
+          priority: 'low',
         });
 
         if (!response.ok) {
