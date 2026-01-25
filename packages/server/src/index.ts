@@ -7,6 +7,7 @@ import { runMigrations } from './db/migrate.js';
 import {
   handleStreamInit,
   handleStreamUpload,
+  handleStreamChunkUpload,
   handleGetJournals,
   handleGetJournal,
   handleDeleteJournal,
@@ -40,7 +41,7 @@ function addCorsHeaders(response: Response, request: Request): Response {
       ...Object.fromEntries(response.headers.entries()),
       'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Stream-ID, X-Chunk-Index, X-Is-Last',
       'Access-Control-Allow-Credentials': 'true',
       'Vary': 'Origin',
     },
@@ -226,6 +227,10 @@ const server = Bun.serve({
     // Journal stream endpoints
     if (url.pathname === '/api/journals/stream/init' && request.method === 'POST') {
       return addCorsHeaders(await handleStreamInit(request), request);
+    }
+
+    if (url.pathname === '/api/journals/stream/chunk' && request.method === 'POST') {
+      return addCorsHeaders(await handleStreamChunkUpload(request), request);
     }
 
     if (url.pathname === '/api/journals/stream' && request.method === 'POST') {

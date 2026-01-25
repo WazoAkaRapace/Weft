@@ -10,13 +10,13 @@ import { auth } from '../lib/auth.js';
 import { db } from '../db/index.js';
 import { journals } from '../db/schema.js';
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile, unlink } from 'node:fs/promises';
+import { mkdir, unlink, appendFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { eq } from 'drizzle-orm';
 
 // Upload directory configuration
-const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
+const UPLOAD_DIR = '/app/uploads';
 const TEMP_DIR = path.join(UPLOAD_DIR, 'temp');
 
 /**
@@ -176,9 +176,8 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
     const finalFileName = `${streamId}.${ext}`;
     const finalFilePath = path.join(UPLOAD_DIR, finalFileName);
 
-    // Read stream and write to file
-    const reader = request.body?.getReader();
-    if (!reader) {
+    // Convert Web Streams API to Node.js ReadableStream
+    if (!request.body) {
       return new Response(
         JSON.stringify({
           error: 'No request body',
@@ -188,21 +187,24 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
       );
     }
 
-    const chunks: Uint8Array[] = [];
+    // Use Bun.file() to handle the stream efficiently
+    const fileWriter = Bun.file(finalFilePath).writer();
+    const reader = request.body.getReader();
     let totalBytes = 0;
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      chunks.push(value);
-      totalBytes += value.length;
-      streamData.bytesReceived = totalBytes;
+        // Write chunk directly to file
+        await fileWriter.write(value);
+        totalBytes += value.length;
+        streamData.bytesReceived = totalBytes;
+      }
+    } finally {
+      await fileWriter.end();
     }
-
-    // Combine chunks and write to file
-    const fileBuffer = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
-    await writeFile(finalFilePath, fileBuffer);
 
     // Calculate duration from timing
     const duration = Math.max(1, Math.round((Date.now() - streamData.startTime) / 1000));
@@ -240,6 +242,131 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
     return new Response(
       JSON.stringify({
         error: 'Stream upload failed',
+        code: 'INTERNAL_ERROR',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+/**
+ * Handle chunked video upload
+ *
+ * POST /api/journals/stream/chunk
+ *
+ * Uploads a single chunk of video data and appends it to the temporary file.
+ * This avoids streaming/ALPN issues by using standard HTTP requests.
+ *
+ * Headers:
+ * - X-Stream-ID: Stream identifier from init
+ * - X-Chunk-Index: Index of this chunk
+ * - X-Is-Last: "true" if this is the final chunk
+ * - Content-Type: Video MIME type
+ *
+ * @returns Response with chunk status or error
+ */
+export async function handleStreamChunkUpload(request: Request): Promise<Response> {
+  const streamId = request.headers.get('X-Stream-ID');
+  const chunkIndex = request.headers.get('X-Chunk-Index');
+  const isLast = request.headers.get('X-Is-Last') === 'true';
+  const contentType = request.headers.get('Content-Type') || 'video/webm';
+
+  if (!streamId) {
+    return new Response(
+      JSON.stringify({
+        error: 'Missing stream ID',
+        code: 'VALIDATION_ERROR',
+      }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const streamData = activeStreams.get(streamId);
+
+  if (!streamData) {
+    return new Response(
+      JSON.stringify({
+        error: 'Invalid or expired stream ID',
+        code: 'INVALID_STREAM',
+      }),
+      { status: 404, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  try {
+    // Get the chunk data as ArrayBuffer
+    const chunkData = await request.arrayBuffer();
+    const chunkBuffer = Buffer.from(chunkData);
+
+    // Determine file extension from content type
+    const ext = contentType.includes('mp4') ? 'mp4' : 'webm';
+    const tempFileName = `${streamId}.${ext}`;
+    const tempFilePath = path.join(TEMP_DIR, tempFileName);
+
+    // Append chunk to temporary file
+    await appendFile(tempFilePath, chunkBuffer);
+
+    // Update bytes received
+    streamData.bytesReceived += chunkBuffer.length;
+
+    // If this is the last chunk, finalize the recording
+    if (isLast) {
+      const finalFileName = `${streamId}.${ext}`;
+      const finalFilePath = path.join(UPLOAD_DIR, finalFileName);
+
+      // Move temp file to final location
+      const fs = await import('node:fs/promises');
+      await fs.rename(tempFilePath, finalFilePath);
+
+      // Calculate duration from timing
+      const duration = Math.max(1, Math.round((Date.now() - streamData.startTime) / 1000));
+
+      // Create journal entry
+      const journalId = randomUUID();
+      await db.insert(journals).values({
+        id: journalId,
+        userId: streamData.userId,
+        title: `Journal Entry ${new Date().toLocaleDateString()}`,
+        videoPath: finalFilePath,
+        duration,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Clean up active stream tracking
+      activeStreams.delete(streamId);
+
+      return new Response(
+        JSON.stringify({
+          streamId,
+          journalId,
+          videoPath: finalFilePath,
+          duration,
+          chunkIndex,
+          isLast: true,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        streamId,
+        chunkIndex,
+        bytesReceived: streamData.bytesReceived,
+        isLast: false,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Chunk upload error:', error);
+
+    // Clean up on error
+    activeStreams.delete(streamId);
+
+    return new Response(
+      JSON.stringify({
+        error: 'Chunk upload failed',
         code: 'INTERNAL_ERROR',
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

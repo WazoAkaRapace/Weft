@@ -1,7 +1,9 @@
+import { useNavigate } from 'react-router-dom';
 import { useSession, signOut } from '../lib/auth';
 
 export function DashboardPage() {
   const { data: session } = useSession();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut({
@@ -18,6 +20,12 @@ export function DashboardPage() {
       <header className="dashboard-header">
         <h1>Weft Dashboard</h1>
         <div className="user-info">
+          <button
+            onClick={() => navigate('/record')}
+            className="new-entry-button"
+          >
+            + New Entry
+          </button>
           <span className="user-name">{session?.user?.name || 'User'}</span>
           <button onClick={handleSignOut} className="sign-out-button">
             Sign Out
