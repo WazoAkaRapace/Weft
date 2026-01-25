@@ -1,5 +1,15 @@
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { db } from './index.js';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Get the directory of the current module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Resolve the migrations folder path relative to the dist directory
+// When running from dist/index.js, we need to look for drizzle/ at the package root
+const migrationsFolder = join(__dirname, '../../drizzle');
 
 /**
  * Run database migrations
@@ -13,7 +23,8 @@ import { db } from './index.js';
 export async function runMigrations() {
   try {
     console.log('Running database migrations...');
-    await migrate(db, { migrationsFolder: './drizzle' });
+    console.log(`Migrations folder: ${migrationsFolder}`);
+    await migrate(db, { migrationsFolder });
     console.log('Migrations completed successfully');
   } catch (error) {
     console.error('Error running migrations:', error);
