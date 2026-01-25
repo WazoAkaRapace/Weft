@@ -15,6 +15,7 @@
     "better-auth": "^1.4.17",
     "react": "^19.2.3",
     "react-dom": "^19.0.0",
+    "react-router-dom": "^7.13.0",
     "vibe-kanban-web-companion": "^0.0.5"
   },
   "devDependencies": {

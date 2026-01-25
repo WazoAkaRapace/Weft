@@ -1,12 +1,28 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { VibeKanbanWebCompanion } from 'vibe-kanban-web-companion';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import './index.css';
 
 export function App() {
   return (
-    <div className="app">
+    <BrowserRouter>
       <VibeKanbanWebCompanion />
-      <h1>Weft Web</h1>
-      <p>Welcome to the Weft web application.</p>
-    </div>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
