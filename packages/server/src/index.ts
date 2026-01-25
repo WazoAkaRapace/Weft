@@ -48,18 +48,9 @@ const authRoutes = async (request: Request) => {
 
   // Better Auth handles its own routing via the auth instance
   if (url.pathname.startsWith(authPath)) {
-    // Extract the path after /api/auth
-    const betterAuthPath = url.pathname.slice(authPath.length);
-    const betterAuthUrl = betterAuthPath + url.search;
-
-    // Create a new request with the modified URL as a string
-    const betterAuthRequest = new Request(betterAuthUrl, {
-      method: request.method,
-      headers: request.headers,
-      body: request.body,
-    });
-
-    const response = await auth.handler(betterAuthRequest);
+    // Pass the request directly to auth.handler
+    // BetterAuth will handle the routing based on the pathname
+    const response = await auth.handler(request);
     return addCorsHeaders(response, request);
   }
 
