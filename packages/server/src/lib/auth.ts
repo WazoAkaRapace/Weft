@@ -13,6 +13,15 @@ interface EmailCallbackParams {
 }
 
 /**
+ * Generate a proper UUID v4
+ * Better Auth's default ID generator creates nanoid-style strings
+ * which don't work with PostgreSQL uuid columns
+ */
+function generateUUID(): string {
+  return crypto.randomUUID();
+}
+
+/**
  * Better Auth configuration
  *
  * Provides authentication for the Weft application with:
@@ -62,7 +71,7 @@ export const auth = betterAuth({
       enabled: false,
     },
     useSecureCookies: false, // Disable for development
-    generateId: () => crypto.randomUUID(),
+    idGenerator: generateUUID,
   },
 });
 
