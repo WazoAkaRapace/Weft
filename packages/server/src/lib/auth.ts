@@ -62,6 +62,7 @@ export const auth = betterAuth({
       enabled: false,
     },
     useSecureCookies: false, // Disable for development
+    generateId: () => crypto.randomUUID(),
   },
 });
 
