@@ -1,8 +1,8 @@
 /**
- * React hook for video recording with upload to backend
+ * React hook for video recording with real-time streaming to backend
  *
  * Provides methods for starting, stopping, pausing, and canceling video recordings
- * with automatic upload to the server after recording stops.
+ * with automatic streaming to the server using fetch streaming and ReadableStream.
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -26,6 +26,7 @@ import {
   detectSupportedCodec,
   getPreferredCodecForBrowser,
   createVideoStreamerError,
+  MediaChunkQueue,
   formatDuration,
   formatBytes,
 } from '../lib/video-stream';
@@ -144,12 +145,12 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
   // Refs for non-state values
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
+  const chunkQueueRef = useRef<MediaChunkQueue | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const streamUploadPromiseRef = useRef<Promise<StreamCompleteResponse> | null>(null);
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number | null>(null);
-  const streamIdRef = useRef<string | null>(null);
-  const codecRef = useRef<VideoCodec | null>(null);
+  const totalBytesUploadedRef = useRef(0);
 
   /**
    * Update recording state and trigger callback
@@ -221,11 +222,13 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
       track.stop();
     });
 
+    // Close chunk queue
+    chunkQueueRef.current?.clear();
+
     // Clear references
     mediaRecorderRef.current = null;
     mediaStreamRef.current = null;
-    recordedChunksRef.current = [];
-    abortControllerRef.current = null;
+    chunkQueueRef.current = null;
 
     // Stop duration tracking
     stopDurationTracking();
@@ -237,47 +240,60 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
     setBytesUploaded(0);
     setStreamId(null);
     setSelectedCodec(null);
-    streamIdRef.current = null;
-    codecRef.current = null;
+    totalBytesUploadedRef.current = 0;
     startTimeRef.current = null;
   }, [stopDurationTracking]);
 
   /**
-   * Upload recorded video to the server
+   * Start streaming video chunks to the server
    */
-  const uploadRecording = useCallback(
-    async (initStreamId: string, codec: VideoCodec, chunks: Blob[]): Promise<StreamCompleteResponse> => {
+  const startStreamUpload = useCallback(
+    async (initStreamId: string, codec: VideoCodec): Promise<StreamCompleteResponse> => {
       abortControllerRef.current = new AbortController();
+      chunkQueueRef.current = new MediaChunkQueue();
 
-      // Combine chunks into a single blob
-      const blob = new Blob(chunks, { type: codec });
-      const totalBytes = blob.size;
+      // Create a readable stream from the chunk queue
+      const readableStream = new ReadableStream({
+        async pull(controller) {
+          const queue = chunkQueueRef.current;
+          if (!queue) {
+            controller.close();
+            return;
+          }
+
+          const chunk = await queue.dequeue();
+
+          if (chunk === null) {
+            controller.close();
+            return;
+          }
+
+          controller.enqueue(chunk);
+
+          // Update bytes uploaded
+          totalBytesUploadedRef.current += chunk.size;
+          setBytesUploaded(totalBytesUploadedRef.current);
+          onProgress?.(totalBytesUploadedRef.current, duration);
+        },
+
+        cancel() {
+          chunkQueueRef.current?.clear();
+        },
+      });
 
       try {
-        // Simulate upload progress
-        let uploadedBytes = 0;
-        const progressInterval = setInterval(() => {
-          if (uploadedBytes < totalBytes) {
-            uploadedBytes = Math.min(uploadedBytes + Math.floor(totalBytes / 10), totalBytes);
-            setBytesUploaded(uploadedBytes);
-            onProgress?.(uploadedBytes, duration);
-          }
-        }, 100);
-
         const response = await fetch(`${API_BASE}/api/journals/stream`, {
           method: 'POST',
           headers: {
             'Content-Type': codec,
             'X-Stream-ID': initStreamId,
           },
-          body: blob,
+          body: readableStream,
           signal: abortControllerRef.current.signal,
           credentials: 'include',
+          // @ts-expect-error - duplex is required for streaming but not in TS types yet
+          duplex: 'half',
         });
-
-        clearInterval(progressInterval);
-        setBytesUploaded(totalBytes);
-        onProgress?.(totalBytes, duration);
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -333,7 +349,6 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
         );
       }
       setSelectedCodec(codec);
-      codecRef.current = codec;
 
       // Create MediaRecorder
       const mediaRecorder = new MediaRecorder(mediaStream, {
@@ -341,10 +356,10 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
         videoBitsPerSecond: DEFAULT_VIDEO_BITRATE,
       });
 
-      // Set up dataavailable handler - accumulate chunks
+      // Set up dataavailable handler
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
+        if (event.data.size > 0 && chunkQueueRef.current) {
+          chunkQueueRef.current.enqueue(event.data);
         }
       };
 
@@ -360,6 +375,7 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
 
       // Handle recording stop
       mediaRecorder.onstop = () => {
+        chunkQueueRef.current?.close();
         stopDurationTracking();
       };
 
@@ -383,13 +399,25 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
 
       const initResult = (await initResponse.json()) as StreamInitResponse;
       setStreamId(initResult.streamId);
-      streamIdRef.current = initResult.streamId;
+
+      // Start streaming
+      setState('streaming');
+      const streamPromise = startStreamUpload(initResult.streamId, codec);
+      streamUploadPromiseRef.current = streamPromise;
 
       // Start recording with timeslice for chunking
       mediaRecorder.start(DEFAULT_TIMESLICE);
 
       // Start duration tracking
       startDurationTracking();
+
+      // Handle stream completion
+      streamPromise.then((result) => {
+        onComplete?.(result);
+        setState('completed');
+      }).catch((err) => {
+        handleError(err);
+      });
     } catch (err) {
       const error =
         err instanceof Error
@@ -415,13 +443,15 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
     setState,
     handleError,
     cleanup,
+    startStreamUpload,
     startDurationTracking,
     stopDurationTracking,
     API_BASE,
+    onComplete,
   ]);
 
   /**
-   * Stop recording and upload
+   * Stop recording and finalize stream
    */
   const stopRecording = useCallback(async (): Promise<StreamCompleteResponse | null> => {
     if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
@@ -437,33 +467,22 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
       mediaRecorderRef.current.stop();
     }
 
-    // Wait a moment for all chunks to be processed
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Get recorded chunks and codec
-    const chunks = recordedChunksRef.current;
-    const codec = codecRef.current;
-    const streamId = streamIdRef.current;
-
-    if (!codec || !streamId || chunks.length === 0) {
-      handleError(createVideoStreamerError('No video data recorded', 'STREAM_ERROR'));
-      cleanup();
-      return null;
+    // Wait for stream upload to complete
+    if (streamUploadPromiseRef.current) {
+      try {
+        const result = await streamUploadPromiseRef.current;
+        return result;
+      } catch (err) {
+        // Error already handled in stream promise
+        return null;
+      } finally {
+        streamUploadPromiseRef.current = null;
+      }
     }
 
-    try {
-      // Upload the recording
-      const result = await uploadRecording(streamId, codec, chunks);
-      onComplete?.(result);
-      setState('completed');
-      cleanup();
-      return result;
-    } catch (err) {
-      handleError(err instanceof Error ? err : createVideoStreamerError('Upload failed', 'NETWORK_ERROR'));
-      cleanup();
-      return null;
-    }
-  }, [setState, cleanup, uploadRecording, handleError, onComplete]);
+    cleanup();
+    return null;
+  }, [setState, cleanup]);
 
   /**
    * Pause recording
@@ -493,10 +512,13 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
   const cancelRecording = useCallback(async () => {
     setState('idle');
 
-    // Abort upload if in progress
+    // Abort stream upload if in progress
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+
+    // Don't wait for stream promise on cancel
+    streamUploadPromiseRef.current = null;
 
     cleanup();
   }, [setState, cleanup]);
