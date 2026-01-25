@@ -16,7 +16,7 @@ import path from 'node:path';
 import { eq } from 'drizzle-orm';
 
 // Upload directory configuration
-const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
+const UPLOAD_DIR = '/app/uploads';
 const TEMP_DIR = path.join(UPLOAD_DIR, 'temp');
 
 /**
