@@ -42,6 +42,7 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
     bytesUploaded,
     error: recordingError,
     recordingState,
+    mediaStream,
     startRecording,
     stopRecording,
     pauseRecording,
@@ -228,6 +229,20 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
         )}
 
         <div className="recording-active">
+          {mediaStream && (
+            <video
+              className="recording-preview"
+              autoPlay
+              muted
+              playsInline
+              ref={(videoElement) => {
+                if (videoElement && videoElement.srcObject !== mediaStream) {
+                  videoElement.srcObject = mediaStream;
+                }
+              }}
+            />
+          )}
+
           {isRecording && !isPaused && (
             <div role="status" aria-live="polite" className="streaming-indicator">
               <span className="streaming-dot" aria-hidden="true"></span>

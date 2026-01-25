@@ -345,6 +345,16 @@ body {
   gap: 1.5rem;
 }
 
+.recording-preview {
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 16 / 9;
+  background-color: #000;
+  border-radius: 8px;
+  object-fit: cover;
+  transform: scaleX(-1); /* Mirror effect for user-facing camera */
+}
+
 /* Streaming Indicator */
 .streaming-indicator {
   display: flex;

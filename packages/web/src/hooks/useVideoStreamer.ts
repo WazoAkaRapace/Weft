@@ -89,6 +89,7 @@ export interface UseVideoStreamerReturn {
   streamId: string | null;
   recordingState: RecordingState;
   selectedCodec: VideoCodec | null;
+  mediaStream: MediaStream | null;
 
   // Methods
   startRecording: () => Promise<void>;
@@ -143,6 +144,7 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
   const [streamId, setStreamId] = useState<string | null>(null);
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [selectedCodec, setSelectedCodec] = useState<VideoCodec | null>(null);
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
 
   // Refs for non-state values
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -249,6 +251,7 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
     setBytesUploaded(0);
     setStreamId(null);
     setSelectedCodec(null);
+    setMediaStream(null);
     totalBytesUploadedRef.current = 0;
     startTimeRef.current = null;
     streamIdRef.current = null;
@@ -381,6 +384,7 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
       });
 
       mediaStreamRef.current = mediaStream;
+      setMediaStream(mediaStream);
       setIsRecording(true);
       setState('recording');
 
@@ -641,6 +645,7 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
     streamId,
     recordingState,
     selectedCodec,
+    mediaStream,
 
     // Methods
     startRecording,
