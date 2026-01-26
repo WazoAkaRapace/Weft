@@ -207,7 +207,6 @@ export class TranscriptionService {
         const output = await pipe(audioData, {
           chunk_length_s: 30,
           stride_length_s: 5,
-          language: 'auto', // Auto-detect language for multilingual support
           task: 'transcribe',
           return_timestamps: true,
         });
