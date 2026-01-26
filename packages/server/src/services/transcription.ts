@@ -3,15 +3,28 @@
  * Handles video transcription using local Whisper (Transformers.js)
  */
 
-import { pipeline } from '@huggingface/transformers';
+import { pipeline, env } from '@huggingface/transformers';
 import { spawn } from 'node:child_process';
-import { readFile, unlink } from 'node:fs/promises';
+import { readFile, unlink, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { db } from '../db/index.js';
 import { transcripts, journals } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import path from 'node:path';
+
+// Configure Transformers.js to use a writable cache directory
+const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
+const CACHE_DIR = path.join(UPLOAD_DIR, 'cache');
+env.localModelPath = CACHE_DIR;
+
+// Ensure cache directory exists
+async function ensureCacheDir() {
+  if (!existsSync(CACHE_DIR)) {
+    await mkdir(CACHE_DIR, { recursive: true });
+    console.log(`[Transcription] Created cache directory: ${CACHE_DIR}`);
+  }
+}
 
 export interface TranscriptionJob {
   journalId: string;
@@ -46,6 +59,9 @@ async function getPipeline() {
   if (modelLoadingPromise) {
     return modelLoadingPromise;
   }
+
+  // Ensure cache directory exists
+  await ensureCacheDir();
 
   const modelName = process.env.TRANSCRIPTION_MODEL || 'Xenova/whisper-small.en';
   console.log(`[Transcription] Loading Whisper model: ${modelName}`);
