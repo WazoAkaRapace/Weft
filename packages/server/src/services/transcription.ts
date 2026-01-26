@@ -207,8 +207,6 @@ export class TranscriptionService {
         const output = await pipe(audioData, {
           chunk_length_s: 30,
           stride_length_s: 5,
-          language: 'english',
-          task: 'transcribe',
           return_timestamps: true,
         });
 
