@@ -326,11 +326,6 @@ body {
   background-color: #f0f7ff;
 }
 
-<<<<<<< HEAD
-/* New Entry Button */
-.new-entry-button {
-  padding: 0.5rem 1rem;
-=======
 /* History Page Styles */
 .history-container {
   min-height: 100vh;
@@ -578,23 +573,10 @@ body {
 
 .load-more-button {
   padding: 0.75rem 2rem;
->>>>>>> ef18-great-we-ve-adde
   background-color: #0066cc;
   color: white;
   border: none;
   border-radius: 4px;
-<<<<<<< HEAD
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: background-color 0.2s;
-}
-
-.new-entry-button:hover {
-  background-color: #0052a3;
-}
-
-=======
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
@@ -649,7 +631,6 @@ body {
   text-align: center;
 }
 
->>>>>>> ef18-great-we-ve-adde
 /* Recording Page Styles */
 .recording-page {
   min-height: 100vh;
@@ -966,11 +947,7 @@ body {
   cursor: not-allowed;
 }
 
-<<<<<<< HEAD
-/* Error Display */
-=======
 /* Recording Error Display */
->>>>>>> ef18-great-we-ve-adde
 .recording-error {
   background-color: #fee;
   border: 1px solid #fcc;
@@ -982,87 +959,3 @@ body {
   align-items: center;
   gap: 0.5rem;
 }
-<<<<<<< HEAD
-
-.error-icon {
-  flex-shrink: 0;
-}
-
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .recording-page {
-    background-color: #1a1a1a;
-  }
-
-  .recording-container {
-    background: #2a2a2a;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-  }
-
-  .recording-idle h2,
-  .timer-value,
-  .complete-header h2 {
-    color: #fff;
-  }
-
-  .recording-idle p,
-  .timer-label,
-  .complete-header p,
-  .upload-label {
-    color: #aaa;
-  }
-
-  .streaming-indicator {
-    background-color: #3a1a1a;
-    border-color: #5a2a2a;
-  }
-
-  .timer-display {
-    background-color: #333;
-  }
-
-  .upload-progress {
-    background-color: #1a2a3a;
-  }
-
-  .pause-button {
-    background-color: #333;
-    color: #fff;
-    border-color: #555;
-  }
-
-  .pause-button:hover:not(:disabled) {
-    background-color: #444;
-  }
-
-  .cancel-button {
-    color: #aaa;
-    border-color: #555;
-  }
-
-  .cancel-button:hover:not(:disabled) {
-    background-color: #333;
-    border-color: #777;
-  }
-
-  .title-input-group label {
-    color: #ddd;
-  }
-
-  .title-input-group input {
-    background-color: #333;
-    border-color: #555;
-    color: #fff;
-  }
-
-  .title-input-group input:focus {
-    border-color: #0066cc;
-  }
-
-  .recording-error {
-    background-color: #3a1a1a;
-    border-color: #5a2a2a;
-  }
-}
-=======
->>>>>>> ef18-great-we-ve-adde

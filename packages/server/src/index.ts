@@ -7,14 +7,14 @@ import { runMigrations } from './db/migrate.js';
 import {
   handleStreamInit,
   handleStreamUpload,
-  handleStreamChunkUpload,
   handleGetJournals,
   handleGetPaginatedJournals,
   handleGetJournal,
   handleDeleteJournal,
   handleUpdateJournal,
-  handleGetThumbnail,
+  handleGetTranscript,
 } from './routes/journals.js';
+import { getTranscriptionQueue } from './queue/TranscriptionQueue.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -208,6 +208,11 @@ try {
   console.warn('⚠ FFmpeg not found. Thumbnail generation will be disabled.');
 }
 
+// Start transcription queue
+const transcriptionQueue = getTranscriptionQueue();
+await transcriptionQueue.start();
+console.log('Transcription queue started');
+
 // Main HTTP server using Bun
 const server = Bun.serve({
   port: PORT,
@@ -239,10 +244,6 @@ const server = Bun.serve({
       return addCorsHeaders(await handleStreamInit(request), request);
     }
 
-    if (url.pathname === '/api/journals/stream/chunk' && request.method === 'POST') {
-      return addCorsHeaders(await handleStreamChunkUpload(request), request);
-    }
-
     if (url.pathname === '/api/journals/stream' && request.method === 'POST') {
       return addCorsHeaders(await handleStreamUpload(request), request);
     }
@@ -272,10 +273,10 @@ const server = Bun.serve({
       return addCorsHeaders(await handleUpdateJournal(request, journalId), request);
     }
 
-    // Thumbnail endpoint
-    if (url.pathname.match(/^\/api\/journals\/[^/]+\/thumbnail$/) && request.method === 'GET') {
-      const journalId = url.pathname.split('/')[3];
-      return addCorsHeaders(await handleGetThumbnail(request, journalId), request);
+    // Transcript endpoint
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/transcript$/) && request.method === 'GET') {
+      const journalId = url.pathname.split('/').slice(-2, -1)[0];
+      return addCorsHeaders(await handleGetTranscript(request, journalId), request);
     }
 
     // Health check endpoint
@@ -333,12 +334,14 @@ console.log(`Better Auth endpoints available at http://localhost:${server.port}/
 // Graceful shutdown handler
 process.on('SIGINT', async () => {
   console.log('\nShutting down gracefully...');
+  await transcriptionQueue.stop();
   await closeDatabase();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   console.log('\nShutting down gracefully...');
+  await transcriptionQueue.stop();
   await closeDatabase();
   process.exit(0);
 });
