@@ -13,10 +13,16 @@ import { transcripts, journals } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import path from 'node:path';
 
-// Configure Transformers.js to use a writable cache directory
+// Configure Transformers.js to use a writable cache directory and disable browser cache
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
 const CACHE_DIR = path.join(UPLOAD_DIR, 'cache');
-env.localModelPath = CACHE_DIR;
+
+// Disable browser cache and configure file system cache
+env.allowLocalModels = false;
+env.allowRemoteModels = true;
+env.useBrowserCache = false; // Disable browser cache (node_modules)
+env.useFSCache = true; // Enable file system cache
+env.cacheDir = CACHE_DIR; // Set cache directory
 
 // Ensure cache directory exists
 async function ensureCacheDir() {
