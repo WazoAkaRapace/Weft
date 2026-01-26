@@ -13,6 +13,10 @@
     "lint": {
       "dependsOn": ["^lint"]
     },
+    "knip": {
+      "dependsOn": ["^knip"],
+      "outputs": []
+    },
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
