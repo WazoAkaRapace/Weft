@@ -7,11 +7,13 @@ import { runMigrations } from './db/migrate.js';
 import {
   handleStreamInit,
   handleStreamUpload,
+  handleStreamChunkUpload,
   handleGetJournals,
   handleGetPaginatedJournals,
   handleGetJournal,
   handleDeleteJournal,
   handleUpdateJournal,
+  handleGetThumbnail,
   handleGetTranscript,
 } from './routes/journals.js';
 import { getTranscriptionQueue } from './queue/TranscriptionQueue.js';
@@ -43,7 +45,7 @@ function addCorsHeaders(response: Response, request: Request): Response {
       ...Object.fromEntries(response.headers.entries()),
       'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Stream-ID, X-Chunk-Index, X-Is-Last',
       'Access-Control-Allow-Credentials': 'true',
       'Vary': 'Origin',
     },
@@ -200,6 +202,14 @@ async function handleCreateFirstUser(request: Request): Promise<Response> {
 // Run migrations on startup
 await runMigrations();
 
+// Check FFmpeg availability
+try {
+  await Bun.$`ffmpeg -version`.quiet();
+  console.log('✓ FFmpeg is available for thumbnail generation');
+} catch {
+  console.warn('⚠ FFmpeg not found. Thumbnail generation will be disabled.');
+}
+
 // Start transcription queue
 const transcriptionQueue = getTranscriptionQueue();
 await transcriptionQueue.start();
@@ -236,6 +246,10 @@ const server = Bun.serve({
       return addCorsHeaders(await handleStreamInit(request), request);
     }
 
+    if (url.pathname === '/api/journals/stream/chunk' && request.method === 'POST') {
+      return addCorsHeaders(await handleStreamChunkUpload(request), request);
+    }
+
     if (url.pathname === '/api/journals/stream' && request.method === 'POST') {
       return addCorsHeaders(await handleStreamUpload(request), request);
     }
@@ -263,6 +277,12 @@ const server = Bun.serve({
     if (url.pathname.startsWith('/api/journals/') && request.method === 'PUT') {
       const journalId = url.pathname.split('/').pop() || '';
       return addCorsHeaders(await handleUpdateJournal(request, journalId), request);
+    }
+
+    // Thumbnail endpoint
+    if (url.pathname.match(/^\/api\/journals\/[^/]+\/thumbnail$/) && request.method === 'GET') {
+      const journalId = url.pathname.split('/')[3];
+      return addCorsHeaders(await handleGetThumbnail(request, journalId), request);
     }
 
     // Transcript endpoint

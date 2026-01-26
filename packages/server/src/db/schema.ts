@@ -109,6 +109,7 @@ export const journals = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     videoPath: text('video_path').notNull(),
+    thumbnailPath: text('thumbnail_path'), // Optional thumbnail image path
     duration: integer('duration').notNull(), // Duration in seconds
     location: text('location'), // Optional location metadata
     notes: text('notes'), // Optional user notes

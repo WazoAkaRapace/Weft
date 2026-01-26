@@ -80,7 +80,7 @@ RUN pnpm build
 FROM node:20-bullseye-slim AS production
 WORKDIR /app
 
-# Install dependencies and Bun
+# Install dependencies and Bun (including FFmpeg for thumbnail generation)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl wget ca-certificates unzip ffmpeg && \
     curl -fsSL https://bun.sh/install | bash && \
@@ -95,6 +95,14 @@ RUN groupadd -g 1001 nodejs && \
 # Set environment
 ENV NODE_ENV=production
 ENV PORT=4000
+
+# Create uploads directory with proper permissions for non-root user
+RUN mkdir -p /app/uploads && \
+    chown -R bun:nodejs /app/uploads && \
+    chmod 755 /app/uploads
+
+# Define volume mount point
+VOLUME ["/app/uploads"]
 
 # Copy package files for workspace
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
