@@ -95,6 +95,7 @@ RUN groupadd -g 1001 nodejs && \
 # Set environment
 ENV NODE_ENV=production
 ENV PORT=4000
+ENV UPLOAD_DIR=/app/uploads
 
 # Create uploads directory with proper permissions for non-root user
 RUN mkdir -p /app/uploads && \
