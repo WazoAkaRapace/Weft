@@ -10,11 +10,10 @@ import { auth } from '../lib/auth.js';
 import { db } from '../db/index.js';
 import { journals, transcripts } from '../db/schema.js';
 import { randomUUID } from 'node:crypto';
-import { mkdir, unlink, appendFile } from 'node:fs/promises';
+import { mkdir, writeFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { eq, desc, gte, lte, or, ilike, and, sql } from 'drizzle-orm';
-import { generateThumbnailForVideo } from '../lib/thumbnail.js';
 import { getTranscriptionQueue } from '../queue/TranscriptionQueue.js';
 
 // Upload directory configuration
