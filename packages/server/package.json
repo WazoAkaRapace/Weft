@@ -17,6 +17,7 @@
     "db:seed": "$HOME/.bun/bin/bun src/db/seed.ts"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
     "@weft/shared": "workspace:*",
     "better-auth": "^1.4.17",
     "drizzle-orm": "^0.45.1",

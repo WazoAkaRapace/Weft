@@ -8,12 +8,13 @@
 
 import { auth } from '../lib/auth.js';
 import { db } from '../db/index.js';
-import { journals } from '../db/schema.js';
+import { journals, transcripts } from '../db/schema.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { eq, desc, gte, lte, or, ilike, and, sql } from 'drizzle-orm';
+import { getTranscriptionQueue } from '../queue/TranscriptionQueue.js';
 
 // Upload directory configuration
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
@@ -218,6 +219,19 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+
+    // Start transcription job (non-blocking)
+    try {
+      const queue = getTranscriptionQueue();
+      await queue.addJob({
+        journalId,
+        videoPath: finalFilePath,
+      });
+      console.log(`[Journals] Transcription job queued for journal ${journalId}`);
+    } catch (error) {
+      // Log error but don't fail the upload
+      console.error('[Journals] Failed to queue transcription job:', error);
+    }
 
     // Clean up active stream tracking
     activeStreams.delete(streamId);
@@ -660,6 +674,112 @@ export async function handleUpdateJournal(
     );
   } catch (error) {
     console.error('Update journal error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+/**
+ * Get transcript for a journal
+ *
+ * GET /api/journals/:id/transcript
+ *
+ * @returns Response with transcript or error
+ */
+export async function handleGetTranscript(
+  request: Request,
+  journalId: string
+): Promise<Response> {
+  try {
+    // Verify authentication
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get journal to verify ownership
+    const journalList = await db
+      .select()
+      .from(journals)
+      .where(eq(journals.id, journalId))
+      .limit(1);
+
+    const journal = journalList[0];
+
+    if (!journal) {
+      return new Response(
+        JSON.stringify({
+          error: 'Journal not found',
+          code: 'NOT_FOUND',
+        }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify ownership
+    if (journal.userId !== session.user.id) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get transcript
+    const transcriptList = await db
+      .select()
+      .from(transcripts)
+      .where(eq(transcripts.journalId, journalId))
+      .limit(1);
+
+    const transcript = transcriptList[0];
+
+    if (!transcript) {
+      // Check if job is in queue
+      const queue = getTranscriptionQueue();
+      const job = queue.getJobByJournalId(journalId);
+
+      if (job) {
+        return new Response(
+          JSON.stringify({
+            status: job.status,
+            error: job.error,
+          }),
+          { status: 202, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          error: 'Transcript not found',
+          code: 'NOT_FOUND',
+        }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify(transcript),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Get transcript error:', error);
     return new Response(
       JSON.stringify({
         error: 'Internal server error',

@@ -12,7 +12,9 @@ import {
   handleGetJournal,
   handleDeleteJournal,
   handleUpdateJournal,
+  handleGetTranscript,
 } from './routes/journals.js';
+import { getTranscriptionQueue } from './queue/TranscriptionQueue.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -198,6 +200,11 @@ async function handleCreateFirstUser(request: Request): Promise<Response> {
 // Run migrations on startup
 await runMigrations();
 
+// Start transcription queue
+const transcriptionQueue = getTranscriptionQueue();
+await transcriptionQueue.start();
+console.log('Transcription queue started');
+
 // Main HTTP server using Bun
 const server = Bun.serve({
   port: PORT,
@@ -258,6 +265,12 @@ const server = Bun.serve({
       return addCorsHeaders(await handleUpdateJournal(request, journalId), request);
     }
 
+    // Transcript endpoint
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/transcript$/) && request.method === 'GET') {
+      const journalId = url.pathname.split('/').slice(-2, -1)[0];
+      return addCorsHeaders(await handleGetTranscript(request, journalId), request);
+    }
+
     // Health check endpoint
     if (url.pathname === '/health') {
       return addCorsHeaders(
@@ -313,12 +326,14 @@ console.log(`Better Auth endpoints available at http://localhost:${server.port}/
 // Graceful shutdown handler
 process.on('SIGINT', async () => {
   console.log('\nShutting down gracefully...');
+  await transcriptionQueue.stop();
   await closeDatabase();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   console.log('\nShutting down gracefully...');
+  await transcriptionQueue.stop();
   await closeDatabase();
   process.exit(0);
 });
