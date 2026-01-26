@@ -139,6 +139,26 @@ async function extractAudio(videoPath: string): Promise<string> {
 }
 
 /**
+ * Decode WAV file buffer to Float32Array
+ * WAV files have a 44-byte header followed by PCM audio data
+ */
+function decodeWAV(buffer: Buffer): Float32Array {
+  // Skip WAV header (44 bytes) and read PCM data
+  const dataLength = buffer.length - 44;
+  const numberOfSamples = dataLength / 2; // 16-bit = 2 bytes per sample
+  const samples = new Float32Array(numberOfSamples);
+
+  // Convert 16-bit PCM to Float32Array (normalize to [-1, 1])
+  for (let i = 0; i < numberOfSamples; i++) {
+    const offset = 44 + i * 2;
+    const sample = buffer.readInt16LE(offset);
+    samples[i] = sample / 32768; // Normalize to [-1, 1]
+  }
+
+  return samples;
+}
+
+/**
  * Check if FFmpeg is available
  */
 export async function checkFFmpegAvailable(): Promise<boolean> {
@@ -179,9 +199,9 @@ export class TranscriptionService {
         // Get pipeline (loads model if needed)
         const pipe = await getPipeline();
 
-        // Read audio file
+        // Read audio file and decode WAV to Float32Array
         const audioBuffer = await readFile(audioPath);
-        const audioData = new Uint8Array(audioBuffer);
+        const audioData = decodeWAV(audioBuffer);
 
         console.log(`[Transcription] Starting transcription for journal ${job.journalId}`);
         const output = await pipe(audioData, {
