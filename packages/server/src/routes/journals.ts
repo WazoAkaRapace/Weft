@@ -253,6 +253,7 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
         streamId,
         journalId,
         videoPath: finalFilePath,
+        thumbnailPath,
         duration,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -389,6 +390,7 @@ export async function handleStreamChunkUpload(request: Request): Promise<Respons
           streamId,
           journalId,
           videoPath: finalFilePath,
+          thumbnailPath,
           duration,
           chunkIndex,
           isLast: true,
