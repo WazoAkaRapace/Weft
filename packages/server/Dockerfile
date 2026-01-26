@@ -96,6 +96,14 @@ RUN groupadd -g 1001 nodejs && \
 ENV NODE_ENV=production
 ENV PORT=4000
 
+# Create uploads directory with proper permissions for non-root user
+RUN mkdir -p /app/uploads && \
+    chown -R bun:nodejs /app/uploads && \
+    chmod 755 /app/uploads
+
+# Define volume mount point
+VOLUME ["/app/uploads"]
+
 # Copy package files for workspace
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/server/package.json ./packages/server/
