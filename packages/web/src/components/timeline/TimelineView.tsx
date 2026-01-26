@@ -1,5 +1,5 @@
 import type { Journal } from '@weft/shared';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
