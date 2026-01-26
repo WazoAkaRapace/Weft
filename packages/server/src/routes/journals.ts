@@ -15,6 +15,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { eq, desc, gte, lte, or, ilike, and, sql } from 'drizzle-orm';
 import { getTranscriptionQueue } from '../queue/TranscriptionQueue.js';
+import { generateThumbnailForVideo } from '../lib/thumbnail.js';
 
 // Upload directory configuration
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
@@ -208,6 +209,16 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
     // Calculate duration from timing
     const duration = Math.max(1, Math.round((Date.now() - streamData.startTime) / 1000));
 
+    // Generate thumbnail for the video
+    let thumbnailPath: string | undefined;
+    try {
+      thumbnailPath = await generateThumbnailForVideo(finalFilePath);
+      console.log(`[Journals] Thumbnail generated: ${thumbnailPath}`);
+    } catch (error) {
+      console.error('[Journals] Failed to generate thumbnail:', error);
+      // Don't fail the upload if thumbnail generation fails
+    }
+
     // Create journal entry
     const journalId = randomUUID();
     await db.insert(journals).values({
@@ -216,6 +227,7 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
       title: `Journal Entry ${new Date().toLocaleDateString()}`,
       videoPath: finalFilePath,
       duration,
+      thumbnailPath,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -333,6 +345,16 @@ export async function handleStreamChunkUpload(request: Request): Promise<Respons
       // Calculate duration from timing
       const duration = Math.max(1, Math.round((Date.now() - streamData.startTime) / 1000));
 
+      // Generate thumbnail for the video
+      let thumbnailPath: string | undefined;
+      try {
+        thumbnailPath = await generateThumbnailForVideo(finalFilePath);
+        console.log(`[Journals] Thumbnail generated: ${thumbnailPath}`);
+      } catch (error) {
+        console.error('[Journals] Failed to generate thumbnail:', error);
+        // Don't fail the upload if thumbnail generation fails
+      }
+
       // Create journal entry
       const journalId = randomUUID();
       await db.insert(journals).values({
@@ -341,6 +363,7 @@ export async function handleStreamChunkUpload(request: Request): Promise<Respons
         title: `Journal Entry ${new Date().toLocaleDateString()}`,
         videoPath: finalFilePath,
         duration,
+        thumbnailPath,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
