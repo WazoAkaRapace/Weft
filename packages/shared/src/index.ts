@@ -60,6 +60,35 @@ export interface SignUpCredentials extends SignInCredentials {
 }
 
 /**
+ * Pagination and filtering types
+ */
+export interface PaginationParams {
+  page: number;
+  limit: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+}
+
+export interface DateFilter {
+  startDate?: Date;
+  endDate?: Date;
+}
+
+export interface JournalListParams extends PaginationParams, DateFilter {
+  search?: string;
+}
+
+/**
  * Video streaming types
  */
 export * from './video.js';

@@ -13,7 +13,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { eq } from 'drizzle-orm';
+import { eq, desc, gte, lte, or, ilike, and, sql } from 'drizzle-orm';
 
 // Upload directory configuration
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
@@ -286,6 +286,123 @@ export async function handleGetJournals(request: Request): Promise<Response> {
     );
   } catch (error) {
     console.error('Get journals error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+/**
+ * Get paginated journals for the current user
+ *
+ * GET /api/journals/paginated?page=1&limit=20&startDate=2024-01-01&endDate=2024-12-31&search=query
+ *
+ * Query parameters:
+ * - page: Page number (default: 1)
+ * - limit: Items per page (default: 20, max: 100)
+ * - startDate: ISO date string for filtering (optional)
+ * - endDate: ISO date string for filtering (optional)
+ * - search: Text search in title/notes (optional)
+ *
+ * @returns Response with paginated journals
+ */
+export async function handleGetPaginatedJournals(request: Request): Promise<Response> {
+  try {
+    // Verify authentication
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse query parameters
+    const url = new URL(request.url);
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(url.searchParams.get('limit') || '20'))
+    );
+    const startDate = url.searchParams.get('startDate');
+    const endDate = url.searchParams.get('endDate');
+    const search = url.searchParams.get('search');
+
+    // Build query conditions
+    const conditions = [eq(journals.userId, session.user.id)];
+
+    // Add date filtering
+    if (startDate) {
+      const start = new Date(startDate);
+      conditions.push(gte(journals.createdAt, start));
+    }
+
+    if (endDate) {
+      // Include the entire end date
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      conditions.push(lte(journals.createdAt, end));
+    }
+
+    // Add text search (in title or notes)
+    if (search) {
+      const searchCondition = or(
+        ilike(journals.title, `%${search}%`),
+        ilike(journals.notes, `%${search}%`)
+      );
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
+    }
+
+    // Get total count for pagination
+    const countResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(journals)
+      .where(and(...conditions));
+    const { count } = countResult[0] || { count: 0 };
+
+    // Calculate offset
+    const offset = (page - 1) * limit;
+
+    // Fetch paginated results
+    const userJournals = await db
+      .select()
+      .from(journals)
+      .where(and(...conditions))
+      .orderBy(desc(journals.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(count / limit);
+
+    return new Response(
+      JSON.stringify({
+        data: userJournals,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: count,
+          itemsPerPage: limit,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Get paginated journals error:', error);
     return new Response(
       JSON.stringify({
         error: 'Internal server error',
