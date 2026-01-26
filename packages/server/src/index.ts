@@ -295,6 +295,44 @@ const server = Bun.serve({
       );
     }
 
+    // Serve static files (thumbnails and videos)
+    if (url.pathname.startsWith('/uploads/') && request.method === 'GET') {
+      try {
+        const filePath = url.pathname.substring(1); // Remove leading slash
+        const file = Bun.file(filePath);
+        const exists = await file.exists();
+
+        if (!exists) {
+          return addCorsHeaders(
+            Response.json(
+              { error: 'File not found' },
+              { status: 404 }
+            ),
+            request
+          );
+        }
+
+        return addCorsHeaders(
+          new Response(file, {
+            status: 200,
+            headers: {
+              'Content-Type': file.type || 'application/octet-stream',
+            },
+          }),
+          request
+        );
+      } catch (error) {
+        console.error('Error serving file:', error);
+        return addCorsHeaders(
+          Response.json(
+            { error: 'Failed to serve file' },
+            { status: 500 }
+          ),
+          request
+        );
+      }
+    }
+
     // Debug endpoint to check session
     if (url.pathname === '/api/debug/session' && request.method === 'GET') {
       try {

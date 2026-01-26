@@ -46,12 +46,18 @@ export function TimelineView({
                 onClick={() => onJournalClick(journal.id)}
               >
                 <div className="entry-thumbnail">
-                  {/* Future: Add video thumbnail */}
-                  <div className="thumbnail-placeholder">
-                    <span className="duration-badge">
-                      {formatDuration(journal.duration)}
-                    </span>
-                  </div>
+                  {journal.thumbnailPath ? (
+                    <img
+                      src={`${journal.thumbnailPath.replace('/app', '')}`}
+                      alt={journal.title}
+                      className="thumbnail-image"
+                    />
+                  ) : (
+                    <div className="thumbnail-placeholder" />
+                  )}
+                  <span className="duration-badge">
+                    {formatDuration(journal.duration)}
+                  </span>
                 </div>
 
                 <div className="entry-content">

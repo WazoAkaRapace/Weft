@@ -89,6 +89,22 @@ export interface JournalListParams extends PaginationParams, DateFilter {
 }
 
 /**
+ * Journal entry type
+ */
+export interface Journal {
+  id: string;
+  userId: string;
+  title: string;
+  videoPath: string;
+  thumbnailPath: string | null;
+  duration: number;
+  location: string | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
  * Video streaming types
  */
 export * from './video.js';
