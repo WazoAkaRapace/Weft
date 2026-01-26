@@ -8,6 +8,8 @@ import { TimelineView } from '../components/timeline/TimelineView';
 import { DateFilter } from '../components/timeline/DateFilter';
 import { formatDuration } from '../lib/video-stream';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 export function HistoryPage() {
   const navigate = useNavigate();
   const { data: session } = useSession();
@@ -53,6 +55,28 @@ export function HistoryPage() {
     console.log('View journal:', journalId);
   }, []);
 
+  const handleRetryTranscription = useCallback(async (journalId: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/journals/${journalId}/transcription/retry`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to retry transcription: ${response.statusText}`);
+      }
+
+      // Refresh journals to update the transcription status
+      refresh();
+    } catch (error) {
+      console.error('Failed to retry transcription:', error);
+      throw error;
+    }
+  }, [refresh]);
+
   if (error) {
     return (
       <div className="history-container">
@@ -97,6 +121,7 @@ export function HistoryPage() {
         <TimelineView
           journals={journals}
           onJournalClick={handleJournalClick}
+          onRetryTranscription={handleRetryTranscription}
           isLoading={isLoading}
           formatDuration={formatDuration}
         />

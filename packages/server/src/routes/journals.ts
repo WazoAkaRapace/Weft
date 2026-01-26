@@ -953,6 +953,93 @@ export async function handleGetTranscript(
   }
 }
 
+/**
+ * Retry transcription for a journal
+ *
+ * POST /api/journals/:id/transcription/retry
+ *
+ * @returns Response indicating success or error
+ */
+export async function handleRetryTranscription(
+  request: Request,
+  journalId: string
+): Promise<Response> {
+  try {
+    // Verify authentication
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get journal to verify ownership and get video path
+    const journalList = await db
+      .select()
+      .from(journals)
+      .where(eq(journals.id, journalId))
+      .limit(1);
+
+    const journal = journalList[0];
+
+    if (!journal) {
+      return new Response(
+        JSON.stringify({
+          error: 'Journal not found',
+          code: 'NOT_FOUND',
+        }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify ownership
+    if (journal.userId !== session.user.id) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Delete existing transcript if any
+    await db.delete(transcripts).where(eq(transcripts.journalId, journalId));
+
+    // Queue new transcription job
+    const queue = getTranscriptionQueue();
+    await queue.addJob({
+      journalId,
+      videoPath: journal.videoPath,
+    });
+    console.log(`[Journals] Transcription retry queued for journal ${journalId}`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Transcription queued',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Retry transcription error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
 export type {
   ActiveStream,
 };

@@ -15,6 +15,7 @@ import {
   handleDeleteJournal,
   handleUpdateJournal,
   handleGetTranscript,
+  handleRetryTranscription,
 } from './routes/journals.js';
 import { getTranscriptionQueue } from './queue/TranscriptionQueue.js';
 
@@ -283,6 +284,12 @@ const server = Bun.serve({
     if (url.pathname.match(/\/api\/journals\/[^/]+\/transcript$/) && request.method === 'GET') {
       const journalId = url.pathname.split('/').slice(-2, -1)[0];
       return addCorsHeaders(await handleGetTranscript(request, journalId), request);
+    }
+
+    // Retry transcription endpoint
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/transcription\/retry$/) && request.method === 'POST') {
+      const journalId = url.pathname.split('/').slice(-3, -2)[0];
+      return addCorsHeaders(await handleRetryTranscription(request, journalId), request);
     }
 
     // Health check endpoint

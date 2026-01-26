@@ -571,6 +571,34 @@ body {
   margin: 0.25rem 0 0 0;
 }
 
+.entry-actions {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.retry-transcription-button {
+  padding: 0.4rem 0.8rem;
+  background-color: #f0f7ff;
+  color: #0066cc;
+  border: 1px solid #0066cc;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.retry-transcription-button:hover:not(:disabled) {
+  background-color: #0066cc;
+  color: white;
+}
+
+.retry-transcription-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Load More Styles */
 .load-more-container {
   display: flex;

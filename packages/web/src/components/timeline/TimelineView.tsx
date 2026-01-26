@@ -1,10 +1,12 @@
 import type { Journal } from '@weft/shared';
+import { useState } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 interface TimelineViewProps {
   journals: Journal[];
   onJournalClick: (journalId: string) => void;
+  onRetryTranscription?: (journalId: string) => void;
   isLoading: boolean;
   formatDuration: (seconds: number) => string;
 }
@@ -12,9 +14,25 @@ interface TimelineViewProps {
 export function TimelineView({
   journals,
   onJournalClick,
+  onRetryTranscription,
   isLoading,
   formatDuration,
 }: TimelineViewProps) {
+  const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
+
+  const handleRetry = useCallback(async (journalId: string) => {
+    setRetryingIds(prev => new Set(prev).add(journalId));
+    try {
+      await onRetryTranscription?.(journalId);
+    } finally {
+      setRetryingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(journalId);
+        return newSet;
+      });
+    }
+  }, [onRetryTranscription]);
+
   // Group journals by date
   const groupedJournals = journals.reduce((acc, journal) => {
     const date = new Date(journal.createdAt).toDateString();
@@ -73,6 +91,19 @@ export function TimelineView({
                   {journal.location && (
                     <p className="entry-location">📍 {journal.location}</p>
                   )}
+                  <div className="entry-actions">
+                    <button
+                      className="retry-transcription-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRetry(journal.id);
+                      }}
+                      disabled={retryingIds.has(journal.id)}
+                      title="Retry transcription"
+                    >
+                      {retryingIds.has(journal.id) ? 'Retrying...' : '🔄 Retry Transcription'}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
