@@ -1,5 +1,7 @@
 import type { Journal } from '@weft/shared';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 interface TimelineViewProps {
   journals: Journal[];
   onJournalClick: (journalId: string) => void;
@@ -48,7 +50,7 @@ export function TimelineView({
                 <div className="entry-thumbnail">
                   {journal.thumbnailPath ? (
                     <img
-                      src={`${journal.thumbnailPath.replace('/app', '')}`}
+                      src={`${API_BASE}${journal.thumbnailPath.replace('/app', '')}`}
                       alt={journal.title}
                       className="thumbnail-image"
                     />
