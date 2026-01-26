@@ -504,6 +504,7 @@ body {
   flex-shrink: 0;
   border-radius: 4px;
   overflow: hidden;
+  position: relative;
 }
 
 .thumbnail-placeholder {
