@@ -552,10 +552,23 @@ export async function handleGetPaginatedJournals(request: Request): Promise<Resp
     // Calculate offset
     const offset = (page - 1) * limit;
 
-    // Fetch paginated results
+    // Fetch paginated results with transcript preview
     const userJournals = await db
-      .select()
+      .select({
+        id: journals.id,
+        userId: journals.userId,
+        title: journals.title,
+        videoPath: journals.videoPath,
+        thumbnailPath: journals.thumbnailPath,
+        duration: journals.duration,
+        location: journals.location,
+        notes: journals.notes,
+        createdAt: journals.createdAt,
+        updatedAt: journals.updatedAt,
+        transcriptText: transcripts.text,
+      })
       .from(journals)
+      .leftJoin(transcripts, eq(transcripts.journalId, journals.id))
       .where(and(...conditions))
       .orderBy(desc(journals.createdAt))
       .limit(limit)
@@ -564,9 +577,17 @@ export async function handleGetPaginatedJournals(request: Request): Promise<Resp
     // Calculate pagination metadata
     const totalPages = Math.ceil(count / limit);
 
+    // Format journals to include transcript preview
+    const formattedJournals = userJournals.map((journal: any) => ({
+      ...journal,
+      transcriptPreview: journal.transcriptText
+        ? journal.transcriptText.slice(0, 100) + (journal.transcriptText.length > 100 ? '...' : '')
+        : null,
+    }));
+
     return new Response(
       JSON.stringify({
-        data: userJournals,
+        data: formattedJournals,
         pagination: {
           currentPage: page,
           totalPages,

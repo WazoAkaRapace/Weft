@@ -100,6 +100,7 @@ export interface Journal {
   duration: number;
   location: string | null;
   notes: string | null;
+  transcriptPreview: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -85,6 +85,9 @@ export function TimelineView({
                   <p className="entry-time">
                     {formatTime(journal.createdAt)}
                   </p>
+                  {journal.transcriptPreview && (
+                    <p className="entry-transcript">{journal.transcriptPreview}</p>
+                  )}
                   {journal.notes && (
                     <p className="entry-notes">{journal.notes}</p>
                   )}

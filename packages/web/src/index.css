@@ -565,6 +565,20 @@ body {
   overflow: hidden;
 }
 
+.entry-transcript {
+  font-size: 0.875rem;
+  color: #444;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  font-style: italic;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .entry-location {
   font-size: 0.875rem;
   color: #666;
