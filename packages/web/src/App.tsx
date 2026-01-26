@@ -5,6 +5,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RecordingPage } from './pages/RecordingPage';
+import { HistoryPage } from './pages/HistoryPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { OnboardingGuard } from './components/OnboardingGuard';
 import { OnboardingRouteGuard } from './components/OnboardingRouteGuard';
@@ -61,6 +62,16 @@ export function App() {
           element={
             <ProtectedRoute>
               <RecordingPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* History - protected route */}
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute>
+              <HistoryPage />
             </ProtectedRoute>
           }
         />

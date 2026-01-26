@@ -9,6 +9,7 @@ import {
   handleStreamUpload,
   handleStreamChunkUpload,
   handleGetJournals,
+  handleGetPaginatedJournals,
   handleGetJournal,
   handleDeleteJournal,
   handleUpdateJournal,
@@ -247,6 +248,11 @@ const server = Bun.serve({
     }
 
     // Journal CRUD endpoints
+    // Paginated journals endpoint (must be before /api/journals to avoid conflicts)
+    if (url.pathname === '/api/journals/paginated' && request.method === 'GET') {
+      return addCorsHeaders(await handleGetPaginatedJournals(request), request);
+    }
+
     if (url.pathname === '/api/journals' && request.method === 'GET') {
       return addCorsHeaders(await handleGetJournals(request), request);
     }
