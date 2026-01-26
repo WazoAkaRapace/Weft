@@ -69,7 +69,7 @@ async function getPipeline() {
   // Ensure cache directory exists
   await ensureCacheDir();
 
-  const modelName = process.env.TRANSCRIPTION_MODEL || 'Xenova/whisper-small.en';
+  const modelName = process.env.TRANSCRIPTION_MODEL || 'Xenova/whisper-small';
   console.log(`[Transcription] Loading Whisper model: ${modelName}`);
 
   modelLoadingPromise = (async () => {
@@ -207,6 +207,8 @@ export class TranscriptionService {
         const output = await pipe(audioData, {
           chunk_length_s: 30,
           stride_length_s: 5,
+          language: 'auto', // Auto-detect language for multilingual support
+          task: 'transcribe',
           return_timestamps: true,
         });
 
