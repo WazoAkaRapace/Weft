@@ -161,6 +161,28 @@ body {
   justify-content: center;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.recording-button {
+  padding: 0.5rem 1.5rem;
+  background-color: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.recording-button:hover {
+  background-color: #0052a3;
+}
+
 .history-button {
   padding: 0.5rem 1.5rem;
   background-color: #0066cc;
