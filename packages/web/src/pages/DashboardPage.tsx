@@ -23,9 +23,14 @@ export function DashboardPage() {
           <h1>Weft Dashboard</h1>
         </div>
         <div className="header-center">
-          <button onClick={() => navigate('/history')} className="history-button">
-            View History
-          </button>
+          <div className="header-buttons">
+            <button onClick={() => navigate('/recording')} className="recording-button">
+              + New Recording
+            </button>
+            <button onClick={() => navigate('/history')} className="history-button">
+              View History
+            </button>
+          </div>
         </div>
         <div className="user-info">
           <button
