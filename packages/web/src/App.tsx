@@ -66,7 +66,6 @@ export function App() {
           }
         />
 
-
         {/* History - protected route */}
         <Route
           path="/history"
