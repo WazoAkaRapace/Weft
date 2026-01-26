@@ -28,6 +28,7 @@ export interface User {
   emailVerified: boolean;
   image: string | null;
   name: string | null;
+  preferredLanguage: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -86,6 +87,23 @@ export interface DateFilter {
 
 export interface JournalListParams extends PaginationParams, DateFilter {
   search?: string;
+}
+
+/**
+ * Journal entry type
+ */
+export interface Journal {
+  id: string;
+  userId: string;
+  title: string;
+  videoPath: string;
+  thumbnailPath: string | null;
+  duration: number;
+  location: string | null;
+  notes: string | null;
+  transcriptPreview: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 /**

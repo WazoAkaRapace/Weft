@@ -10,11 +10,12 @@ import { auth } from '../lib/auth.js';
 import { db } from '../db/index.js';
 import { journals, transcripts } from '../db/schema.js';
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile, unlink } from 'node:fs/promises';
+import { mkdir, writeFile, unlink, appendFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { eq, desc, gte, lte, or, ilike, and, sql } from 'drizzle-orm';
 import { getTranscriptionQueue } from '../queue/TranscriptionQueue.js';
+import { generateThumbnailForVideo } from '../lib/thumbnail.js';
 
 // Upload directory configuration
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
@@ -208,6 +209,16 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
     // Calculate duration from timing
     const duration = Math.max(1, Math.round((Date.now() - streamData.startTime) / 1000));
 
+    // Generate thumbnail for the video
+    let thumbnailPath: string | undefined;
+    try {
+      thumbnailPath = await generateThumbnailForVideo(finalFilePath);
+      console.log(`[Journals] Thumbnail generated: ${thumbnailPath}`);
+    } catch (error) {
+      console.error('[Journals] Failed to generate thumbnail:', error);
+      // Don't fail the upload if thumbnail generation fails
+    }
+
     // Create journal entry
     const journalId = randomUUID();
     await db.insert(journals).values({
@@ -216,6 +227,7 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
       title: `Journal Entry ${new Date().toLocaleDateString()}`,
       videoPath: finalFilePath,
       duration,
+      thumbnailPath,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -225,6 +237,7 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
       const queue = getTranscriptionQueue();
       await queue.addJob({
         journalId,
+        userId: streamData.userId,
         videoPath: finalFilePath,
       });
       console.log(`[Journals] Transcription job queued for journal ${journalId}`);
@@ -241,6 +254,7 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
         streamId,
         journalId,
         videoPath: finalFilePath,
+        thumbnailPath,
         duration,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -254,6 +268,157 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
     return new Response(
       JSON.stringify({
         error: 'Stream upload failed',
+        code: 'INTERNAL_ERROR',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+/**
+ * Handle chunked video upload
+ *
+ * POST /api/journals/stream/chunk
+ *
+ * Uploads a single chunk of video data and appends it to the temporary file.
+ * This avoids streaming/ALPN issues by using standard HTTP requests.
+ *
+ * Headers:
+ * - X-Stream-ID: Stream identifier from init
+ * - X-Chunk-Index: Index of this chunk
+ * - X-Is-Last: "true" if this is the final chunk
+ * - Content-Type: Video MIME type
+ *
+ * @returns Response with chunk status or error
+ */
+export async function handleStreamChunkUpload(request: Request): Promise<Response> {
+  const streamId = request.headers.get('X-Stream-ID');
+  const chunkIndex = request.headers.get('X-Chunk-Index');
+  const isLast = request.headers.get('X-Is-Last') === 'true';
+  const contentType = request.headers.get('Content-Type') || 'video/webm';
+
+  if (!streamId) {
+    return new Response(
+      JSON.stringify({
+        error: 'Missing stream ID',
+        code: 'VALIDATION_ERROR',
+      }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const streamData = activeStreams.get(streamId);
+
+  if (!streamData) {
+    return new Response(
+      JSON.stringify({
+        error: 'Invalid or expired stream ID',
+        code: 'INVALID_STREAM',
+      }),
+      { status: 404, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  try {
+    // Get the chunk data as ArrayBuffer
+    const chunkData = await request.arrayBuffer();
+    const chunkBuffer = Buffer.from(chunkData);
+
+    // Determine file extension from content type
+    const ext = contentType.includes('mp4') ? 'mp4' : 'webm';
+    const tempFileName = `${streamId}.${ext}`;
+    const tempFilePath = path.join(TEMP_DIR, tempFileName);
+
+    // Append chunk to temporary file
+    await appendFile(tempFilePath, chunkBuffer);
+
+    // Update bytes received
+    streamData.bytesReceived += chunkBuffer.length;
+
+    // If this is the last chunk, finalize the recording
+    if (isLast) {
+      const finalFileName = `${streamId}.${ext}`;
+      const finalFilePath = path.join(UPLOAD_DIR, finalFileName);
+
+      // Move temp file to final location
+      const fs = await import('node:fs/promises');
+      await fs.rename(tempFilePath, finalFilePath);
+
+      // Calculate duration from timing
+      const duration = Math.max(1, Math.round((Date.now() - streamData.startTime) / 1000));
+
+      // Generate thumbnail for the video
+      let thumbnailPath: string | undefined;
+      try {
+        thumbnailPath = await generateThumbnailForVideo(finalFilePath);
+        console.log(`[Journals] Thumbnail generated: ${thumbnailPath}`);
+      } catch (error) {
+        console.error('[Journals] Failed to generate thumbnail:', error);
+        // Don't fail the upload if thumbnail generation fails
+      }
+
+      // Create journal entry
+      const journalId = randomUUID();
+      await db.insert(journals).values({
+        id: journalId,
+        userId: streamData.userId,
+        title: `Journal Entry ${new Date().toLocaleDateString()}`,
+        videoPath: finalFilePath,
+        duration,
+        thumbnailPath,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Start transcription job (non-blocking)
+      try {
+        const queue = getTranscriptionQueue();
+        await queue.addJob({
+          journalId,
+          userId: streamData.userId,
+          videoPath: finalFilePath,
+        });
+        console.log(`[Journals] Transcription job queued for journal ${journalId}`);
+      } catch (error) {
+        // Log error but don't fail the upload
+        console.error('[Journals] Failed to queue transcription job:', error);
+      }
+
+      // Clean up active stream tracking
+      activeStreams.delete(streamId);
+
+      return new Response(
+        JSON.stringify({
+          streamId,
+          journalId,
+          videoPath: finalFilePath,
+          thumbnailPath,
+          duration,
+          chunkIndex,
+          isLast: true,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        streamId,
+        chunkIndex,
+        bytesReceived: streamData.bytesReceived,
+        isLast: false,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Chunk upload error:', error);
+
+    // Clean up on error
+    activeStreams.delete(streamId);
+
+    return new Response(
+      JSON.stringify({
+        error: 'Chunk upload failed',
         code: 'INTERNAL_ERROR',
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -389,10 +554,23 @@ export async function handleGetPaginatedJournals(request: Request): Promise<Resp
     // Calculate offset
     const offset = (page - 1) * limit;
 
-    // Fetch paginated results
+    // Fetch paginated results with transcript preview
     const userJournals = await db
-      .select()
+      .select({
+        id: journals.id,
+        userId: journals.userId,
+        title: journals.title,
+        videoPath: journals.videoPath,
+        thumbnailPath: journals.thumbnailPath,
+        duration: journals.duration,
+        location: journals.location,
+        notes: journals.notes,
+        createdAt: journals.createdAt,
+        updatedAt: journals.updatedAt,
+        transcriptText: transcripts.text,
+      })
       .from(journals)
+      .leftJoin(transcripts, eq(transcripts.journalId, journals.id))
       .where(and(...conditions))
       .orderBy(desc(journals.createdAt))
       .limit(limit)
@@ -401,9 +579,17 @@ export async function handleGetPaginatedJournals(request: Request): Promise<Resp
     // Calculate pagination metadata
     const totalPages = Math.ceil(count / limit);
 
+    // Format journals to include transcript preview
+    const formattedJournals = userJournals.map((journal: any) => ({
+      ...journal,
+      transcriptPreview: journal.transcriptText
+        ? journal.transcriptText.slice(0, 100) + (journal.transcriptText.length > 100 ? '...' : '')
+        : null,
+    }));
+
     return new Response(
       JSON.stringify({
-        data: userJournals,
+        data: formattedJournals,
         pagination: {
           currentPage: page,
           totalPages,
@@ -780,6 +966,94 @@ export async function handleGetTranscript(
     );
   } catch (error) {
     console.error('Get transcript error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+/**
+ * Retry transcription for a journal
+ *
+ * POST /api/journals/:id/transcription/retry
+ *
+ * @returns Response indicating success or error
+ */
+export async function handleRetryTranscription(
+  request: Request,
+  journalId: string
+): Promise<Response> {
+  try {
+    // Verify authentication
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get journal to verify ownership and get video path
+    const journalList = await db
+      .select()
+      .from(journals)
+      .where(eq(journals.id, journalId))
+      .limit(1);
+
+    const journal = journalList[0];
+
+    if (!journal) {
+      return new Response(
+        JSON.stringify({
+          error: 'Journal not found',
+          code: 'NOT_FOUND',
+        }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify ownership
+    if (journal.userId !== session.user.id) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Delete existing transcript if any
+    await db.delete(transcripts).where(eq(transcripts.journalId, journalId));
+
+    // Queue new transcription job
+    const queue = getTranscriptionQueue();
+    await queue.addJob({
+      journalId,
+      userId: journal.userId,
+      videoPath: journal.videoPath,
+    });
+    console.log(`[Journals] Transcription retry queued for journal ${journalId}`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Transcription queued',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Retry transcription error:', error);
     return new Response(
       JSON.stringify({
         error: 'Internal server error',

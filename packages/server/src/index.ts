@@ -1,18 +1,22 @@
 console.log('Weft Server starting...');
 
+import path from 'node:path';
 import { auth } from './lib/auth.js';
 import { db, closeDatabase } from './db/index.js';
 import { users } from './db/schema.js';
 import { runMigrations } from './db/migrate.js';
+import { eq } from 'drizzle-orm';
 import {
   handleStreamInit,
   handleStreamUpload,
+  handleStreamChunkUpload,
   handleGetJournals,
   handleGetPaginatedJournals,
   handleGetJournal,
   handleDeleteJournal,
   handleUpdateJournal,
   handleGetTranscript,
+  handleRetryTranscription,
 } from './routes/journals.js';
 import { getTranscriptionQueue } from './queue/TranscriptionQueue.js';
 
@@ -132,8 +136,9 @@ async function handleCreateFirstUser(request: Request): Promise<Response> {
       username?: string;
       email?: string;
       password?: string;
+      preferredLanguage?: string;
     };
-    const { name, username, email, password } = body;
+    const { name, username, email, password, preferredLanguage } = body;
 
     // Validate required fields
     if (!name || !username || !email || !password) {
@@ -182,6 +187,26 @@ async function handleCreateFirstUser(request: Request): Promise<Response> {
         { error: 'Failed to create user', message: errorData.message || 'Unknown error' },
         { status: signUpResponse.status }
       );
+    }
+
+    // If preferred language is provided, update the user with this preference
+    if (preferredLanguage) {
+      try {
+        // Get the created user from the sign-up response
+        const signUpData = (await signUpResponse.json().catch(() => ({}))) as {
+          user?: { id: string };
+        };
+
+        if (signUpData.user?.id) {
+          await db
+            .update(users)
+            .set({ preferredLanguage })
+            .where(eq(users.id, signUpData.user.id));
+        }
+      } catch (error) {
+        console.error('Error setting preferred language:', error);
+        // Don't fail the request if we can't set the language
+      }
     }
 
     return Response.json({
@@ -244,6 +269,10 @@ const server = Bun.serve({
       return addCorsHeaders(await handleStreamInit(request), request);
     }
 
+    if (url.pathname === '/api/journals/stream/chunk' && request.method === 'POST') {
+      return addCorsHeaders(await handleStreamChunkUpload(request), request);
+    }
+
     if (url.pathname === '/api/journals/stream' && request.method === 'POST') {
       return addCorsHeaders(await handleStreamUpload(request), request);
     }
@@ -279,6 +308,12 @@ const server = Bun.serve({
       return addCorsHeaders(await handleGetTranscript(request, journalId), request);
     }
 
+    // Retry transcription endpoint
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/transcription\/retry$/) && request.method === 'POST') {
+      const journalId = url.pathname.split('/').slice(-3, -2)[0];
+      return addCorsHeaders(await handleRetryTranscription(request, journalId), request);
+    }
+
     // Health check endpoint
     if (url.pathname === '/health') {
       return addCorsHeaders(
@@ -288,6 +323,49 @@ const server = Bun.serve({
         ),
         request
       );
+    }
+
+    // Serve static files (thumbnails and videos)
+    if (url.pathname.startsWith('/uploads/') && request.method === 'GET') {
+      try {
+        const filePath = url.pathname.substring(1); // Remove leading slash -> "uploads/..."
+        const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
+        const fullPath = filePath.startsWith('uploads/')
+          ? path.join(UPLOAD_DIR, filePath.substring(8)) // Remove "uploads/" prefix
+          : filePath;
+
+        const file = Bun.file(fullPath);
+        const exists = await file.exists();
+
+        if (!exists) {
+          return addCorsHeaders(
+            Response.json(
+              { error: 'File not found', path: fullPath },
+              { status: 404 }
+            ),
+            request
+          );
+        }
+
+        return addCorsHeaders(
+          new Response(file, {
+            status: 200,
+            headers: {
+              'Content-Type': file.type || 'application/octet-stream',
+            },
+          }),
+          request
+        );
+      } catch (error) {
+        console.error('Error serving file:', error);
+        return addCorsHeaders(
+          Response.json(
+            { error: 'Failed to serve file' },
+            { status: 500 }
+          ),
+          request
+        );
+      }
     }
 
     // Debug endpoint to check session

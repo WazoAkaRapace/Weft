@@ -1,8 +1,12 @@
 import type { Journal } from '@weft/shared';
+import { useState, useCallback } from 'react';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 interface TimelineViewProps {
   journals: Journal[];
   onJournalClick: (journalId: string) => void;
+  onRetryTranscription?: (journalId: string) => void;
   isLoading: boolean;
   formatDuration: (seconds: number) => string;
 }
@@ -10,9 +14,25 @@ interface TimelineViewProps {
 export function TimelineView({
   journals,
   onJournalClick,
+  onRetryTranscription,
   isLoading,
   formatDuration,
 }: TimelineViewProps) {
+  const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
+
+  const handleRetry = useCallback(async (journalId: string) => {
+    setRetryingIds(prev => new Set(prev).add(journalId));
+    try {
+      await onRetryTranscription?.(journalId);
+    } finally {
+      setRetryingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(journalId);
+        return newSet;
+      });
+    }
+  }, [onRetryTranscription]);
+
   // Group journals by date
   const groupedJournals = journals.reduce((acc, journal) => {
     const date = new Date(journal.createdAt).toDateString();
@@ -46,12 +66,18 @@ export function TimelineView({
                 onClick={() => onJournalClick(journal.id)}
               >
                 <div className="entry-thumbnail">
-                  {/* Future: Add video thumbnail */}
-                  <div className="thumbnail-placeholder">
-                    <span className="duration-badge">
-                      {formatDuration(journal.duration)}
-                    </span>
-                  </div>
+                  {journal.thumbnailPath ? (
+                    <img
+                      src={`${API_BASE}${journal.thumbnailPath.replace('/app', '')}`}
+                      alt={journal.title}
+                      className="thumbnail-image"
+                    />
+                  ) : (
+                    <div className="thumbnail-placeholder" />
+                  )}
+                  <span className="duration-badge">
+                    {formatDuration(journal.duration)}
+                  </span>
                 </div>
 
                 <div className="entry-content">
@@ -59,12 +85,28 @@ export function TimelineView({
                   <p className="entry-time">
                     {formatTime(journal.createdAt)}
                   </p>
+                  {journal.transcriptPreview && (
+                    <p className="entry-transcript">{journal.transcriptPreview}</p>
+                  )}
                   {journal.notes && (
                     <p className="entry-notes">{journal.notes}</p>
                   )}
                   {journal.location && (
                     <p className="entry-location">📍 {journal.location}</p>
                   )}
+                  <div className="entry-actions">
+                    <button
+                      className="retry-transcription-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRetry(journal.id);
+                      }}
+                      disabled={retryingIds.has(journal.id)}
+                      title="Retry transcription"
+                    >
+                      {retryingIds.has(journal.id) ? 'Retrying...' : '🔄 Retry Transcription'}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

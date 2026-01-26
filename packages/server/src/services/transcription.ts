@@ -3,18 +3,38 @@
  * Handles video transcription using local Whisper (Transformers.js)
  */
 
-import { pipeline } from '@huggingface/transformers';
+import { pipeline, env } from '@huggingface/transformers';
 import { spawn } from 'node:child_process';
-import { readFile, unlink } from 'node:fs/promises';
+import { readFile, unlink, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { db } from '../db/index.js';
-import { transcripts, journals } from '../db/schema.js';
+import { transcripts, journals, users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import path from 'node:path';
 
+// Configure Transformers.js to use a writable cache directory and disable browser cache
+const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
+const CACHE_DIR = path.join(UPLOAD_DIR, 'cache');
+
+// Disable browser cache and configure file system cache
+env.allowLocalModels = false;
+env.allowRemoteModels = true;
+env.useBrowserCache = false; // Disable browser cache (node_modules)
+env.useFSCache = true; // Enable file system cache
+env.cacheDir = CACHE_DIR; // Set cache directory
+
+// Ensure cache directory exists
+async function ensureCacheDir() {
+  if (!existsSync(CACHE_DIR)) {
+    await mkdir(CACHE_DIR, { recursive: true });
+    console.log(`[Transcription] Created cache directory: ${CACHE_DIR}`);
+  }
+}
+
 export interface TranscriptionJob {
   journalId: string;
+  userId: string;
   videoPath: string;
   retryCount?: number;
 }
@@ -47,7 +67,10 @@ async function getPipeline() {
     return modelLoadingPromise;
   }
 
-  const modelName = process.env.TRANSCRIPTION_MODEL || 'Xenova/whisper-small.en';
+  // Ensure cache directory exists
+  await ensureCacheDir();
+
+  const modelName = process.env.TRANSCRIPTION_MODEL || 'Xenova/whisper-small';
   console.log(`[Transcription] Loading Whisper model: ${modelName}`);
 
   modelLoadingPromise = (async () => {
@@ -80,7 +103,8 @@ async function getPipeline() {
  */
 async function extractAudio(videoPath: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const tempDir = path.join(process.cwd(), 'uploads', 'temp');
+    const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
+    const tempDir = path.join(UPLOAD_DIR, 'temp');
     const audioPath = path.join(tempDir, `${randomUUID()}.wav`);
 
     const ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
@@ -116,6 +140,26 @@ async function extractAudio(videoPath: string): Promise<string> {
 }
 
 /**
+ * Decode WAV file buffer to Float32Array
+ * WAV files have a 44-byte header followed by PCM audio data
+ */
+function decodeWAV(buffer: Buffer): Float32Array {
+  // Skip WAV header (44 bytes) and read PCM data
+  const dataLength = buffer.length - 44;
+  const numberOfSamples = dataLength / 2; // 16-bit = 2 bytes per sample
+  const samples = new Float32Array(numberOfSamples);
+
+  // Convert 16-bit PCM to Float32Array (normalize to [-1, 1])
+  for (let i = 0; i < numberOfSamples; i++) {
+    const offset = 44 + i * 2;
+    const sample = buffer.readInt16LE(offset);
+    samples[i] = sample / 32768; // Normalize to [-1, 1]
+  }
+
+  return samples;
+}
+
+/**
  * Check if FFmpeg is available
  */
 export async function checkFFmpegAvailable(): Promise<boolean> {
@@ -148,6 +192,16 @@ export class TranscriptionService {
         throw new Error('FFmpeg is not installed or not available in PATH');
       }
 
+      // Get user's preferred language
+      const user = await db
+        .select({ preferredLanguage: users.preferredLanguage })
+        .from(users)
+        .where(eq(users.id, job.userId))
+        .limit(1);
+
+      const language = user[0]?.preferredLanguage || 'en';
+      console.log(`[Transcription] Using language: ${language} for user ${job.userId}`);
+
       // Extract audio from video
       console.log(`[Transcription] Extracting audio from ${job.videoPath}`);
       const audioPath = await extractAudio(job.videoPath);
@@ -156,18 +210,26 @@ export class TranscriptionService {
         // Get pipeline (loads model if needed)
         const pipe = await getPipeline();
 
-        // Read audio file
+        // Read audio file and decode WAV to Float32Array
         const audioBuffer = await readFile(audioPath);
-        const audioData = new Uint8Array(audioBuffer);
+        const audioData = decodeWAV(audioBuffer);
 
         console.log(`[Transcription] Starting transcription for journal ${job.journalId}`);
-        const output = await pipe(audioData, {
+
+        // Build transcription options
+        const options: any = {
           chunk_length_s: 30,
           stride_length_s: 5,
-          language: 'english',
           task: 'transcribe',
           return_timestamps: true,
-        });
+        };
+
+        // Only add language parameter if not 'auto'
+        if (language !== 'auto') {
+          options.language = language;
+        }
+
+        const output = await pipe(audioData, options);
 
         // Parse result
         const result = this.parseTranscriptionOutput(output);
