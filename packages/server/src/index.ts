@@ -7,6 +7,7 @@ import { runMigrations } from './db/migrate.js';
 import {
   handleStreamInit,
   handleStreamUpload,
+  handleStreamChunkUpload,
   handleGetJournals,
   handleGetPaginatedJournals,
   handleGetJournal,
@@ -242,6 +243,10 @@ const server = Bun.serve({
     // Journal stream endpoints
     if (url.pathname === '/api/journals/stream/init' && request.method === 'POST') {
       return addCorsHeaders(await handleStreamInit(request), request);
+    }
+
+    if (url.pathname === '/api/journals/stream/chunk' && request.method === 'POST') {
+      return addCorsHeaders(await handleStreamChunkUpload(request), request);
     }
 
     if (url.pathname === '/api/journals/stream' && request.method === 'POST') {
