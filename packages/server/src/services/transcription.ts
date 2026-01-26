@@ -80,7 +80,8 @@ async function getPipeline() {
  */
 async function extractAudio(videoPath: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const tempDir = path.join(process.cwd(), 'uploads', 'temp');
+    const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
+    const tempDir = path.join(UPLOAD_DIR, 'temp');
     const audioPath = path.join(tempDir, `${randomUUID()}.wav`);
 
     const ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
