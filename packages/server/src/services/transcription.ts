@@ -9,7 +9,7 @@ import { readFile, unlink, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { db } from '../db/index.js';
-import { transcripts, journals } from '../db/schema.js';
+import { transcripts, journals, users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import path from 'node:path';
 
@@ -34,6 +34,7 @@ async function ensureCacheDir() {
 
 export interface TranscriptionJob {
   journalId: string;
+  userId: string;
   videoPath: string;
   retryCount?: number;
 }
@@ -191,6 +192,16 @@ export class TranscriptionService {
         throw new Error('FFmpeg is not installed or not available in PATH');
       }
 
+      // Get user's preferred language
+      const user = await db
+        .select({ preferredLanguage: users.preferredLanguage })
+        .from(users)
+        .where(eq(users.id, job.userId))
+        .limit(1);
+
+      const language = user[0]?.preferredLanguage || 'en';
+      console.log(`[Transcription] Using language: ${language} for user ${job.userId}`);
+
       // Extract audio from video
       console.log(`[Transcription] Extracting audio from ${job.videoPath}`);
       const audioPath = await extractAudio(job.videoPath);
@@ -204,12 +215,21 @@ export class TranscriptionService {
         const audioData = decodeWAV(audioBuffer);
 
         console.log(`[Transcription] Starting transcription for journal ${job.journalId}`);
-        const output = await pipe(audioData, {
+
+        // Build transcription options
+        const options: any = {
           chunk_length_s: 30,
           stride_length_s: 5,
           task: 'transcribe',
           return_timestamps: true,
-        });
+        };
+
+        // Only add language parameter if not 'auto'
+        if (language !== 'auto') {
+          options.language = language;
+        }
+
+        const output = await pipe(audioData, options);
 
         // Parse result
         const result = this.parseTranscriptionOutput(output);

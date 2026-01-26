@@ -237,6 +237,7 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
       const queue = getTranscriptionQueue();
       await queue.addJob({
         journalId,
+        userId: streamData.userId,
         videoPath: finalFilePath,
       });
       console.log(`[Journals] Transcription job queued for journal ${journalId}`);
@@ -374,6 +375,7 @@ export async function handleStreamChunkUpload(request: Request): Promise<Respons
         const queue = getTranscriptionQueue();
         await queue.addJob({
           journalId,
+          userId: streamData.userId,
           videoPath: finalFilePath,
         });
         console.log(`[Journals] Transcription job queued for journal ${journalId}`);
@@ -1038,6 +1040,7 @@ export async function handleRetryTranscription(
     const queue = getTranscriptionQueue();
     await queue.addJob({
       journalId,
+      userId: journal.userId,
       videoPath: journal.videoPath,
     });
     console.log(`[Journals] Transcription retry queued for journal ${journalId}`);

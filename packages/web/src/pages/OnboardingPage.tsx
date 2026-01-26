@@ -13,6 +13,30 @@ interface CreateUserResponse {
   error?: string;
 }
 
+// Supported languages for transcription
+const TRANSCRIPTION_LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Spanish' },
+  { code: 'fr', name: 'French' },
+  { code: 'de', name: 'German' },
+  { code: 'it', name: 'Italian' },
+  { code: 'pt', name: 'Portuguese' },
+  { code: 'nl', name: 'Dutch' },
+  { code: 'ru', name: 'Russian' },
+  { code: 'zh', name: 'Chinese' },
+  { code: 'ja', name: 'Japanese' },
+  { code: 'ko', name: 'Korean' },
+  { code: 'ar', name: 'Arabic' },
+  { code: 'hi', name: 'Hindi' },
+  { code: 'tr', name: 'Turkish' },
+  { code: 'pl', name: 'Polish' },
+  { code: 'sv', name: 'Swedish' },
+  { code: 'da', name: 'Danish' },
+  { code: 'no', name: 'Norwegian' },
+  { code: 'fi', name: 'Finnish' },
+  { code: 'auto', name: 'Auto-detect' },
+];
+
 export function OnboardingPage() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
@@ -20,6 +44,7 @@ export function OnboardingPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [preferredLanguage, setPreferredLanguage] = useState('en');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -53,6 +78,7 @@ export function OnboardingPage() {
           username,
           email,
           password,
+          preferredLanguage,
         }),
       });
 
@@ -159,6 +185,26 @@ export function OnboardingPage() {
               minLength={8}
               autoComplete="new-password"
             />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="language">Transcription Language</label>
+            <select
+              id="language"
+              value={preferredLanguage}
+              onChange={(e) => setPreferredLanguage(e.target.value)}
+              disabled={isLoading}
+              className="language-select"
+            >
+              {TRANSCRIPTION_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.name}
+                </option>
+              ))}
+            </select>
+            <small className="form-hint">
+              This will be the default language for video transcriptions
+            </small>
           </div>
 
           <button type="submit" className="auth-button" disabled={isLoading}>

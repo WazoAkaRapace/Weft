@@ -5,6 +5,7 @@ import { auth } from './lib/auth.js';
 import { db, closeDatabase } from './db/index.js';
 import { users } from './db/schema.js';
 import { runMigrations } from './db/migrate.js';
+import { eq } from 'drizzle-orm';
 import {
   handleStreamInit,
   handleStreamUpload,
@@ -135,8 +136,9 @@ async function handleCreateFirstUser(request: Request): Promise<Response> {
       username?: string;
       email?: string;
       password?: string;
+      preferredLanguage?: string;
     };
-    const { name, username, email, password } = body;
+    const { name, username, email, password, preferredLanguage } = body;
 
     // Validate required fields
     if (!name || !username || !email || !password) {
@@ -185,6 +187,26 @@ async function handleCreateFirstUser(request: Request): Promise<Response> {
         { error: 'Failed to create user', message: errorData.message || 'Unknown error' },
         { status: signUpResponse.status }
       );
+    }
+
+    // If preferred language is provided, update the user with this preference
+    if (preferredLanguage) {
+      try {
+        // Get the created user from the sign-up response
+        const signUpData = (await signUpResponse.json().catch(() => ({}))) as {
+          user?: { id: string };
+        };
+
+        if (signUpData.user?.id) {
+          await db
+            .update(users)
+            .set({ preferredLanguage })
+            .where(eq(users.id, signUpData.user.id));
+        }
+      } catch (error) {
+        console.error('Error setting preferred language:', error);
+        // Don't fail the request if we can't set the language
+      }
     }
 
     return Response.json({

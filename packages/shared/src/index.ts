@@ -28,6 +28,7 @@ export interface User {
   emailVerified: boolean;
   image: string | null;
   name: string | null;
+  preferredLanguage: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

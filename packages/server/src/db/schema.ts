@@ -15,6 +15,7 @@ export const users = pgTable(
     passwordHash: text('password_hash'),
     image: text('image'),
     name: text('name'),
+    preferredLanguage: text('preferred_language').default('en'), // User's preferred transcription language
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
