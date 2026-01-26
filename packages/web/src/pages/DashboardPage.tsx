@@ -24,7 +24,7 @@ export function DashboardPage() {
         </div>
         <div className="header-center">
           <div className="header-buttons">
-            <button onClick={() => navigate('/recording')} className="recording-button">
+            <button onClick={() => navigate('/record')} className="recording-button">
               + New Recording
             </button>
             <button onClick={() => navigate('/history')} className="history-button">
