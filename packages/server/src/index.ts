@@ -1,5 +1,6 @@
 console.log('Weft Server starting...');
 
+import path from 'node:path';
 import { auth } from './lib/auth.js';
 import { db, closeDatabase } from './db/index.js';
 import { users } from './db/schema.js';
@@ -298,14 +299,19 @@ const server = Bun.serve({
     // Serve static files (thumbnails and videos)
     if (url.pathname.startsWith('/uploads/') && request.method === 'GET') {
       try {
-        const filePath = url.pathname.substring(1); // Remove leading slash
-        const file = Bun.file(filePath);
+        const filePath = url.pathname.substring(1); // Remove leading slash -> "uploads/..."
+        const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
+        const fullPath = filePath.startsWith('uploads/')
+          ? path.join(UPLOAD_DIR, filePath.substring(8)) // Remove "uploads/" prefix
+          : filePath;
+
+        const file = Bun.file(fullPath);
         const exists = await file.exists();
 
         if (!exists) {
           return addCorsHeaders(
             Response.json(
-              { error: 'File not found' },
+              { error: 'File not found', path: fullPath },
               { status: 404 }
             ),
             request
