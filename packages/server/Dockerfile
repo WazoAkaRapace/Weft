@@ -80,9 +80,9 @@ RUN pnpm build
 FROM node:20-bullseye-slim AS production
 WORKDIR /app
 
-# Install dependencies and Bun
+# Install dependencies and Bun (including FFmpeg for thumbnail generation)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl wget ca-certificates unzip && \
+    apt-get install -y --no-install-recommends curl wget ca-certificates unzip ffmpeg && \
     curl -fsSL https://bun.sh/install | bash && \
     mv /root/.bun/bin/bun /usr/local/bin/bun && \
     rm -rf /root/.bun && \

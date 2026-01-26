@@ -12,6 +12,7 @@ import {
   handleGetJournal,
   handleDeleteJournal,
   handleUpdateJournal,
+  handleGetThumbnail,
 } from './routes/journals.js';
 
 const PORT = process.env.PORT || 3001;
@@ -198,6 +199,14 @@ async function handleCreateFirstUser(request: Request): Promise<Response> {
 // Run migrations on startup
 await runMigrations();
 
+// Check FFmpeg availability
+try {
+  await Bun.$`ffmpeg -version`.quiet();
+  console.log('✓ FFmpeg is available for thumbnail generation');
+} catch {
+  console.warn('⚠ FFmpeg not found. Thumbnail generation will be disabled.');
+}
+
 // Main HTTP server using Bun
 const server = Bun.serve({
   port: PORT,
@@ -255,6 +264,12 @@ const server = Bun.serve({
     if (url.pathname.startsWith('/api/journals/') && request.method === 'PUT') {
       const journalId = url.pathname.split('/').pop() || '';
       return addCorsHeaders(await handleUpdateJournal(request, journalId), request);
+    }
+
+    // Thumbnail endpoint
+    if (url.pathname.match(/^\/api\/journals\/[^/]+\/thumbnail$/) && request.method === 'GET') {
+      const journalId = url.pathname.split('/')[3];
+      return addCorsHeaders(await handleGetThumbnail(request, journalId), request);
     }
 
     // Health check endpoint

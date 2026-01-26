@@ -14,6 +14,7 @@ import { mkdir, unlink, appendFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { eq } from 'drizzle-orm';
+import { generateThumbnailForVideo } from '../lib/thumbnail.js';
 
 // Upload directory configuration
 const UPLOAD_DIR = '/app/uploads';
@@ -206,6 +207,18 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
       await fileWriter.end();
     }
 
+    // Generate thumbnail from video
+    let thumbnailPath: string | null = null;
+    try {
+      thumbnailPath = await generateThumbnailForVideo(finalFilePath, {
+        timestamp: '00:00:01', // 1 second into video
+      });
+      console.log(`Thumbnail generated: ${thumbnailPath}`);
+    } catch (error) {
+      console.warn(`Failed to generate thumbnail for ${finalFilePath}:`, error);
+      // Continue without thumbnail - don't fail the upload
+    }
+
     // Calculate duration from timing
     const duration = Math.max(1, Math.round((Date.now() - streamData.startTime) / 1000));
 
@@ -216,6 +229,7 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
       userId: streamData.userId,
       title: `Journal Entry ${new Date().toLocaleDateString()}`,
       videoPath: finalFilePath,
+      thumbnailPath, // Add thumbnail path
       duration,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -229,6 +243,7 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
         streamId,
         journalId,
         videoPath: finalFilePath,
+        thumbnailPath, // Include thumbnail in response
         duration,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -558,6 +573,14 @@ export async function handleDeleteJournal(request: Request, journalId: string): 
       });
     }
 
+    // Delete thumbnail file if it exists
+    if (journal.thumbnailPath && existsSync(journal.thumbnailPath)) {
+      await unlink(journal.thumbnailPath).catch(() => {
+        // Ignore file deletion errors
+        console.warn(`Failed to delete thumbnail file: ${journal.thumbnailPath}`);
+      });
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -670,6 +693,101 @@ export async function handleUpdateJournal(
     );
   } catch (error) {
     console.error('Update journal error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+/**
+ * Get thumbnail for a journal
+ *
+ * GET /api/journals/:id/thumbnail
+ *
+ * Serves the thumbnail image for a journal entry.
+ * Only the journal owner can access the thumbnail.
+ *
+ * @returns Response with thumbnail image or error
+ */
+export async function handleGetThumbnail(request: Request, journalId: string): Promise<Response> {
+  try {
+    // Verify authentication
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get journal
+    const journalList = await db
+      .select()
+      .from(journals)
+      .where(eq(journals.id, journalId))
+      .limit(1);
+
+    const journal = journalList[0];
+
+    if (!journal) {
+      return new Response(
+        JSON.stringify({
+          error: 'Journal not found',
+          code: 'NOT_FOUND',
+        }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify ownership
+    if (journal.userId !== session.user.id) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if thumbnail exists
+    if (!journal.thumbnailPath || !existsSync(journal.thumbnailPath)) {
+      return new Response(
+        JSON.stringify({
+          error: 'Thumbnail not found',
+          code: 'NOT_FOUND',
+        }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Read thumbnail file
+    const thumbnailFile = Bun.file(journal.thumbnailPath);
+
+    // Determine content type
+    const ext = path.extname(journal.thumbnailPath).toLowerCase();
+    const contentType = ext === '.webp' ? 'image/webp' : 'image/jpeg';
+
+    // Return image with cache headers
+    return new Response(thumbnailFile, {
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
+        'ETag': `"${journalId}"`,
+      },
+    });
+  } catch (error) {
+    console.error('Get thumbnail error:', error);
     return new Response(
       JSON.stringify({
         error: 'Internal server error',
