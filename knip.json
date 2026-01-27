@@ -1,0 +1,33 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    "packages/server": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts!"]
+    },
+    "packages/web": {
+      "entry": ["src/main.tsx"],
+      "project": ["src/**/*.{ts,tsx}!"]
+    },
+    "packages/shared": {
+      "project": ["src/**/*.ts!"]
+    }
+  },
+  "ignore": [
+    "packages/server/src/db/schema.ts",
+    "packages/server/src/db/seed.ts",
+    "packages/server/drizzle/**",
+    "packages/shared/src/index.test.ts",
+    "**/dist/**",
+    "**/.turbo/**",
+    "**/node_modules/**"
+  ],
+  "ignoreExportsUsedInFile": {
+    "interface": true,
+    "type": true
+  },
+  "ignoreIssues": {
+    "packages/server/src/db/index.ts": ["exports"],
+    "packages/server/src/lib/thumbnail.ts": ["exports"]
+  }
+}
