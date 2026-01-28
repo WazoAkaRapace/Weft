@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSession } from '../lib/auth';
 import { useJournals } from '../hooks/useJournals';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
+import { useTheme } from '../contexts/ThemeContext';
 import { JournalListParams } from '@weft/shared';
 import { TimelineView } from '../components/timeline/TimelineView';
 import { DateFilter } from '../components/timeline/DateFilter';
@@ -13,6 +14,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 export function HistoryPage() {
   const navigate = useNavigate();
   const { data: session } = useSession();
+  const { theme, setTheme, effectiveTheme } = useTheme();
   const [filterParams, setFilterParams] = useState<JournalListParams>({
     page: 1,
     limit: 20,
@@ -37,7 +39,7 @@ export function HistoryPage() {
     setFilterParams(prev => ({
       ...prev,
       ...params,
-      page: 1, // Reset to first page when filters change
+      page: 1,
     }));
   }, []);
 
@@ -51,9 +53,8 @@ export function HistoryPage() {
   }, [pagination?.hasNextPage, isLoading]);
 
   const handleJournalClick = useCallback((journalId: string) => {
-    // Navigate to journal detail view (future feature)
-    console.log('View journal:', journalId);
-  }, []);
+    navigate(`/journal/${journalId}`);
+  }, [navigate]);
 
   const handleRetryTranscription = useCallback(async (journalId: string) => {
     try {
@@ -69,7 +70,6 @@ export function HistoryPage() {
         throw new Error(`Failed to retry transcription: ${response.statusText}`);
       }
 
-      // Refresh journals to update the transcription status
       refresh();
     } catch (error) {
       console.error('Failed to retry transcription:', error);
@@ -77,20 +77,34 @@ export function HistoryPage() {
     }
   }, [refresh]);
 
+  const cycleTheme = () => {
+    if (theme === 'light') setTheme('dark');
+    else if (theme === 'dark') setTheme('system');
+    else setTheme('light');
+  };
+
+  const getThemeIcon = () => {
+    if (theme === 'light') return '☀️';
+    if (theme === 'dark') return '🌙';
+    return '💻';
+  };
+
   if (error) {
     return (
-      <div className="history-container">
-        <header className="history-header">
-          <button onClick={() => navigate('/dashboard')} className="back-button">
+      <div className="min-h-screen bg-background dark:bg-background-dark">
+        <header className="bg-white dark:bg-background-card-dark px-8 py-4 shadow-sm flex justify-between items-center gap-4">
+          <button onClick={() => navigate('/dashboard')} className="px-4 py-2 bg-transparent text-primary dark:text-primary border border-primary rounded-lg cursor-pointer transition-all hover:bg-primary-light">
             ← Back to Dashboard
           </button>
-          <h1>Journal History</h1>
-          <div className="user-info">
-            <span className="user-name">{session?.user?.name || 'User'}</span>
-          </div>
+          <h1 className="text-2xl text-text-default dark:text-text-dark-default flex-1 text-center">
+            Journal History
+          </h1>
+          <button onClick={cycleTheme} className="px-3 py-2 text-xl rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            {getThemeIcon()}
+          </button>
         </header>
-        <main className="history-main">
-          <div className="error-message">
+        <main className="p-8 max-w-5xl mx-auto">
+          <div className="bg-danger-light dark:bg-danger/20 border border-danger dark:border-danger/50 rounded-lg p-4 text-danger text-center">
             Error loading journals: {error.message}
           </div>
         </main>
@@ -99,19 +113,26 @@ export function HistoryPage() {
   }
 
   return (
-    <div className="history-container">
-      <header className="history-header">
-        <button onClick={() => navigate('/dashboard')} className="back-button">
+    <div className="min-h-screen bg-background dark:bg-background-dark">
+      <header className="bg-white dark:bg-background-card-dark px-8 py-4 shadow-sm flex justify-between items-center gap-4">
+        <button onClick={() => navigate('/dashboard')} className="px-4 py-2 bg-transparent text-primary dark:text-primary border border-primary rounded-lg cursor-pointer transition-all hover:bg-primary-light">
           ← Back to Dashboard
         </button>
-        <h1>Journal History</h1>
-        <div className="user-info">
-          <span className="user-name">{session?.user?.name || 'User'}</span>
+        <h1 className="text-2xl text-text-default dark:text-text-dark-default flex-1 text-center">
+          Journal History
+        </h1>
+        <div className="flex items-center gap-3">
+          <span className="font-medium text-text-muted dark:text-text-dark-muted">
+            {session?.user?.name || 'User'}
+          </span>
+          <button onClick={cycleTheme} className="px-3 py-2 text-xl rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            {getThemeIcon()}
+          </button>
         </div>
       </header>
 
-      <main className="history-main">
-        <div className="history-controls">
+      <main className="p-8 max-w-5xl mx-auto">
+        <div className="mb-8">
           <DateFilter
             onFilterChange={handleDateFilterChange}
             initialParams={filterParams}
@@ -127,14 +148,14 @@ export function HistoryPage() {
         />
 
         {/* Infinite scroll sentinel */}
-        <div ref={infiniteScrollTarget} className="scroll-sentinel" />
+        <div ref={infiniteScrollTarget} className="h-px" />
 
         {pagination?.hasNextPage && !isLoading && (
-          <div className="load-more-container">
+          <div className="flex justify-center py-8">
             <button
               onClick={handleLoadMore}
               disabled={isLoading}
-              className="load-more-button"
+              className="px-8 py-3 bg-primary text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-primary-hover disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Loading...' : 'Load More'}
             </button>
@@ -142,12 +163,16 @@ export function HistoryPage() {
         )}
 
         {journals.length === 0 && !isLoading && (
-          <div className="empty-state">
-            <h2>No journals found</h2>
-            <p>Start recording to see your journal history here.</p>
+          <div className="bg-white dark:bg-background-card-dark rounded-lg p-16 shadow-sm text-center">
+            <h2 className="text-2xl text-text-default dark:text-text-dark-default mb-2">
+              No journals found
+            </h2>
+            <p className="text-text-secondary dark:text-text-dark-secondary mb-8">
+              Start recording to see your journal history here.
+            </p>
             <button
               onClick={() => navigate('/dashboard')}
-              className="primary-button"
+              className="px-6 py-3 bg-primary text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-primary-hover"
             >
               Go to Dashboard
             </button>

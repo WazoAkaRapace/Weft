@@ -47,9 +47,9 @@ export function RegisterPage() {
   // Show loading while checking if users exist
   if (isCheckingUsers) {
     return (
-      <div className="auth-container">
-        <div className="auth-card">
-          <p>Loading...</p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background dark:bg-background-dark">
+        <div className="bg-white dark:bg-background-card-dark rounded-lg p-8 w-full max-w-md shadow-lg text-center">
+          <p className="text-text-secondary dark:text-text-dark-secondary">Loading...</p>
         </div>
       </div>
     );
@@ -100,20 +100,26 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <h1>Join Weft</h1>
-        <p className="auth-subtitle">Create your account</p>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background dark:bg-background-dark">
+      <div className="bg-white dark:bg-background-card-dark rounded-lg p-8 w-full max-w-md shadow-lg">
+        <h1 className="text-2xl text-text-default dark:text-text-dark-default text-center mb-2">
+          Join Weft
+        </h1>
+        <p className="text-text-secondary dark:text-text-dark-secondary text-center mb-6">
+          Create your account
+        </p>
 
         {error && (
-          <div className="auth-error" role="alert">
+          <div className="bg-danger-light dark:bg-danger/20 border border-danger dark:border-danger/50 rounded-lg p-3 mb-4 text-danger text-sm text-center" role="alert">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="name">Name</label>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="name" className="text-sm font-medium text-text-muted dark:text-text-dark-muted">
+              Name
+            </label>
             <input
               id="name"
               type="text"
@@ -122,11 +128,14 @@ export function RegisterPage() {
               required
               placeholder="Your name"
               disabled={isLoading}
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="email" className="text-sm font-medium text-text-muted dark:text-text-dark-muted">
+              Email
+            </label>
             <input
               id="email"
               type="email"
@@ -135,11 +144,14 @@ export function RegisterPage() {
               required
               placeholder="your@email.com"
               disabled={isLoading}
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="password" className="text-sm font-medium text-text-muted dark:text-text-dark-muted">
+              Password
+            </label>
             <input
               id="password"
               type="password"
@@ -149,11 +161,14 @@ export function RegisterPage() {
               placeholder="••••••••"
               disabled={isLoading}
               minLength={8}
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="confirmPassword" className="text-sm font-medium text-text-muted dark:text-text-dark-muted">
+              Confirm Password
+            </label>
             <input
               id="confirmPassword"
               type="password"
@@ -163,16 +178,24 @@ export function RegisterPage() {
               placeholder="••••••••"
               disabled={isLoading}
               minLength={8}
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
             />
           </div>
 
-          <button type="submit" className="auth-button" disabled={isLoading}>
+          <button
+            type="submit"
+            className="px-6 py-3 bg-primary text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-primary-hover disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+            disabled={isLoading}
+          >
             {isLoading ? 'Creating account...' : 'Sign Up'}
           </button>
         </form>
 
-        <p className="auth-footer">
-          Already have an account? <Link to="/login">Sign in</Link>
+        <p className="text-center mt-6 text-sm text-text-secondary dark:text-text-dark-secondary">
+          Already have an account?{' '}
+          <Link to="/login" className="text-primary hover:underline font-medium">
+            Sign in
+          </Link>
         </p>
       </div>
     </div>

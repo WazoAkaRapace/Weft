@@ -50,6 +50,8 @@ COPY turbo.json ./
 COPY packages/web/src ./packages/web/src
 COPY packages/web/index.html ./packages/web/
 COPY packages/web/vite.config.ts ./packages/web/
+COPY packages/web/tailwind.config.js ./packages/web/
+COPY packages/web/postcss.config.js ./packages/web/
 COPY packages/shared/src ./packages/shared/src
 
 # Install corepack and pnpm

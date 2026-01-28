@@ -20,7 +20,7 @@ export function RecordingPage() {
   };
 
   return (
-    <div className="recording-page">
+    <div className="min-h-screen">
       <VideoRecorder
         onSaveComplete={handleSaveComplete}
         onCancel={handleCancel}

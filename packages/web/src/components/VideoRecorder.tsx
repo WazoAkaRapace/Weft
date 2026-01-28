@@ -197,12 +197,12 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
   // ===== RENDER IDLE STATE =====
   if (uiState === 'idle') {
     return (
-      <div className="recording-container">
-        <div className="recording-idle">
-          <h2>New Journal Entry</h2>
-          <p>Record a video to add a new entry to your journal</p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background dark:bg-background-dark">
+        <div className="bg-white dark:bg-background-card-dark rounded-lg p-8 w-full max-w-md shadow-lg text-center">
+          <h2 className="text-xl text-text-default dark:text-text-dark-default mb-2">New Journal Entry</h2>
+          <p className="text-text-secondary dark:text-text-dark-secondary mb-6">Record a video to add a new entry to your journal</p>
           <button
-            className="recording-button start-button"
+            className="px-6 py-3 bg-primary text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-primary-hover"
             onClick={handleStartRecording}
             aria-label="Start recording video"
           >
@@ -216,106 +216,110 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
   // ===== RENDER RECORDING STATE =====
   if (uiState === 'recording') {
     return (
-      <div className="recording-container">
-        {recordingError && (
-          <div className="recording-error" role="alert" aria-live="assertive">
-            <span className="error-icon" aria-hidden="true">⚠</span>
-            <span>
-              {recordingError.message === 'Camera/microphone permission denied'
-                ? 'Camera/microphone access denied. Please grant permissions and try again.'
-                : recordingError.message}
-            </span>
-          </div>
-        )}
-
-        <div className="recording-active">
-          {mediaStream && (
-            <video
-              className="recording-preview"
-              autoPlay
-              muted
-              playsInline
-              ref={(videoElement) => {
-                if (videoElement && videoElement.srcObject !== mediaStream) {
-                  videoElement.srcObject = mediaStream;
-                }
-              }}
-            />
-          )}
-
-          {isRecording && !isPaused && (
-            <div role="status" aria-live="polite" className="streaming-indicator">
-              <span className="streaming-dot" aria-hidden="true"></span>
-              <span className="streaming-text">STREAMING</span>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background dark:bg-background-dark">
+        <div className="w-full max-w-4xl">
+          {recordingError && (
+            <div className="bg-danger-light dark:bg-danger/20 border border-danger dark:border-danger/50 rounded-lg p-4 mb-4 text-danger text-sm flex items-center gap-2" role="alert" aria-live="assertive">
+              <span className="text-lg" aria-hidden="true">⚠</span>
+              <span>
+                {recordingError.message === 'Camera/microphone permission denied'
+                  ? 'Camera/microphone access denied. Please grant permissions and try again.'
+                  : recordingError.message}
+              </span>
             </div>
           )}
 
-          {isRecording && (
-            <>
-              <div className="timer-display" role="timer" aria-live="off">
-                <div className="timer-value" aria-label={`Recording duration ${formatDuration(duration)}`}>
-                  {formatDuration(duration)}
-                </div>
-                <div className="timer-label">Duration</div>
-              </div>
+          <div className="bg-white dark:bg-background-card-dark rounded-lg shadow-lg overflow-hidden">
+            {mediaStream && (
+              <video
+                className="w-full bg-black"
+                autoPlay
+                muted
+                playsInline
+                ref={(videoElement) => {
+                  if (videoElement && videoElement.srcObject !== mediaStream) {
+                    videoElement.srcObject = mediaStream;
+                  }
+                }}
+              />
+            )}
 
-              <div className="upload-progress" role="status" aria-live="polite">
-                <span className="upload-label">Uploaded:</span>
-                <span className="upload-value" aria-label={`${formatBytes(bytesUploaded)} uploaded`}>
-                  {formatBytes(bytesUploaded)}
-                </span>
-              </div>
-            </>
-          )}
-
-          <div className="recording-controls">
             {isRecording && !isPaused && (
-              <>
-                <button
-                  className="recording-button pause-button"
-                  onClick={handlePauseRecording}
-                  aria-label="Pause recording"
-                  aria-pressed="false"
-                >
-                  Pause
-                </button>
-                <button
-                  className="recording-button stop-button"
-                  onClick={handleStopRecording}
-                  aria-label="Stop recording"
-                >
-                  Stop Recording
-                </button>
-              </>
+              <div role="status" aria-live="polite" className="absolute top-4 right-4 flex items-center gap-2 bg-black/70 text-white px-3 py-1.5 rounded-full">
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" aria-hidden="true"></span>
+                <span className="text-sm font-medium">STREAMING</span>
+              </div>
             )}
 
-            {isRecording && isPaused && (
-              <>
-                <button
-                  className="recording-button resume-button"
-                  onClick={handleResumeRecording}
-                  aria-label="Resume recording"
-                  aria-pressed="true"
-                >
-                  Resume
-                </button>
-                <button
-                  className="recording-button stop-button"
-                  onClick={handleStopRecording}
-                  aria-label="Stop recording"
-                >
-                  Stop Recording
-                </button>
-              </>
-            )}
+            <div className="p-4 space-y-4">
+              {isRecording && (
+                <>
+                  <div className="timer-display flex justify-between items-center p-3 bg-background dark:bg-background-dark rounded-lg" role="timer" aria-live="off">
+                    <div className="text-sm text-text-secondary dark:text-text-dark-secondary">Duration</div>
+                    <div className="timer-value text-xl font-mono font-medium text-text-default dark:text-text-dark-default" aria-label={`Recording duration ${formatDuration(duration)}`}>
+                      {formatDuration(duration)}
+                    </div>
+                  </div>
 
-            <button
-              className="recording-button cancel-button"
-              onClick={handleCancelRecording}
-              aria-label="Cancel recording and discard"
-            >
-              Cancel
-            </button>
+                  <div className="upload-progress flex justify-between items-center p-3 bg-background dark:bg-background-dark rounded-lg" role="status" aria-live="polite">
+                    <span className="upload-label text-sm text-text-secondary dark:text-text-dark-secondary">Uploaded:</span>
+                    <span className="upload-value text-sm font-medium text-text-default dark:text-text-dark-default" aria-label={`${formatBytes(bytesUploaded)} uploaded`}>
+                      {formatBytes(bytesUploaded)}
+                    </span>
+                  </div>
+                </>
+              )}
+
+              <div className="recording-controls flex gap-2 justify-center">
+                {isRecording && !isPaused && (
+                  <>
+                    <button
+                      className="px-4 py-2 bg-warning text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-warning-hover"
+                      onClick={handlePauseRecording}
+                      aria-label="Pause recording"
+                      aria-pressed="false"
+                    >
+                      Pause
+                    </button>
+                    <button
+                      className="px-4 py-2 bg-danger text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-danger-hover"
+                      onClick={handleStopRecording}
+                      aria-label="Stop recording"
+                    >
+                      Stop Recording
+                    </button>
+                  </>
+                )}
+
+                {isRecording && isPaused && (
+                  <>
+                    <button
+                      className="px-4 py-2 bg-success text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-success-hover"
+                      onClick={handleResumeRecording}
+                      aria-label="Resume recording"
+                      aria-pressed="true"
+                    >
+                      Resume
+                    </button>
+                    <button
+                      className="px-4 py-2 bg-danger text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-danger-hover"
+                      onClick={handleStopRecording}
+                      aria-label="Stop recording"
+                    >
+                      Stop Recording
+                    </button>
+                  </>
+                )}
+
+                <button
+                  className="px-4 py-2 bg-text-secondary dark:bg-text-dark-secondary text-white rounded-lg font-medium cursor-pointer transition-colors hover:opacity-80"
+                  onClick={handleCancelRecording}
+                  aria-label="Cancel recording and discard"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -327,25 +331,25 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
     const isTitleValid = title.trim().length > 0 && title.trim().length <= 200;
 
     return (
-      <div className="recording-container">
-        <div className="recording-complete">
-          <div className="complete-header">
-            <div className="success-icon" role="img" aria-label="Recording completed successfully">
-              ✓
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background dark:bg-background-dark">
+        <div className="bg-white dark:bg-background-card-dark rounded-lg p-8 w-full max-w-md shadow-lg">
+          <div className="text-center mb-6">
+            <div className="success-icon w-12 h-12 bg-success-light dark:bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4" role="img" aria-label="Recording completed successfully">
+              <span className="text-success text-2xl">✓</span>
             </div>
-            <h2>Recording Complete!</h2>
-            <p>Your video has been saved. Give it a title to finish.</p>
+            <h2 className="text-xl text-text-default dark:text-text-dark-default mb-2">Recording Complete!</h2>
+            <p className="text-text-secondary dark:text-text-dark-secondary">Your video has been saved. Give it a title to finish.</p>
           </div>
 
           {saveError && (
-            <div className="recording-error" role="alert" aria-live="assertive">
-              <span className="error-icon" aria-hidden="true">⚠</span>
+            <div className="bg-danger-light dark:bg-danger/20 border border-danger dark:border-danger/50 rounded-lg p-3 mb-4 text-danger text-sm flex items-center gap-2" role="alert" aria-live="assertive">
+              <span aria-hidden="true">⚠</span>
               <span>{saveError}</span>
             </div>
           )}
 
-          <div className="title-input-group">
-            <label htmlFor="journal-title">Journal Title</label>
+          <div className="title-input-group flex flex-col gap-2 mb-6">
+            <label htmlFor="journal-title" className="text-sm font-medium text-text-muted dark:text-text-dark-muted">Journal Title</label>
             <input
               ref={titleInputRef}
               id="journal-title"
@@ -356,24 +360,28 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
               aria-invalid={!!titleError}
               aria-describedby={titleError ? 'title-error' : 'title-hint'}
               maxLength={200}
-              className={titleError ? 'error' : ''}
+              className={`px-4 py-3 border rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus ${
+                titleError
+                  ? 'border-danger dark:border-danger'
+                  : 'border-border dark:border-border-dark'
+              }`}
               placeholder="e.g., My Day at the Beach"
             />
             {titleError && (
-              <span id="title-error" className="title-error" role="alert">
+              <span id="title-error" className="text-danger text-sm" role="alert">
                 {titleError}
               </span>
             )}
             {!titleError && (
-              <span id="title-hint" className="title-hint">
+              <span id="title-hint" className="text-xs text-text-hint dark:text-text-dark-hint">
                 Enter a title for your journal entry (1-200 characters)
               </span>
             )}
           </div>
 
-          <div className="recording-controls">
+          <div className="recording-controls flex gap-2">
             <button
-              className="save-button"
+              className="save-button flex-1 px-6 py-3 bg-primary text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-primary-hover disabled:opacity-60 disabled:cursor-not-allowed"
               onClick={handleSaveTitle}
               disabled={isSaving || !isTitleValid}
               aria-label="Save journal with title"
@@ -381,7 +389,7 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
               {isSaving ? 'Saving...' : 'Save Entry'}
             </button>
             <button
-              className="recording-button cancel-button"
+              className="px-6 py-3 bg-white dark:bg-background-card-dark text-text-secondary dark:text-text-dark-secondary border border-border dark:border-border-dark rounded-lg font-medium cursor-pointer transition-colors hover:bg-background dark:hover:bg-background-dark"
               onClick={onCancel}
               aria-label="Cancel and return to dashboard"
             >

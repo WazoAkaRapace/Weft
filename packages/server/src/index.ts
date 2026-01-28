@@ -287,6 +287,18 @@ const server = Bun.serve({
       return addCorsHeaders(await handleGetJournals(request), request);
     }
 
+    // Transcript endpoint (must be before general /api/journals/:id check)
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/transcript$/) && request.method === 'GET') {
+      const journalId = url.pathname.split('/').slice(-2, -1)[0];
+      return addCorsHeaders(await handleGetTranscript(request, journalId), request);
+    }
+
+    // Retry transcription endpoint (must be before general /api/journals/:id check)
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/transcription\/retry$/) && request.method === 'POST') {
+      const journalId = url.pathname.split('/').slice(-3, -2)[0];
+      return addCorsHeaders(await handleRetryTranscription(request, journalId), request);
+    }
+
     if (url.pathname.startsWith('/api/journals/') && request.method === 'GET') {
       const journalId = url.pathname.split('/').pop() || '';
       return addCorsHeaders(await handleGetJournal(request, journalId), request);
@@ -300,18 +312,6 @@ const server = Bun.serve({
     if (url.pathname.startsWith('/api/journals/') && request.method === 'PUT') {
       const journalId = url.pathname.split('/').pop() || '';
       return addCorsHeaders(await handleUpdateJournal(request, journalId), request);
-    }
-
-    // Transcript endpoint
-    if (url.pathname.match(/\/api\/journals\/[^/]+\/transcript$/) && request.method === 'GET') {
-      const journalId = url.pathname.split('/').slice(-2, -1)[0];
-      return addCorsHeaders(await handleGetTranscript(request, journalId), request);
-    }
-
-    // Retry transcription endpoint
-    if (url.pathname.match(/\/api\/journals\/[^/]+\/transcription\/retry$/) && request.method === 'POST') {
-      const journalId = url.pathname.split('/').slice(-3, -2)[0];
-      return addCorsHeaders(await handleRetryTranscription(request, journalId), request);
     }
 
     // Health check endpoint

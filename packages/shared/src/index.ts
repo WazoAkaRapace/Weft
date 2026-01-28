@@ -107,6 +107,34 @@ export interface Journal {
 }
 
 /**
+ * Transcript segment with timing information
+ */
+export interface TranscriptSegment {
+  start: number;
+  end: number;
+  text: string;
+  confidence?: number;
+}
+
+/**
+ * Full transcript with segments
+ */
+export interface Transcript {
+  id: string;
+  journalId: string;
+  text: string;
+  segments: TranscriptSegment[];
+  createdAt: Date;
+}
+
+/**
+ * Journal entry with full transcript (for detail view)
+ */
+export interface JournalWithTranscript extends Journal {
+  transcript?: Transcript;
+}
+
+/**
  * Video streaming types
  */
 export * from './video.js';

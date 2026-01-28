@@ -101,22 +101,28 @@ export function OnboardingPage() {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card onboarding-card">
-        <div className="onboarding-header">
-          <h1>Welcome to Weft</h1>
-          <p className="auth-subtitle">Create your account to get started</p>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background dark:bg-background-dark">
+      <div className="bg-white dark:bg-background-card-dark rounded-lg p-8 w-full max-w-lg shadow-lg">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl text-text-default dark:text-text-dark-default mb-2">
+            Welcome to Weft
+          </h1>
+          <p className="text-text-secondary dark:text-text-dark-secondary">
+            Create your account to get started
+          </p>
         </div>
 
         {error && (
-          <div className="auth-error" role="alert">
+          <div className="bg-danger-light dark:bg-danger/20 border border-danger dark:border-danger/50 rounded-lg p-3 mb-4 text-danger text-sm text-center" role="alert">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="name">Full Name</label>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="name" className="text-sm font-medium text-text-muted dark:text-text-dark-muted">
+              Full Name
+            </label>
             <input
               id="name"
               type="text"
@@ -126,11 +132,14 @@ export function OnboardingPage() {
               placeholder="John Doe"
               disabled={isLoading}
               autoComplete="name"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="username">Username</label>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="username" className="text-sm font-medium text-text-muted dark:text-text-dark-muted">
+              Username
+            </label>
             <input
               id="username"
               type="text"
@@ -140,11 +149,14 @@ export function OnboardingPage() {
               placeholder="johndoe"
               disabled={isLoading}
               autoComplete="username"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="email" className="text-sm font-medium text-text-muted dark:text-text-dark-muted">
+              Email
+            </label>
             <input
               id="email"
               type="email"
@@ -154,11 +166,14 @@ export function OnboardingPage() {
               placeholder="your@email.com"
               disabled={isLoading}
               autoComplete="email"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="password" className="text-sm font-medium text-text-muted dark:text-text-dark-muted">
+              Password
+            </label>
             <input
               id="password"
               type="password"
@@ -169,11 +184,14 @@ export function OnboardingPage() {
               disabled={isLoading}
               minLength={8}
               autoComplete="new-password"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="confirmPassword" className="text-sm font-medium text-text-muted dark:text-text-dark-muted">
+              Confirm Password
+            </label>
             <input
               id="confirmPassword"
               type="password"
@@ -184,17 +202,20 @@ export function OnboardingPage() {
               disabled={isLoading}
               minLength={8}
               autoComplete="new-password"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="language">Transcription Language</label>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="language" className="text-sm font-medium text-text-muted dark:text-text-dark-muted">
+              Transcription Language
+            </label>
             <select
               id="language"
               value={preferredLanguage}
               onChange={(e) => setPreferredLanguage(e.target.value)}
               disabled={isLoading}
-              className="language-select"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed bg-white dark:bg-background-card-dark"
             >
               {TRANSCRIPTION_LANGUAGES.map((lang) => (
                 <option key={lang.code} value={lang.code}>
@@ -202,12 +223,16 @@ export function OnboardingPage() {
                 </option>
               ))}
             </select>
-            <small className="form-hint">
+            <small className="text-xs text-text-hint dark:text-text-dark-hint">
               This will be the default language for video transcriptions
             </small>
           </div>
 
-          <button type="submit" className="auth-button" disabled={isLoading}>
+          <button
+            type="submit"
+            className="px-6 py-3 bg-primary text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-primary-hover disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+            disabled={isLoading}
+          >
             {isLoading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>

@@ -6,6 +6,7 @@ import { OnboardingPage } from './pages/OnboardingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RecordingPage } from './pages/RecordingPage';
 import { HistoryPage } from './pages/HistoryPage';
+import { JournalDetailPage } from './pages/JournalDetailPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { OnboardingGuard } from './components/OnboardingGuard';
 import { OnboardingRouteGuard } from './components/OnboardingRouteGuard';
@@ -72,6 +73,16 @@ export function App() {
           element={
             <ProtectedRoute>
               <HistoryPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Journal Detail - protected route */}
+        <Route
+          path="/journal/:id"
+          element={
+            <ProtectedRoute>
+              <JournalDetailPage />
             </ProtectedRoute>
           }
         />
