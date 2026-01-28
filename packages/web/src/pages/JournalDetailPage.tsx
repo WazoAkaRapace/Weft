@@ -14,13 +14,14 @@ export function JournalDetailPage() {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const [currentTime, setCurrentTime] = useState(0);
+  const [seekTo, setSeekTo] = useState<number | undefined>(undefined);
 
   const { journal, isLoading, error, updateNotes, refresh } = useJournalDetail(
     id || ''
   );
 
   const handleSegmentClick = useCallback((startTime: number) => {
-    setCurrentTime(startTime);
+    setSeekTo(startTime);
   }, []);
 
   const handleTimeUpdate = useCallback((time: number) => {
@@ -193,6 +194,7 @@ export function JournalDetailPage() {
                 thumbnailPath={journal.thumbnailPath}
                 duration={journal.duration}
                 onTimeUpdate={handleTimeUpdate}
+                seekTo={seekTo}
               />
             </div>
 

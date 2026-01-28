@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { formatDuration } from '../../lib/video-stream';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -8,6 +8,7 @@ interface VideoPlayerProps {
   thumbnailPath: string | null;
   duration: number;
   onTimeUpdate?: (currentTime: number) => void;
+  seekTo?: number; // External time to seek to
   className?: string;
 }
 
@@ -16,16 +17,23 @@ export function VideoPlayer({
   thumbnailPath,
   duration,
   onTimeUpdate,
+  seekTo,
   className = '',
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isSeekingRef = useRef(false); // Track if user is currently seeking
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Transform video path to use backend API URL
-  const videoUrl = API_BASE + videoPath.replace(/^\/app/, '');
-  const thumbnailUrl = thumbnailPath ? API_BASE + thumbnailPath.replace(/^\/app/, '') : undefined;
+  // Transform video path to use backend API URL (memoized to prevent reloads)
+  const videoUrl = useMemo(() => API_BASE + videoPath.replace(/^\/app/, ''), [videoPath]);
+  const thumbnailUrl = useMemo(
+    () => (thumbnailPath ? API_BASE + thumbnailPath.replace(/^\/app/, '') : undefined),
+    [thumbnailPath]
+  );
 
   const togglePlayPause = useCallback(() => {
     const video = videoRef.current;
@@ -43,8 +51,14 @@ export function VideoPlayer({
     if (!video) return;
 
     const newTime = parseFloat(e.target.value);
+    isSeekingRef.current = true;
     video.currentTime = newTime;
     setCurrentTime(newTime);
+
+    // Reset seeking flag after a short delay
+    setTimeout(() => {
+      isSeekingRef.current = false;
+    }, 100);
   }, []);
 
   const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,7 +70,23 @@ export function VideoPlayer({
     setVolume(newVolume);
   }, []);
 
+  const toggleFullscreen = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (!document.fullscreenElement) {
+      container.requestFullscreen().catch((err) => {
+        console.error('Failed to enter fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  }, []);
+
   const handleTimeUpdate = useCallback(() => {
+    // Don't update state while user is seeking (avoid conflicts)
+    if (isSeekingRef.current) return;
+
     const video = videoRef.current;
     if (!video) return;
 
@@ -86,11 +116,42 @@ export function VideoPlayer({
     };
   }, [handleTimeUpdate]);
 
+  // Handle fullscreen state changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Handle external seek requests (e.g., from transcript clicks)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || seekTo === undefined) return;
+
+    // Only seek if the time is significantly different (avoid infinite loops)
+    if (Math.abs(video.currentTime - seekTo) > 0.5) {
+      isSeekingRef.current = true;
+      video.currentTime = seekTo;
+      setCurrentTime(seekTo);
+
+      // Reset seeking flag after a short delay
+      setTimeout(() => {
+        isSeekingRef.current = false;
+      }, 200);
+    }
+  }, [seekTo]);
+
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div className={`video-player ${className}`}>
-      <div className="relative w-full bg-black rounded-lg overflow-hidden">
+      <div ref={containerRef} className="relative w-full bg-black rounded-lg overflow-hidden">
         <video
           ref={videoRef}
           src={videoUrl}
@@ -154,6 +215,24 @@ export function VideoPlayer({
                 aria-label="Volume"
               />
             </div>
+
+            {/* Fullscreen button */}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="bg-transparent border-none text-white cursor-pointer p-1 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+              aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            >
+              {isFullscreen ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
+                </svg>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                </svg>
+              )}
+            </button>
           </div>
         </div>
       </div>
