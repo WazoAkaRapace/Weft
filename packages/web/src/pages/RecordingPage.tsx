@@ -20,11 +20,9 @@ export function RecordingPage() {
   };
 
   return (
-    <div className="min-h-screen">
-      <VideoRecorder
-        onSaveComplete={handleSaveComplete}
-        onCancel={handleCancel}
-      />
-    </div>
+    <VideoRecorder
+      onSaveComplete={handleSaveComplete}
+      onCancel={handleCancel}
+    />
   );
 }

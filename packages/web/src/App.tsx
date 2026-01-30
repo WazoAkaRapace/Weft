@@ -7,6 +7,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { RecordingPage } from './pages/RecordingPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { JournalDetailPage } from './pages/JournalDetailPage';
+import { NotesPage } from './pages/NotesPage';
+import { MainAppLayout } from './components/layout/MainAppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { OnboardingGuard } from './components/OnboardingGuard';
 import { OnboardingRouteGuard } from './components/OnboardingRouteGuard';
@@ -47,45 +49,31 @@ export function App() {
           }
         />
 
-        {/* Dashboard - protected route */}
+        {/* Main app routes with shared layout */}
         <Route
-          path="/dashboard"
+          path="/"
           element={
             <ProtectedRoute>
-              <DashboardPage />
+              <MainAppLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          {/* Dashboard */}
+          <Route path="dashboard" element={<DashboardPage />} />
 
-        {/* Recording - protected route */}
-        <Route
-          path="/record"
-          element={
-            <ProtectedRoute>
-              <RecordingPage />
-            </ProtectedRoute>
-          }
-        />
+          {/* Recording */}
+          <Route path="record" element={<RecordingPage />} />
 
-        {/* History - protected route */}
-        <Route
-          path="/history"
-          element={
-            <ProtectedRoute>
-              <HistoryPage />
-            </ProtectedRoute>
-          }
-        />
+          {/* History */}
+          <Route path="history" element={<HistoryPage />} />
 
-        {/* Journal Detail - protected route */}
-        <Route
-          path="/journal/:id"
-          element={
-            <ProtectedRoute>
-              <JournalDetailPage />
-            </ProtectedRoute>
-          }
-        />
+          {/* Journal Detail */}
+          <Route path="journal/:id" element={<JournalDetailPage />} />
+
+          {/* Notes */}
+          <Route path="notes" element={<NotesPage />} />
+          <Route path="notes/:noteId" element={<NotesPage />} />
+        </Route>
 
         {/* Root route - redirects based on onboarding status */}
         <Route

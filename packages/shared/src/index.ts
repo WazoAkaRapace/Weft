@@ -135,6 +135,33 @@ export interface JournalWithTranscript extends Journal {
 }
 
 /**
+ * Note entry type - hierarchical notes with optional journal linking
+ */
+export interface Note {
+  id: string;
+  userId: string;
+  title: string;
+  content: string | null;
+  icon: string;
+  color: string | null;
+  parentId: string | null;
+  position: number;
+  deletedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Journal-Note relationship type
+ */
+export interface JournalNote {
+  id: string;
+  noteId: string;
+  journalId: string;
+  createdAt: Date;
+}
+
+/**
  * Video streaming types
  */
 export * from './video.js';

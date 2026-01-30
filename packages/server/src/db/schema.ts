@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, integer, jsonb, index, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, integer, jsonb, index, boolean, unique } from 'drizzle-orm/pg-core';
 
 /**
  * Users table
@@ -125,6 +125,61 @@ export const journals = pgTable(
 );
 
 /**
+ * Notes table
+ * Stores hierarchical notes with optional journal linking
+ */
+// @ts-ignore - Self-referencing type issue with Drizzle ORM
+export const notes = pgTable(
+  'notes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    content: text('content'), // Markdown content, optional
+    icon: text('icon').default('📝'), // Emoji or icon for visual identification
+    color: text('color'), // Hex color code (e.g., "#3b82f6") for organization
+    // @ts-ignore - Self-referencing for tree structure
+    parentId: uuid('parent_id').references(() => notes.id, { onDelete: 'set null' }), // Self-referencing for tree structure
+    position: integer('position').notNull().default(0), // For ordering within parent
+    deletedAt: timestamp('deleted_at'), // Soft delete timestamp (NULL if not deleted)
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('notes_user_id_idx').on(table.userId),
+    parentIdIdx: index('notes_parent_id_idx').on(table.parentId),
+    userDeletedIdx: index('notes_user_deleted_idx').on(table.userId, table.deletedAt),
+    parentPositionIdx: index('notes_parent_position_idx').on(table.parentId, table.position),
+    deletedAtIdx: index('notes_deleted_at_idx').on(table.deletedAt),
+  })
+);
+
+/**
+ * Journal Notes table
+ * Junction table for many-to-many relationship between notes and journals
+ */
+export const journalNotes = pgTable(
+  'journal_notes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    noteId: uuid('note_id')
+      .notNull()
+      .references(() => notes.id, { onDelete: 'cascade' }),
+    journalId: uuid('journal_id')
+      .notNull()
+      .references(() => journals.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    noteIdIdx: index('journal_notes_note_id_idx').on(table.noteId),
+    journalIdIdx: index('journal_notes_journal_id_idx').on(table.journalId),
+    uniqueConstraint: unique('journal_note_unique').on(table.journalId, table.noteId),
+  })
+);
+
+/**
  * Transcripts table
  * Stores transcript data for journal entries
  */
@@ -184,6 +239,10 @@ export type Verification = typeof verifications.$inferSelect;
 export type NewVerification = typeof verifications.$inferInsert;
 export type Journal = typeof journals.$inferSelect;
 export type NewJournal = typeof journals.$inferInsert;
+export type Note = typeof notes.$inferSelect;
+export type NewNote = typeof notes.$inferInsert;
+export type JournalNote = typeof journalNotes.$inferSelect;
+export type NewJournalNote = typeof journalNotes.$inferInsert;
 export type Transcript = typeof transcripts.$inferSelect;
 export type NewTranscript = typeof transcripts.$inferInsert;
 export type Tag = typeof tags.$inferSelect;

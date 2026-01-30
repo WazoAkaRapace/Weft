@@ -22,6 +22,13 @@
       "when": 1769425556104,
       "tag": "0002_rich_wrecker",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1769643849087,
+      "tag": "0003_futuristic_killmonger",
+      "breakpoints": true
     }
   ]
 }

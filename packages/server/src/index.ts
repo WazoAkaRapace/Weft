@@ -18,6 +18,16 @@ import {
   handleGetTranscript,
   handleRetryTranscription,
 } from './routes/journals.js';
+import {
+  handleGetNotes,
+  handleGetNote,
+  handleCreateNote,
+  handleUpdateNote,
+  handleDeleteNote,
+  handleGetNoteJournals,
+  handleLinkNoteToJournal,
+  handleUnlinkNoteFromJournal,
+} from './routes/notes.js';
 import { getTranscriptionQueue } from './queue/TranscriptionQueue.js';
 
 const PORT = process.env.PORT || 3001;
@@ -312,6 +322,51 @@ const server = Bun.serve({
     if (url.pathname.startsWith('/api/journals/') && request.method === 'PUT') {
       const journalId = url.pathname.split('/').pop() || '';
       return addCorsHeaders(await handleUpdateJournal(request, journalId), request);
+    }
+
+    // Notes CRUD endpoints
+    if (url.pathname === '/api/notes' && request.method === 'GET') {
+      return addCorsHeaders(await handleGetNotes(request), request);
+    }
+
+    if (url.pathname === '/api/notes' && request.method === 'POST') {
+      return addCorsHeaders(await handleCreateNote(request), request);
+    }
+
+    // Note journals link endpoint (must be before general /api/notes/:id check)
+    if (url.pathname.match(/\/api\/notes\/[^/]+\/journals\/[^/]+$/) && request.method === 'DELETE') {
+      const segments = url.pathname.split('/');
+      const noteId = segments[3];
+      const journalId = segments[5];
+      return addCorsHeaders(await handleUnlinkNoteFromJournal(request, noteId, journalId), request);
+    }
+
+    if (url.pathname.match(/\/api\/notes\/[^/]+\/journals\/[^/]+$/) && request.method === 'POST') {
+      const segments = url.pathname.split('/');
+      const noteId = segments[3];
+      const journalId = segments[5];
+      return addCorsHeaders(await handleLinkNoteToJournal(request, noteId, journalId), request);
+    }
+
+    // Note journals endpoint (must be before general /api/notes/:id check)
+    if (url.pathname.match(/\/api\/notes\/[^/]+\/journals$/) && request.method === 'GET') {
+      const noteId = url.pathname.split('/').slice(-2, -1)[0];
+      return addCorsHeaders(await handleGetNoteJournals(request, noteId), request);
+    }
+
+    if (url.pathname.startsWith('/api/notes/') && request.method === 'GET') {
+      const noteId = url.pathname.split('/').pop() || '';
+      return addCorsHeaders(await handleGetNote(request, noteId), request);
+    }
+
+    if (url.pathname.startsWith('/api/notes/') && request.method === 'PUT') {
+      const noteId = url.pathname.split('/').pop() || '';
+      return addCorsHeaders(await handleUpdateNote(request, noteId), request);
+    }
+
+    if (url.pathname.startsWith('/api/notes/') && request.method === 'DELETE') {
+      const noteId = url.pathname.split('/').pop() || '';
+      return addCorsHeaders(await handleDeleteNote(request, noteId), request);
     }
 
     // Health check endpoint

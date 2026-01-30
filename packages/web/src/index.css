@@ -465,3 +465,11 @@ body {
 .mdxeditor-wrapper.mdxeditor-view-mode .mdxeditor-toolbar {
   display: none !important;
 }
+
+/* Force MDXEditor to fit within viewport */
+.mdxeditor,
+.mdxeditor > div {
+  width: 100% !important;
+  max-width: 100vw !important;
+  min-width: 0 !important;
+}
