@@ -128,6 +128,56 @@ const SLASH_COMMANDS: SlashCommand[] = [
   },
 ];
 
+/**
+ * Checks if the current selection is inside a nested editor (e.g., admonition)
+ * by examining the DOM hierarchy for nested editor markers.
+ *
+ * Slash commands are disabled inside nested editors (admonitions, etc.)
+ * because they use separate Lexical editor instances with isolated event systems.
+ * See: https://github.com/mdx-editor/editor/blob/master/src/directive-editers/AdmonitionDirectiveDescriptor.tsx
+ */
+function isInsideNestedEditor(): boolean {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    return false;
+  }
+
+  const range = selection.getRangeAt(0);
+  let currentNode: Node | null = range.endContainer;
+
+  while (currentNode) {
+    if (currentNode.nodeType === Node.DOCUMENT_NODE) {
+      break;
+    }
+
+    if (currentNode.nodeType === Node.ELEMENT_NODE) {
+      const element = currentNode as Element;
+
+      // Check for CSS class patterns that indicate nested editors
+      if (element.className && typeof element.className === 'string') {
+        if (element.className.includes('nestedEditor')) {
+          return true;
+        }
+      }
+
+      // Check for data-lexical-editor attribute - nested editors have a parent editor
+      if (element.hasAttribute('data-lexical-editor')) {
+        let parent: Element | null = element.parentElement;
+        while (parent) {
+          if (parent.hasAttribute('data-lexical-editor')) {
+            return true; // Found parent editor, so current editor is nested
+          }
+          parent = parent.parentElement;
+        }
+      }
+    }
+
+    currentNode = currentNode.parentNode;
+  }
+
+  return false;
+}
+
 interface SlashCommandMenuProps {
   isOpen: boolean;
   position: { x: number; y: number };
@@ -284,6 +334,15 @@ export function useSlashCommandDetection(
         return;
       }
 
+      // Check if we're inside a nested editor (admonition, etc.)
+      if (isInsideNestedEditor()) {
+        if (menuOpen) {
+          setMenuOpen(false);
+          setQuery('');
+        }
+        return;
+      }
+
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) {
         setMenuOpen(false);
@@ -335,6 +394,19 @@ export function useSlashCommandDetection(
       document.removeEventListener('keyup', checkSlashCommand, true);
     };
   }, []);
+
+  // Close menu if selection moves into a nested editor
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      if (menuOpen && isInsideNestedEditor()) {
+        setMenuOpen(false);
+        setQuery('');
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, [menuOpen]);
 
   return {
     menuOpen,

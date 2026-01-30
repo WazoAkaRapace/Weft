@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useNotesContext } from '../../contexts/NotesContext';
 import { NoteCreateForm } from './NoteCreateForm';
 
@@ -10,6 +10,7 @@ interface NoteTreeNodeProps {
 
 function NoteTreeNode({ nodeId, level }: NoteTreeNodeProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     notes,
     selectedNoteId,
@@ -67,7 +68,13 @@ function NoteTreeNode({ nodeId, level }: NoteTreeNodeProps) {
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm(`Delete "${node.note.title}"?`)) {
+      // Check if the current URL is for this note (e.g., /notes/{nodeId})
+      const isCurrentPage = location.pathname === `/notes/${nodeId}`;
       await deleteNote(nodeId);
+      // Redirect to /notes if we deleted the note that's currently being viewed
+      if (isCurrentPage) {
+        navigate('/notes');
+      }
     }
   };
 
