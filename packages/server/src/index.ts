@@ -28,7 +28,9 @@ import {
   handleLinkNoteToJournal,
   handleUnlinkNoteFromJournal,
 } from './routes/notes.js';
+import { getEmotions, retryEmotionAnalysis } from './routes/emotions.js';
 import { getTranscriptionQueue } from './queue/TranscriptionQueue.js';
+import { getEmotionQueue } from './queue/EmotionQueue.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -248,6 +250,17 @@ const transcriptionQueue = getTranscriptionQueue();
 await transcriptionQueue.start();
 console.log('Transcription queue started');
 
+// Start emotion detection queue (optional - may fail if TensorFlow native bindings are unavailable)
+let emotionQueue: ReturnType<typeof getEmotionQueue> | null = null;
+try {
+  emotionQueue = getEmotionQueue();
+  await emotionQueue.start();
+  console.log('Emotion detection queue started');
+} catch (error) {
+  console.warn('⚠ Emotion detection queue failed to start. Emotion analysis will be disabled:', error);
+  console.warn('⚠ This is usually due to missing TensorFlow native bindings. The server will continue without emotion detection.');
+}
+
 // Main HTTP server using Bun
 const server = Bun.serve({
   port: PORT,
@@ -307,6 +320,17 @@ const server = Bun.serve({
     if (url.pathname.match(/\/api\/journals\/[^/]+\/transcription\/retry$/) && request.method === 'POST') {
       const journalId = url.pathname.split('/').slice(-3, -2)[0];
       return addCorsHeaders(await handleRetryTranscription(request, journalId), request);
+    }
+
+    // Emotion detection endpoints (must be before general /api/journals/:id check)
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/emotions\/retry$/) && request.method === 'POST') {
+      const journalId = url.pathname.split('/').slice(-3, -2)[0];
+      return addCorsHeaders(await retryEmotionAnalysis(request, { id: journalId }), request);
+    }
+
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/emotions$/) && request.method === 'GET') {
+      const journalId = url.pathname.split('/').slice(-2, -1)[0];
+      return addCorsHeaders(await getEmotions(request, { id: journalId }), request);
     }
 
     if (url.pathname.startsWith('/api/journals/') && request.method === 'GET') {
@@ -468,6 +492,7 @@ console.log(`Better Auth endpoints available at http://localhost:${server.port}/
 process.on('SIGINT', async () => {
   console.log('\nShutting down gracefully...');
   await transcriptionQueue.stop();
+  if (emotionQueue) await emotionQueue.stop();
   await closeDatabase();
   process.exit(0);
 });
@@ -475,6 +500,7 @@ process.on('SIGINT', async () => {
 process.on('SIGTERM', async () => {
   console.log('\nShutting down gracefully...');
   await transcriptionQueue.stop();
+  if (emotionQueue) await emotionQueue.stop();
   await closeDatabase();
   process.exit(0);
 });

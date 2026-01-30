@@ -1,5 +1,6 @@
 import type { Journal } from '@weft/shared';
 import { useState, useCallback } from 'react';
+import { EmotionBadge } from '../emotions/EmotionBadge';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -7,6 +8,7 @@ interface TimelineViewProps {
   journals: Journal[];
   onJournalClick: (journalId: string) => void;
   onRetryTranscription?: (journalId: string) => void;
+  onRetryEmotion?: (journalId: string) => void;
   isLoading: boolean;
   formatDuration: (seconds: number) => string;
 }
@@ -15,10 +17,12 @@ export function TimelineView({
   journals,
   onJournalClick,
   onRetryTranscription,
+  onRetryEmotion,
   isLoading,
   formatDuration,
 }: TimelineViewProps) {
   const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
+  const [retryingEmotionIds, setRetryingEmotionIds] = useState<Set<string>>(new Set());
 
   const handleRetry = useCallback(async (journalId: string) => {
     setRetryingIds(prev => new Set(prev).add(journalId));
@@ -32,6 +36,19 @@ export function TimelineView({
       });
     }
   }, [onRetryTranscription]);
+
+  const handleRetryEmotion = useCallback(async (journalId: string) => {
+    setRetryingEmotionIds(prev => new Set(prev).add(journalId));
+    try {
+      await onRetryEmotion?.(journalId);
+    } finally {
+      setRetryingEmotionIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(journalId);
+        return newSet;
+      });
+    }
+  }, [onRetryEmotion]);
 
   // Group journals by date
   const groupedJournals = journals.reduce((acc, journal) => {
@@ -77,9 +94,14 @@ export function TimelineView({
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 flex items-center justify-center" />
                   )}
-                  <span className="absolute bottom-1 right-1 bg-black/70 text-white px-1.5 py-0.5 rounded text-xs">
-                    {formatDuration(journal.duration)}
-                  </span>
+                  <div className="absolute bottom-1 left-1 flex items-center gap-1.5">
+                    {journal.dominantEmotion && (
+                      <EmotionBadge emotion={journal.dominantEmotion} showLabel={false} className="text-xs px-1.5 py-0.5" />
+                    )}
+                    <span className="bg-black/70 text-white px-1.5 py-0.5 rounded text-xs">
+                      {formatDuration(journal.duration)}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -115,6 +137,17 @@ export function TimelineView({
                       title="Retry transcription"
                     >
                       {retryingIds.has(journal.id) ? 'Retrying...' : '🔄 Retry Transcription'}
+                    </button>
+                    <button
+                      className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-medium rounded cursor-pointer transition-all hover:bg-purple-200 dark:hover:bg-purple-800/50 disabled:opacity-60 disabled:cursor-not-allowed"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRetryEmotion(journal.id);
+                      }}
+                      disabled={retryingEmotionIds.has(journal.id)}
+                      title="Retry emotion analysis"
+                    >
+                      {retryingEmotionIds.has(journal.id) ? 'Analyzing...' : '😊 Retry Emotion'}
                     </button>
                   </div>
                 </div>

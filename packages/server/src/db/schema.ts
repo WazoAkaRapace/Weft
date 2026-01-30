@@ -114,6 +114,13 @@ export const journals = pgTable(
     duration: integer('duration').notNull(), // Duration in seconds
     location: text('location'), // Optional location metadata
     notes: text('notes'), // Optional user notes
+    dominantEmotion: text('dominant_emotion'), // Dominant emotion: happy, sad, angry, fear, surprise, disgust, neutral
+    emotionTimeline: jsonb('emotion_timeline').$type<Array<{
+      time: number;      // Timestamp in seconds
+      emotion: string;   // Emotion label
+      confidence: number; // 0-1 confidence score
+    }>>(), // Frame-by-frame emotion timeline
+    emotionScores: jsonb('emotion_scores').$type<Record<string, number>>(), // Emotion distribution: { happy: 0.45, ... }
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -121,6 +128,7 @@ export const journals = pgTable(
     userIdIdx: index('journals_user_id_idx').on(table.userId),
     createdAtIdx: index('journals_created_at_idx').on(table.createdAt),
     titleIdx: index('journals_title_idx').on(table.title),
+    dominantEmotionIdx: index('journals_dominant_emotion_idx').on(table.dominantEmotion),
   })
 );
 

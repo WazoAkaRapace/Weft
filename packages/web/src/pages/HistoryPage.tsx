@@ -73,6 +73,27 @@ export function HistoryPage() {
     }
   }, [refresh]);
 
+  const handleRetryEmotion = useCallback(async (journalId: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/journals/${journalId}/emotions/retry`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to retry emotion analysis: ${response.statusText}`);
+      }
+
+      refresh();
+    } catch (error) {
+      console.error('Failed to retry emotion analysis:', error);
+      throw error;
+    }
+  }, [refresh]);
+
   if (error) {
     return (
       <div className="p-8 max-w-5xl mx-auto">
@@ -96,6 +117,7 @@ export function HistoryPage() {
           journals={journals}
           onJournalClick={handleJournalClick}
           onRetryTranscription={handleRetryTranscription}
+          onRetryEmotion={handleRetryEmotion}
           isLoading={isLoading}
           formatDuration={formatDuration}
         />

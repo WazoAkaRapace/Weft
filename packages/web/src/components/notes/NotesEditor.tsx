@@ -131,42 +131,31 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
     // Captures the text after the slash (e.g., "/q" captures "q", "/h1" captures "h1", "/" captures "")
     const slashMatch = textBeforeCursor.match(/\/([a-zA-Z0-9]*)$/);
     if (!slashMatch) {
-      console.log('No slash command found in text before cursor:', textBeforeCursor);
       return;
     }
 
     const query = slashMatch[1]; // The captured text after slash: "q", "h1", "note", or "" for just "/"
     const slashText = query ? '/' + query : '/'; // Full slash command: "/q", "/h1", "/"
 
-    console.log('Slash command found:', slashText, 'query:', query);
-
     // Get the ACTUAL current markdown from the editor (not React state which might be stale)
     const markdown = mdxEditorRef.current?.getMarkdown() || currentMarkdown;
-
-    console.log('Current markdown:', markdown);
 
     // Build pattern to find the slash command in the markdown
     // Look for the slash command at the end of a line (e.g., "/q", "/", "/h1")
     const pattern = query ? new RegExp(`/${query}$`) : /\/$/;
 
-    console.log('Pattern:', pattern.toString());
-
     // Find the last line that ends with the slash command
     const lines = markdown.split('\n');
     let foundLineIndex = -1;
 
-    console.log('Lines:', lines);
-
     for (let i = lines.length - 1; i >= 0; i--) {
       if (pattern.test(lines[i])) {
         foundLineIndex = i;
-        console.log('Found pattern at line', i, ':', lines[i]);
         break;
       }
     }
 
     if (foundLineIndex === -1) {
-      console.log('Pattern not found in any line');
       return;
     }
 
@@ -191,8 +180,6 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
     }
 
     const newMarkdown = lines.join('\n');
-
-    console.log('New markdown:', newMarkdown);
 
     // Update the editor with the new markdown
     if (mdxEditorRef.current) {

@@ -102,6 +102,13 @@ export interface Journal {
   location: string | null;
   notes: string | null;
   transcriptPreview: string | null;
+  dominantEmotion: string | null;
+  emotionTimeline: Array<{
+    time: number;
+    emotion: string;
+    confidence: number;
+  }> | null;
+  emotionScores: Record<string, number> | null;
   createdAt: Date;
   updatedAt: Date;
 }

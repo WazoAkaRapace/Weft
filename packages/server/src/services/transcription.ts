@@ -52,8 +52,9 @@ export interface TranscriptionResult {
 }
 
 // Lazy-loaded pipeline instance
-let transcriberPipeline: Awaited<ReturnType<typeof pipeline>> | null = null;
-let modelLoadingPromise: Promise<Awaited<ReturnType<typeof pipeline>>> | null = null;
+// Note: Using 'any' because the pipeline type is too complex for TypeScript
+let transcriberPipeline: any = null;
+let modelLoadingPromise: Promise<any> | null = null;
 
 /**
  * Get or initialize the transcription pipeline

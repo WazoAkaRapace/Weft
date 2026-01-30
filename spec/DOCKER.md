@@ -88,6 +88,13 @@ docker compose version
 - Hot-reload in development
 - Health checks
 - Non-root user execution
+- **Emotion Detection Support:** Includes face-api.js models for facial emotion recognition
+
+**Dependencies:**
+- **FFmpeg** - Video frame extraction for emotion detection
+- **Canvas build libraries** - Cairo, Pango, JPEG, GIF, SVG support for image processing
+- **Python 3** - Required for some native dependencies
+- **Face-api.js models** - Auto-downloaded during build to `/app/uploads/models/face-api`
 
 ## Configuration
 
@@ -110,6 +117,12 @@ REDIS_PORT=6379
 
 # Backend
 BACKEND_PORT=4000
+
+# Emotion Detection (optional, uses defaults if not set)
+FACEAPI_MODELS_DIR=/app/uploads/models/face-api
+EMOTION_WORKER_CONCURRENCY=2
+EMOTION_MAX_RETRIES=3
+FRAME_SAMPLING_INTERVAL=5
 ```
 
 ### Custom Ports
@@ -367,6 +380,46 @@ docker compose -f docker/docker-compose.yml up -d --build backend
 docker inspect weft-backend | jq '.[0].Mounts'
 ```
 
+### Emotion Detection Issues
+
+**Issue:** Emotion detection not working
+
+```bash
+# Check if models exist
+docker compose -f docker/docker-compose.yml exec backend ls -la /app/uploads/models/face-api
+
+# Should show:
+# tiny_face_detector_model-weights_manifest.json
+# tiny_face_detector_model-shard1
+# face_expression_model-weights_manifest.json
+# face_expression_model-shard1
+
+# Verify FFmpeg is available
+docker compose -f docker/docker-compose.yml exec backend ffmpeg -version
+
+# Check emotion detection logs
+docker compose -f docker/docker-compose.yml logs backend | grep -i emotion
+
+# Manual model download (if auto-download failed)
+docker compose -f docker/docker-compose.yml exec backend sh
+cd /app/uploads/models/face-api
+wget https://raw.githubusercontent.com/vladmandic/face-api/main/model/tiny_face_detector_model-weights_manifest.json
+wget https://raw.githubusercontent.com/vladmandic/face-api/main/model/tiny_face_detector_model-shard1
+wget https://raw.githubusercontent.com/vladmandic/face-api/main/model/face_expression_model-weights_manifest.json
+wget https://raw.githubusercontent.com/vladmandic/face-api/main/model/face_expression_model-shard1
+```
+
+**Issue:** Canvas module compilation errors
+
+```bash
+# Clean rebuild with no cache
+docker compose -f docker/docker-compose.yml down
+docker compose -f docker/docker-compose.yml build --no-cache backend
+
+# Check if build dependencies are installed
+docker compose -f docker/docker-compose.yml exec backend dpkg -l | grep -E "cairo|pango|libjpeg"
+```
+
 ## Production Considerations
 
 This Docker setup is optimized for **local development**. For production:
@@ -438,3 +491,4 @@ secrets:
 - [Bun Documentation](https://bun.sh/docs)
 - [Project Architecture](./ARCHITECTURE.md)
 - [Database Documentation](./DATABASE.md)
+- [Emotion Detection Feature](./EMOTION_DETECTION.md)

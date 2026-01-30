@@ -18,8 +18,11 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
+    "@tensorflow/tfjs-node": "^4.22.0",
+    "@vladmandic/face-api": "^1.7.15",
     "@weft/shared": "workspace:*",
     "better-auth": "^1.4.17",
+    "canvas": "^3.2.1",
     "drizzle-orm": "^0.45.1",
     "postgres": "^3.4.8"
   },

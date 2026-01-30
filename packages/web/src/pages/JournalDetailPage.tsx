@@ -4,6 +4,7 @@ import { useJournalDetail } from '../hooks/useJournalDetail';
 import { VideoPlayer } from '../components/video/VideoPlayer';
 import { TranscriptDisplay } from '../components/transcript/TranscriptDisplay';
 import { NotesEditor, type NotesEditorRef } from '../components/notes/NotesEditor';
+import { EmotionDisplay } from '../components/emotions/EmotionDisplay';
 import { formatDuration } from '../lib/video-stream';
 
 export function JournalDetailPage() {
@@ -186,6 +187,12 @@ export function JournalDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* Emotion Detection */}
+            <EmotionDisplay
+              journalId={journal.id}
+              duration={journal.duration}
+            />
 
             {/* Transcript */}
             {journal.transcript ? (

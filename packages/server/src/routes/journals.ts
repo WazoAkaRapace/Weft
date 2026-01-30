@@ -15,6 +15,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { eq, desc, gte, lte, or, ilike, and, sql } from 'drizzle-orm';
 import { getTranscriptionQueue } from '../queue/TranscriptionQueue.js';
+import { getEmotionQueue } from '../queue/EmotionQueue.js';
 import { generateThumbnailForVideo } from '../lib/thumbnail.js';
 
 // Upload directory configuration
@@ -246,6 +247,20 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
       console.error('[Journals] Failed to queue transcription job:', error);
     }
 
+    // Start emotion detection job (non-blocking)
+    try {
+      const emotionQueue = getEmotionQueue();
+      await emotionQueue.addJob({
+        journalId,
+        userId: streamData.userId,
+        videoPath: finalFilePath,
+      });
+      console.log(`[Journals] Emotion detection job queued for journal ${journalId}`);
+    } catch (error) {
+      // Log error but don't fail the upload
+      console.error('[Journals] Failed to queue emotion detection job:', error);
+    }
+
     // Clean up active stream tracking
     activeStreams.delete(streamId);
 
@@ -382,6 +397,20 @@ export async function handleStreamChunkUpload(request: Request): Promise<Respons
       } catch (error) {
         // Log error but don't fail the upload
         console.error('[Journals] Failed to queue transcription job:', error);
+      }
+
+      // Start emotion detection job (non-blocking)
+      try {
+        const emotionQueue = getEmotionQueue();
+        await emotionQueue.addJob({
+          journalId,
+          userId: streamData.userId,
+          videoPath: finalFilePath,
+        });
+        console.log(`[Journals] Emotion detection job queued for journal ${journalId}`);
+      } catch (error) {
+        // Log error but don't fail the upload
+        console.error('[Journals] Failed to queue emotion detection job:', error);
       }
 
       // Clean up active stream tracking
@@ -565,6 +594,9 @@ export async function handleGetPaginatedJournals(request: Request): Promise<Resp
         duration: journals.duration,
         location: journals.location,
         notes: journals.notes,
+        dominantEmotion: journals.dominantEmotion,
+        emotionTimeline: journals.emotionTimeline,
+        emotionScores: journals.emotionScores,
         createdAt: journals.createdAt,
         updatedAt: journals.updatedAt,
         transcriptText: transcripts.text,
