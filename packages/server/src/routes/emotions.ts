@@ -127,11 +127,12 @@ export async function retryEmotionAnalysis(request: Request, params: { id: strin
       );
     }
 
-    // Add job to queue
+    // Add job to queue with force flag for manual retry
     const jobId = await queue.addJob({
       journalId,
       userId: session.user.id,
       videoPath: journal[0].videoPath,
+      force: true,
     });
 
     return Response.json(

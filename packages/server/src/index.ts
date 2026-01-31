@@ -76,24 +76,9 @@ const authRoutes = async (request: Request) => {
 
   // Better Auth handles its own routing via the auth instance
   if (url.pathname.startsWith(authPath)) {
-    // Debug: Log the request
-    console.log('[Auth] Request:', {
-      method: request.method,
-      pathname: url.pathname,
-      cookies: request.headers.get('cookie'),
-    });
-
     // Pass the request directly to auth.handler
     // BetterAuth will handle the routing based on the pathname
     const response = await auth.handler(request);
-
-    // Debug: Log the response body for get-session
-    const responseBody = await response.clone().text().catch(() => '[could not read body]');
-    console.log('[Auth] Response:', {
-      status: response.status,
-      headers: Object.fromEntries(response.headers.entries()),
-      body: responseBody,
-    });
 
     return addCorsHeaders(response, request);
   }

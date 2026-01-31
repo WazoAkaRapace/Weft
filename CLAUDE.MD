@@ -98,6 +98,27 @@ pnpm --filter @weft/server db:studio
 pnpm --filter @weft/server db:seed
 ```
 
+### Docker Commands
+
+**IMPORTANT: After making backend changes, always rebuild and restart the Docker container using:**
+
+```bash
+# Rebuild and restart specific service(s)
+docker compose -f docker/docker-compose.yml up -d --build <service-name>
+
+# Examples:
+docker compose -f docker/docker-compose.yml up -d --build backend
+docker compose -f docker/docker-compose.yml up -d --build web
+docker compose -f docker/docker-compose.yml up -d --build  # All services
+
+# Rebuild and start all services
+docker compose -f docker/docker-compose.yml up -d --build
+```
+
+**DO NOT use:** `docker restart <container>` - This will NOT apply code changes.
+
+**Why:** The Docker image must be rebuilt to include new code changes. `docker restart` only restarts the existing container with old code.
+
 ## Important Database Guidelines
 
 ### CRITICAL: No Database Access During Development

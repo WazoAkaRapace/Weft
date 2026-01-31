@@ -31,6 +31,8 @@ ENV PATH="/usr/local/bin/bun:${PATH}"
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/server/package.json ./packages/server/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/tfjs-node-stub/package.json ./packages/tfjs-node-stub/
+COPY packages/tfjs-node-stub/index.js ./packages/tfjs-node-stub/
 
 # Install corepack and pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -66,6 +68,8 @@ COPY --from=dependencies /app/packages/shared/node_modules ./packages/shared/nod
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/server/package.json ./packages/server/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/tfjs-node-stub/package.json ./packages/tfjs-node-stub/
+COPY packages/tfjs-node-stub/index.js ./packages/tfjs-node-stub/
 COPY tsconfig.json ./
 COPY packages/server/tsconfig.json ./packages/server/
 COPY packages/shared/tsconfig.json ./packages/shared/
@@ -135,10 +139,15 @@ VOLUME ["/app/uploads"]
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/server/package.json ./packages/server/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/tfjs-node-stub/package.json ./packages/tfjs-node-stub/
+COPY packages/tfjs-node-stub/index.js ./packages/tfjs-node-stub/
 
 # Install all dependencies (needed for TensorFlow native bindings)
 RUN corepack enable && corepack prepare pnpm@latest --activate
 RUN pnpm install --no-frozen-lockfile
+
+# Fix permissions for tfjs-node-stub for non-root user
+RUN chown -R bun:nodejs /app/packages/tfjs-node-stub
 
 # Set production environment after dependencies are installed
 ENV NODE_ENV=production

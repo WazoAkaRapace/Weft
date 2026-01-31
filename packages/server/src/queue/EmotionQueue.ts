@@ -1,9 +1,10 @@
 /**
  * Emotion Detection Queue
  * Simple in-memory queue with worker pool for background emotion processing
+ * Voice-only emotion detection using SpeechBrain
  */
 
-import { EmotionDetectionService, type EmotionJob } from '../services/emotionDetection.js';
+import { EmotionDetectionService, type EmotionJob } from '../services/unifiedEmotionDetection.js';
 
 export interface QueuedJob extends EmotionJob {
   id: string;
@@ -60,7 +61,7 @@ export class EmotionQueue {
       id: jobId,
       ...job,
       status: 'pending',
-      attempts: job.retryCount || 0,
+      attempts: 0,
       createdAt: new Date(),
     };
 
@@ -148,12 +149,16 @@ export class EmotionQueue {
         throw new Error(`Journal ${job.journalId} not found`);
       }
 
-      // Check if already analyzed
-      const existing = await this.service.getResults(job.journalId);
-      if (existing?.dominantEmotion) {
-        console.log(`[EmotionQueue] Job ${job.id} already has emotion data, skipping`);
-        job.status = 'completed';
-        return;
+      // Check if already analyzed (skip if force flag is set)
+      if (!job.force) {
+        const existing = await this.service.getResults(job.journalId);
+        if (existing?.dominantEmotion) {
+          console.log(`[EmotionQueue] Job ${job.id} already has emotion data, skipping`);
+          job.status = 'completed';
+          return;
+        }
+      } else {
+        console.log(`[EmotionQueue] Job ${job.id} forcing emotion regeneration`);
       }
 
       // Perform emotion detection

@@ -18,13 +18,20 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
-    "@tensorflow/tfjs-node": "^4.22.0",
+    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
+    "@tensorflow/tfjs-converter": "^4.22.0",
+    "@tensorflow/tfjs-core": "^4.22.0",
+    "@tensorflow/tfjs-node": "file:../tfjs-node-stub",
     "@vladmandic/face-api": "^1.7.15",
     "@weft/shared": "workspace:*",
+    "axios": "^1.13.4",
     "better-auth": "^1.4.17",
     "canvas": "^3.2.1",
     "drizzle-orm": "^0.45.1",
-    "postgres": "^3.4.8"
+    "form-data": "^4.0.5",
+    "node-fetch": "^3.3.2",
+    "postgres": "^3.4.8",
+    "undici": "^7.19.2"
   },
   "devDependencies": {
     "@types/bun": "latest",

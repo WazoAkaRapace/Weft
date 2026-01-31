@@ -76,20 +76,20 @@ async function downloadModels(): Promise<void> {
 
   const models = [
     {
-      url: 'https://raw.githubusercontent.com/vladmandic/face-api/main/model/tiny_face_detector_model-weights_manifest.json',
+      url: 'https://unpkg.com/@vladmandic/face-api@1.7.15/model/tiny_face_detector_model-weights_manifest.json',
       file: path.join(MODEL_DIR, 'tiny_face_detector_model-weights_manifest.json'),
     },
     {
-      url: 'https://raw.githubusercontent.com/vladmandic/face-api/main/model/tiny_face_detector_model-shard1',
-      file: path.join(MODEL_DIR, 'tiny_face_detector_model-shard1'),
+      url: 'https://unpkg.com/@vladmandic/face-api@1.7.15/model/tiny_face_detector_model.bin',
+      file: path.join(MODEL_DIR, 'tiny_face_detector_model.bin'),
     },
     {
-      url: 'https://raw.githubusercontent.com/vladmandic/face-api/main/model/face_expression_model-weights_manifest.json',
+      url: 'https://unpkg.com/@vladmandic/face-api@1.7.15/model/face_expression_model-weights_manifest.json',
       file: path.join(MODEL_DIR, 'face_expression_model-weights_manifest.json'),
     },
     {
-      url: 'https://raw.githubusercontent.com/vladmandic/face-api/main/model/face_expression_model-shard1',
-      file: path.join(MODEL_DIR, 'face_expression_model-shard1'),
+      url: 'https://unpkg.com/@vladmandic/face-api@1.7.15/model/face_expression_model.bin',
+      file: path.join(MODEL_DIR, 'face_expression_model.bin'),
     },
   ];
 
@@ -124,6 +124,20 @@ async function ensureModels(): Promise<void> {
 
   modelLoadingPromise = (async () => {
     try {
+      // Disable TensorFlow native bindings before any imports
+      process.env.TFJS_DISABLE_NATIVE_BACKEND = '1';
+
+      // Set TensorFlow backend to CPU (no native bindings required)
+      const tf = await import('@tensorflow/tfjs-core');
+      // Import CPU backend to register it
+      await import('@tensorflow/tfjs-backend-cpu');
+
+      // Explicitly set CPU backend
+      await tf.setBackend('cpu');
+      await tf.ready();
+
+      console.log('[EmotionDetection] TensorFlow backend set to CPU');
+
       // Lazy import face-api to avoid TensorFlow binding issues at startup
       const faceapi = await import('@vladmandic/face-api');
 
@@ -205,20 +219,43 @@ async function detectEmotions(imageBuffer: Buffer): Promise<{ emotion: string; c
   try {
     // Lazy import face-api to avoid TensorFlow binding issues at startup
     const faceapi = await import('@vladmandic/face-api');
+    const tf = await import('@tensorflow/tfjs-core');
 
-    // Create a canvas from the image buffer
-    // @vladmandic/face-api works with canvas elements in Node.js
+    // Create canvas and convert to tensor manually
+    // This is the most reliable approach for Node.js
     const { createCanvas, loadImage } = await import('canvas');
-
     const img = await loadImage(imageBuffer);
     const canvas = createCanvas(img.width, img.height);
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0);
 
-    // Detect face and expressions
+    // Get image data and create tensor
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    const arr = new Uint8Array(data);
+
+    // Create RGB tensor from RGBA data (drop alpha channel)
+    const rgbData = new Uint8Array(canvas.width * canvas.height * 3);
+    let rgbIdx = 0;
+    for (let i = 0; i < arr.length; i += 4) {
+      rgbData[rgbIdx++] = arr[i];     // R
+      rgbData[rgbIdx++] = arr[i + 1]; // G
+      rgbData[rgbIdx++] = arr[i + 2]; // B
+    }
+
+    const tensor = tf.tensor3d(
+      Array.from(rgbData),
+      [canvas.height, canvas.width, 3],
+      'int32'
+    ) as any;
+
+    // Detect face and expressions using the tensor
     const detections = await faceapi
-      .detectAllFaces(canvas as any, new faceapi.TinyFaceDetectorOptions())
+      .detectAllFaces(tensor, new faceapi.TinyFaceDetectorOptions())
       .withFaceExpressions();
+
+    // Dispose the tensor to free memory
+    tensor.dispose();
 
     if (detections.length === 0) {
       return null;

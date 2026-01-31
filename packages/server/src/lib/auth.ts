@@ -68,14 +68,6 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
-      // Debug logging
-      console.log('[Auth Hook] Request:', {
-        path: ctx.path,
-        method: ctx.method,
-        body: ctx.body,
-        headers: ctx.headers,
-      });
-
       // Block signup if at least one user already exists
       if (ctx.path === '/sign-up/email') {
         const existingUsers = await db

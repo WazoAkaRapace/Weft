@@ -102,7 +102,7 @@ async function getPipeline() {
 /**
  * Extract audio from video using FFmpeg
  */
-async function extractAudio(videoPath: string): Promise<string> {
+export async function extractAudio(videoPath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
     const tempDir = path.join(UPLOAD_DIR, 'temp');
