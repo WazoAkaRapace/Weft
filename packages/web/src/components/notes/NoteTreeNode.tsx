@@ -88,16 +88,19 @@ function NoteTreeNode({ nodeId, level }: NoteTreeNodeProps) {
         onClick={handleClick}
         className={`
           group flex items-center gap-2 py-2 pr-2 cursor-pointer transition-colors
-          hover:bg-gray-100 dark:hover:bg-gray-800
-          ${isSelected ? 'bg-primary-light dark:bg-primary/20 border-l-4 border-primary' : ''}
+          hover:bg-neutral-100 dark:hover:bg-dark-700
+          ${isSelected ? 'bg-primary-50 dark:bg-primary-900/30 border-l-4 border-primary-500' : ''}
         `}
-        style={{ paddingLeft: `${indent + 16}px` }}
+        style={{
+          paddingLeft: `${indent + 16}px`,
+          backgroundColor: node.note.color ? `${node.note.color}10` : undefined
+        }}
       >
         {/* Expand/Collapse Chevron */}
         {hasChildren ? (
           <button
             onClick={handleToggle}
-            className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
+            className="p-0.5 hover:bg-neutral-200 dark:hover:bg-dark-600 rounded transition-colors flex-shrink-0"
           >
             <svg
               width="16"
@@ -119,7 +122,7 @@ function NoteTreeNode({ nodeId, level }: NoteTreeNodeProps) {
         <span className="text-lg flex-shrink-0">{node.note.icon}</span>
 
         {/* Note Title */}
-        <span className="flex-1 truncate text-sm text-text-default dark:text-text-dark-default">
+        <span className="flex-1 truncate text-sm text-neutral-700 dark:text-dark-200">
           {node.note.title}
         </span>
 
@@ -128,7 +131,7 @@ function NoteTreeNode({ nodeId, level }: NoteTreeNodeProps) {
           {/* Add Child Button */}
           <button
             onClick={handleAddChild}
-            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+            className="p-1 hover:bg-neutral-200 dark:hover:bg-dark-600 rounded transition-colors"
             title="Add child note"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -140,7 +143,7 @@ function NoteTreeNode({ nodeId, level }: NoteTreeNodeProps) {
           {/* Delete Button */}
           <button
             onClick={handleDelete}
-            className="p-1 hover:bg-danger-light dark:hover:bg-danger/20 text-danger rounded transition-colors"
+            className="p-1 hover:bg-error-light dark:hover:bg-error-dark-light/30 text-error rounded transition-colors"
             title="Delete note"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

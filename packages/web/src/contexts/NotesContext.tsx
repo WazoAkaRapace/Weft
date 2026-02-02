@@ -44,18 +44,47 @@ export function NotesProvider({ children, initialNoteId = null }: NotesProviderP
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
   const [isCreating, setIsCreating] = useState(false);
   const [creatingParentId, setCreatingParentId] = useState<string | null>(null);
+  const [lastExpandedNoteId, setLastExpandedNoteId] = useState<string | null>(null);
 
   // Update selected note when initialNoteId changes (from URL)
+  // Also expand the tree to show the note
   useEffect(() => {
-    if (initialNoteId !== undefined && initialNoteId !== selectedNoteId) {
+    if (initialNoteId !== undefined && initialNoteId !== lastExpandedNoteId && !isLoading && noteTree.length > 0) {
       setSelectedNoteId(initialNoteId);
+
+      // Expand parent nodes and the note itself if it has children
+      const findAndExpandParents = (nodes: NoteTreeNode[], targetId: string, path: string[] = []): string[] | null => {
+        for (const node of nodes) {
+          if (node.note.id === targetId) {
+            const idsToExpand = [...path];
+
+            // Expand the selected node itself if it has children
+            if (node.children.length > 0) {
+              idsToExpand.push(node.note.id);
+            }
+
+            return idsToExpand;
+          }
+          if (node.children.length > 0) {
+            const result = findAndExpandParents(node.children, targetId, [...path, node.note.id]);
+            if (result) return result;
+          }
+        }
+        return null;
+      };
+
+      const idsToExpand = findAndExpandParents(noteTree, initialNoteId);
+      if (idsToExpand) {
+        setExpandedNodeIds(prev => new Set([...prev, ...idsToExpand]));
+        setLastExpandedNoteId(initialNoteId);
+      }
     }
-  }, [initialNoteId, selectedNoteId]);
+  }, [initialNoteId, lastExpandedNoteId, isLoading, noteTree]);
 
   const selectNote = useCallback((id: string | null) => {
     setSelectedNoteId(id);
 
-    // Expand parent nodes when selecting a note
+    // Expand parent nodes when selecting a note, and expand the note itself if it has children
     if (id) {
       const findAndExpandParents = (nodes: NoteTreeNode[], targetId: string, path: string[] = []): boolean => {
         for (const node of nodes) {
@@ -64,6 +93,12 @@ export function NotesProvider({ children, initialNoteId = null }: NotesProviderP
             path.forEach(parentId => {
               setExpandedNodeIds(prev => new Set([...prev, parentId]));
             });
+
+            // Expand the selected node itself if it has children
+            if (node.children.length > 0) {
+              setExpandedNodeIds(prev => new Set([...prev, node.note.id]));
+            }
+
             return true;
           }
           if (node.children.length > 0) {

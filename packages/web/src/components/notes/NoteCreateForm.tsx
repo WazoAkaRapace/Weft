@@ -70,7 +70,7 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
         value={title}
         onChange={e => setTitle(e.target.value)}
         placeholder="Note title..."
-        className="w-full px-3 py-2 text-sm border border-border dark:border-border-dark rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-background-dark text-text-default dark:text-text-dark-default"
+        className="w-full px-3 py-2 text-sm border border-neutral-200 dark:border-dark-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-dark-900 text-neutral-900 dark:text-dark-50"
         disabled={isSubmitting}
       />
 
@@ -79,10 +79,10 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
         <button
           type="button"
           onClick={() => setShowIconPicker(!showIconPicker)}
-          className="flex items-center gap-2 px-3 py-2 text-sm border border-border dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-full"
+          className="flex items-center gap-2 px-3 py-2 text-sm border border-neutral-200 dark:border-dark-600 rounded-lg hover:bg-neutral-50 dark:hover:bg-dark-700 transition-colors w-full"
         >
           <span className="text-lg">{selectedIcon}</span>
-          <span className="flex-1 text-left text-text-secondary dark:text-text-dark-secondary">
+          <span className="flex-1 text-left text-neutral-500 dark:text-dark-400">
             Choose icon
           </span>
           <svg
@@ -99,7 +99,7 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
         </button>
 
         {showIconPicker && (
-          <div className="absolute z-10 mt-1 p-2 bg-white dark:bg-background-card-dark border border-border dark:border-border-dark rounded-lg shadow-lg grid grid-cols-8 gap-1">
+          <div className="absolute z-10 mt-1 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg grid grid-cols-8 gap-1">
             {NOTE_ICONS.map(icon => (
               <button
                 key={icon}
@@ -108,8 +108,8 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
                   setSelectedIcon(icon);
                   setShowIconPicker(false);
                 }}
-                className={`p-2 text-xl rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
-                  selectedIcon === icon ? 'bg-primary-light dark:bg-primary/20' : ''
+                className={`p-2 text-xl rounded hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors ${
+                  selectedIcon === icon ? 'bg-primary-50 dark:bg-primary-900/30' : ''
                 }`}
               >
                 {icon}
@@ -124,17 +124,17 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
         <button
           type="button"
           onClick={() => setShowColorPicker(!showColorPicker)}
-          className="flex items-center gap-2 px-3 py-2 text-sm border border-border dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-full"
+          className="flex items-center gap-2 px-3 py-2 text-sm border border-neutral-200 dark:border-dark-600 rounded-lg hover:bg-neutral-50 dark:hover:bg-dark-700 transition-colors w-full"
         >
           {selectedColor ? (
             <span
-              className="w-5 h-5 rounded border border-border dark:border-border-dark"
+              className="w-5 h-5 rounded border border-neutral-200 dark:border-dark-600"
               style={{ backgroundColor: selectedColor }}
             />
           ) : (
-            <span className="w-5 h-5 rounded border border-border dark:border-border-dark bg-gray-200 dark:bg-gray-700" />
+            <span className="w-5 h-5 rounded border border-neutral-200 dark:border-dark-600 bg-neutral-200 dark:bg-dark-700" />
           )}
-          <span className="flex-1 text-left text-text-secondary dark:text-text-dark-secondary">
+          <span className="flex-1 text-left text-neutral-500 dark:text-dark-400">
             Choose color
           </span>
           <svg
@@ -151,7 +151,7 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
         </button>
 
         {showColorPicker && (
-          <div className="absolute z-10 mt-1 p-2 bg-white dark:bg-background-card-dark border border-border dark:border-border-dark rounded-lg shadow-lg space-y-1">
+          <div className="absolute z-10 mt-1 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg space-y-1">
             {NOTE_COLORS.map(color => (
               <button
                 key={color.name}
@@ -160,17 +160,17 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
                   setSelectedColor(color.value);
                   setShowColorPicker(false);
                 }}
-                className="flex items-center gap-2 px-3 py-2 text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full"
+                className="flex items-center gap-2 px-3 py-2 text-sm rounded hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors w-full"
               >
                 {color.value ? (
                   <span
-                    className="w-4 h-4 rounded border border-border dark:border-border-dark"
+                    className="w-4 h-4 rounded border border-neutral-200 dark:border-dark-600"
                     style={{ backgroundColor: color.value }}
                   />
                 ) : (
-                  <span className="w-4 h-4 rounded border border-dashed border-border dark:border-border-dark" />
+                  <span className="w-4 h-4 rounded border border-dashed border-neutral-200 dark:border-dark-600" />
                 )}
-                <span className="text-text-default dark:text-text-dark-default">{color.name}</span>
+                <span className="text-neutral-700 dark:text-dark-200">{color.name}</span>
               </button>
             ))}
           </div>
@@ -182,7 +182,7 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
         <button
           type="submit"
           disabled={!title.trim() || isSubmitting}
-          className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-primary-hover disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-primary-600 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {isSubmitting ? 'Creating...' : 'Create'}
         </button>
@@ -190,7 +190,7 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
           type="button"
           onClick={handleCancel}
           disabled={isSubmitting}
-          className="px-4 py-2 border border-border dark:border-border-dark rounded-lg font-medium cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-text-default dark:text-text-dark-default disabled:opacity-60 disabled:cursor-not-allowed"
+          className="px-4 py-2 border border-neutral-200 dark:border-dark-600 rounded-lg font-medium cursor-pointer transition-colors hover:bg-neutral-100 dark:hover:bg-dark-700 text-neutral-900 dark:text-dark-50 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           Cancel
         </button>

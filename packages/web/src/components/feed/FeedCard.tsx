@@ -13,7 +13,7 @@ export function FeedCard({ entry, onClick }: FeedCardProps) {
   if (entry.type === 'journal') {
     return (
       <div
-        className="flex gap-4 p-4 rounded-lg cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
+        className="flex gap-4 p-4 rounded-lg cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-dark-700"
         onClick={onClick}
       >
         {/* Thumbnail */}
@@ -25,7 +25,7 @@ export function FeedCard({ entry, onClick }: FeedCardProps) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 flex items-center justify-center" />
+            <div className="w-full h-full bg-gradient-to-br from-primary-400 via-primary-500 to-primary-600 flex items-center justify-center" />
           )}
           <div className="absolute bottom-1 left-1 flex items-center gap-1.5">
             {entry.dominantEmotion && (
@@ -41,10 +41,10 @@ export function FeedCard({ entry, onClick }: FeedCardProps) {
 
         {/* Details */}
         <div className="flex-1 min-w-0">
-          <h4 className="text-base font-medium text-text-default dark:text-text-dark-default m-0 mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
+          <h4 className="text-base font-medium text-neutral-900 dark:text-dark-50 m-0 mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
             {entry.title}
           </h4>
-          <p className="text-sm text-text-secondary dark:text-text-dark-secondary m-0">
+          <p className="text-sm text-neutral-500 dark:text-dark-400 m-0">
             {formatRelativeTime(entry.timestamp)}
           </p>
         </div>
@@ -55,20 +55,20 @@ export function FeedCard({ entry, onClick }: FeedCardProps) {
   // Note entry
   return (
     <div
-      className="flex gap-4 p-4 rounded-lg cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
+      className="flex gap-4 p-4 rounded-lg cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-dark-700"
       onClick={onClick}
     >
       {/* Icon */}
-      <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-2xl">
+      <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-neutral-100 dark:bg-dark-700 flex items-center justify-center text-2xl">
         {entry.icon || '📝'}
       </div>
 
       {/* Details */}
       <div className="flex-1 min-w-0">
-        <h4 className="text-base font-medium text-text-default dark:text-text-dark-default m-0 mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
+        <h4 className="text-base font-medium text-neutral-900 dark:text-dark-50 m-0 mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
           {entry.title}
         </h4>
-        <p className="text-sm text-text-secondary dark:text-text-dark-secondary m-0">
+        <p className="text-sm text-neutral-500 dark:text-dark-400 m-0">
           {formatRelativeTime(entry.timestamp)}
         </p>
       </div>

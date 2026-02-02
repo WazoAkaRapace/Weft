@@ -20,13 +20,13 @@ export function NoteTree({ isCollapsed = false }: NoteTreeProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-background-card-dark">
+    <div className="h-full flex flex-col bg-white dark:bg-dark-800">
       {/* Header */}
-      <div className={`border-b border-border dark:border-border-dark ${isCollapsed ? 'px-2 py-4' : 'p-4'}`}>
+      <div className={`border-b border-neutral-200 dark:border-dark-600 ${isCollapsed ? 'px-2 py-4' : 'p-4'}`}>
         {!isCollapsed && (
           <button
             onClick={handleBackToNavigation}
-            className="flex items-center gap-2 text-sm text-text-secondary dark:text-text-dark-secondary hover:text-text-default dark:hover:text-text-dark-default transition-colors mb-3"
+            className="flex items-center gap-2 text-sm text-neutral-500 dark:text-dark-400 hover:text-neutral-900 dark:hover:text-dark-50 transition-colors mb-3"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="15 18 9 12 15 6" />
@@ -37,7 +37,7 @@ export function NoteTree({ isCollapsed = false }: NoteTreeProps) {
 
         <button
           onClick={handleNewNote}
-          className={`flex items-center gap-2 bg-primary text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-primary-hover ${
+          className={`flex items-center gap-2 bg-primary-500 text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-primary-600 ${
             isCollapsed ? 'px-2 py-2' : 'px-4 py-2 w-full'
           }`}
           title={isCollapsed ? 'New Note' : ''}
@@ -51,25 +51,25 @@ export function NoteTree({ isCollapsed = false }: NoteTreeProps) {
       </div>
 
       {/* Tree Content */}
-      <div className={`flex-1 overflow-y-auto ${isCollapsed ? 'px-2' : ''}`}>
+      <div className={`flex-1 overflow-y-auto overflow-x-hidden ${isCollapsed ? 'px-2' : ''}`}>
         {isLoading && (
-          <div className="p-4 text-center text-text-secondary dark:text-text-dark-secondary">
+          <div className="p-4 text-center text-neutral-500 dark:text-dark-400">
             Loading notes...
           </div>
         )}
 
         {error && (
-          <div className="p-4 text-center text-danger">
+          <div className="p-4 text-center text-error">
             Error: {error.message}
           </div>
         )}
 
         {!isLoading && !error && notes.length === 0 && (
           <div className="p-8 text-center">
-            <p className="text-text-secondary dark:text-text-dark-secondary mb-4">
+            <p className="text-neutral-500 dark:text-dark-400 mb-4">
               No notes yet
             </p>
-            <p className="text-sm text-text-hint dark:text-text-dark-hint">
+            <p className="text-sm text-neutral-400 dark:text-dark-500">
               Click "New Note" to create your first note
             </p>
           </div>

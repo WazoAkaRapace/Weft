@@ -51,7 +51,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
   return (
     <aside
       className={`
-        h-screen bg-white dark:bg-background-card-dark border-r border-border dark:border-border-dark
+        h-screen bg-white dark:bg-dark-800 border-r border-neutral-200 dark:border-dark-600
         flex flex-col
         fixed md:relative z-50
         transition-all duration-300
@@ -61,14 +61,14 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
       `}
     >
       {/* Logo/Brand */}
-      <div className="p-4 border-b border-border dark:border-border-dark flex items-center justify-between">
+      <div className="p-4 border-b border-neutral-200 dark:border-dark-600 flex items-center justify-between">
         {!isCollapsed && (
-          <h1 className="text-lg font-bold text-text-default dark:text-text-dark-default">
+          <h1 className="text-lg font-bold text-neutral-900 dark:text-dark-50">
             Weft
           </h1>
         )}
         {isCollapsed && (
-          <span className="text-xl font-bold text-text-default dark:text-text-dark-default">
+          <span className="text-xl font-bold text-neutral-900 dark:text-dark-50">
             W
           </span>
         )}
@@ -82,7 +82,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
               <div key={`group-${index}`} className="mb-2">
                 {/* Group Header */}
                 <div className={`${isCollapsed ? 'px-2' : 'px-4'} mb-2`}>
-                  <span className={`text-xs font-semibold text-text-secondary dark:text-text-dark-secondary uppercase tracking-wide transition-opacity duration-200 ${
+                  <span className={`text-xs font-semibold text-neutral-500 dark:text-dark-400 uppercase tracking-wide transition-opacity duration-200 ${
                     isCollapsed ? 'opacity-0 group-hover:opacity-100 hidden group-hover:block whitespace-nowrap overflow-hidden' : ''
                   }`}>
                     {item.title}
@@ -100,20 +100,20 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
                       }
                     }}
                     className={`
-                      w-full flex items-center gap-3 rounded-lg cursor-pointer
-                      hover:bg-gray-100 dark:hover:bg-gray-800
+                      w-full flex items-center gap-3 rounded-lg cursor-pointer mx-2
+                      hover:bg-neutral-100 dark:hover:bg-dark-700
                       transition-all
                       ${isActive(groupItem.path)
-                        ? 'bg-primary-light dark:bg-primary/20 border-l-4 border-primary'
+                        ? 'bg-primary-50 dark:bg-primary-900/30 border-l-4 border-primary-500'
                         : ''
                       }
-                      ${isCollapsed ? 'px-4 py-3' : 'px-4 py-3'}
+                      ${isCollapsed ? 'px-2 py-3' : 'px-4 py-3'}
                     `}
                     title={groupItem.label}
                   >
                     <span className="text-lg flex-shrink-0">{groupItem.icon}</span>
                     <span
-                      className={`text-text-default dark:text-text-dark-default transition-opacity duration-200 ${
+                      className={`text-neutral-700 dark:text-dark-200 transition-opacity duration-200 ${
                         isCollapsed ? 'opacity-0 group-hover:opacity-100 hidden group-hover:block whitespace-nowrap overflow-hidden' : ''
                       }`}
                     >
@@ -136,11 +136,11 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
                 }
               }}
               className={`
-                w-full flex items-center gap-3 rounded-lg cursor-pointer
-                hover:bg-gray-100 dark:hover:bg-gray-800
+                w-full flex items-center gap-3 rounded-lg cursor-pointer mx-2
+                hover:bg-neutral-100 dark:hover:bg-dark-700
                 transition-all
                 ${isActive(item.path)
-                  ? 'bg-primary-light dark:bg-primary/20 border-l-4 border-primary'
+                  ? 'bg-primary-50 dark:bg-primary-900/30 border-l-4 border-primary-500'
                   : ''
                 }
                 ${isCollapsed ? 'px-2 py-3' : 'px-4 py-3'}
@@ -149,7 +149,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
             >
               <span className="text-lg flex-shrink-0">{item.icon}</span>
               <span
-                className={`text-text-default dark:text-text-dark-default transition-opacity duration-200 ${
+                className={`text-neutral-700 dark:text-dark-200 transition-opacity duration-200 ${
                   isCollapsed ? 'opacity-0 group-hover:opacity-100 hidden group-hover:block whitespace-nowrap overflow-hidden' : ''
                 }`}
               >
@@ -161,17 +161,17 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
       </nav>
 
       {/* Bottom Section */}
-      <div className="border-t border-border dark:border-border-dark">
+      <div className="border-t border-neutral-200 dark:border-dark-600">
         {/* User Info */}
         <div
-          className={`flex items-center gap-3 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
+          className={`flex items-center gap-3 py-3 hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors mx-2 rounded-lg ${
             isCollapsed ? 'px-2' : 'px-4'
           }`}
           title={session?.user?.name || 'User'}
         >
           <span className="text-lg flex-shrink-0">👤</span>
           <span
-            className={`text-text-default dark:text-text-dark-default font-medium transition-opacity duration-200 ${
+            className={`text-neutral-700 dark:text-dark-200 font-medium transition-opacity duration-200 ${
               isCollapsed ? 'opacity-0 group-hover:opacity-100 hidden group-hover:block whitespace-nowrap overflow-hidden' : ''
             }`}
           >
@@ -183,14 +183,14 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
         <button
           onClick={cycleTheme}
           className={`
-            w-full flex items-center gap-3 text-left hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors
+            w-full flex items-center gap-3 text-left hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors mx-2 rounded-lg
             ${isCollapsed ? 'px-2 py-2' : 'px-4 py-2'}
           `}
           title={`Current theme: ${theme}${theme === 'system' ? ` (${effectiveTheme})` : ''}`}
         >
           <span className="text-lg flex-shrink-0">{getThemeIcon()}</span>
           <span
-            className={`text-text-default dark:text-text-dark-default transition-opacity duration-200 ${
+            className={`text-neutral-700 dark:text-dark-200 transition-opacity duration-200 ${
               isCollapsed ? 'opacity-0 group-hover:opacity-100 hidden group-hover:block whitespace-nowrap overflow-hidden' : ''
             }`}
           >
@@ -202,7 +202,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
         <button
           onClick={handleSignOut}
           className={`
-            w-full flex items-center gap-3 text-left text-danger hover:bg-danger-light/50 dark:hover:bg-danger/20 transition-colors
+            w-full flex items-center gap-3 text-left text-error hover:bg-error-light/50 dark:hover:bg-error-dark-light/30 transition-colors mx-2 rounded-lg
             ${isCollapsed ? 'px-2 py-2' : 'px-4 py-2'}
           `}
           title="Sign Out"
@@ -220,7 +220,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
         {/* Mobile Close Button */}
         <button
           onClick={onClose}
-          className="md:hidden w-full px-4 py-3 flex items-center justify-center gap-2 text-text-secondary dark:text-text-dark-secondary hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border-t border-border dark:border-border-dark"
+          className="md:hidden w-full px-4 py-3 flex items-center justify-center gap-2 text-neutral-500 dark:text-dark-400 hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors border-t border-neutral-200 dark:border-dark-600"
         >
           <span>✕</span>
           <span>Close</span>
@@ -229,7 +229,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
         {/* Desktop Collapse Button */}
         <button
           onClick={onToggleCollapse}
-          className="hidden md:flex w-full px-4 py-3 items-center justify-center gap-2 text-text-secondary dark:text-text-dark-secondary hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border-t border-border dark:border-border-dark"
+          className="hidden md:flex w-full px-4 py-3 items-center justify-center gap-2 text-neutral-500 dark:text-dark-400 hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors border-t border-neutral-200 dark:border-dark-600"
           title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <svg
@@ -253,7 +253,7 @@ function NotesTreeSidebar({ isOpen, isCollapsed }: { isOpen: boolean; isCollapse
   return (
     <aside
       className={`
-        h-screen bg-white dark:bg-background-card-dark border-r border-border dark:border-border-dark
+        h-screen bg-white dark:bg-dark-800 border-r border-neutral-200 dark:border-dark-600
         flex flex-col
         fixed md:relative z-50
         transition-all duration-300

@@ -63,21 +63,21 @@ export function EmptyFeedState({ hasNotes, hasJournals }: EmptyFeedStateProps) {
     if (!hasNotes && !hasJournals) {
       return (
         <div className="text-center py-8">
-          <h3 className="text-xl text-text-default dark:text-text-dark-default mb-2">
+          <h3 className="text-xl text-neutral-900 dark:text-dark-50 mb-2">
             Welcome to Weft
           </h3>
-          <p className="text-text-secondary dark:text-text-dark-secondary mb-6">
+          <p className="text-neutral-500 dark:text-dark-400 mb-6">
             Your video journaling application
           </p>
           <div className="flex gap-4 justify-center">
             <button
-              className="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors"
+              className="px-6 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
               onClick={() => navigate('/journal/new')}
             >
               Create Journal
             </button>
             <button
-              className="px-6 py-2 bg-gray-100 dark:bg-gray-800 text-text-default dark:text-text-dark-default rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              className="px-6 py-2 bg-neutral-100 dark:bg-dark-700 text-neutral-900 dark:text-dark-50 rounded-lg font-medium hover:bg-neutral-200 dark:hover:bg-dark-600 transition-colors"
               onClick={() => navigate('/notes')}
             >
               Create Note
@@ -91,14 +91,14 @@ export function EmptyFeedState({ hasNotes, hasJournals }: EmptyFeedStateProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-background-card-dark rounded-lg p-6 shadow-sm">
+    <div className="bg-white dark:bg-dark-800 rounded-lg p-6 shadow-sm">
       {renderWelcomeMessage()}
 
       {/* Sample entries header */}
       {!hasJournals && (
         <>
-          <div className="border-b-2 border-border-light dark:border-gray-700 my-4" />
-          <h3 className="text-lg text-text-default dark:text-text-dark-default mb-4">
+          <div className="border-b-2 border-neutral-200 dark:border-dark-600 my-4" />
+          <h3 className="text-lg text-neutral-900 dark:text-dark-50 mb-4">
             See what your journal will look like:
           </h3>
         </>
@@ -112,8 +112,8 @@ export function EmptyFeedState({ hasNotes, hasJournals }: EmptyFeedStateProps) {
       {/* Sample notes */}
       {!hasNotes && hasJournals && (
         <>
-          <div className="border-b-2 border-border-light dark:border-gray-700 my-4" />
-          <h3 className="text-lg text-text-default dark:text-text-dark-default mb-4">
+          <div className="border-b-2 border-neutral-200 dark:border-dark-600 my-4" />
+          <h3 className="text-lg text-neutral-900 dark:text-dark-50 mb-4">
             See what your notes will look like:
           </h3>
         </>

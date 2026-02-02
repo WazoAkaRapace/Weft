@@ -108,7 +108,7 @@ export function NoteEditorPanel() {
   if (!selectedNote) {
     return (
       <div className="h-full flex items-center justify-center p-8">
-        <div className="text-center text-text-secondary dark:text-text-dark-secondary">
+        <div className="text-center text-neutral-500 dark:text-dark-400">
           <p>Select a note to edit</p>
         </div>
       </div>
@@ -116,29 +116,40 @@ export function NoteEditorPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-background-card-dark overflow-hidden">
+    <div className="h-full flex flex-col bg-white dark:bg-dark-800 overflow-hidden">
       {/* Header */}
-      <div className="p-1.5 pt-5 sm:p-3 md:p-4 lg:p-6 border-b border-border dark:border-border-dark flex-shrink-0">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 md:gap-4 sm:overflow-hidden sm:min-w-0">
+      <div
+        className="p-1.5 pt-5 sm:p-3 md:p-4 lg:p-6 border-b flex-shrink-0 relative"
+        style={
+          selectedNote.note.color
+            ? {
+                borderBottomColor: `${selectedNote.note.color}08`,
+                background: `linear-gradient(to bottom, ${selectedNote.note.color}20 0%, ${selectedNote.note.color}08 100%)`,
+              }
+            : undefined
+        }
+      >
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 md:gap-4 sm:overflow-hidden sm:min-w-0 relative z-10">
           {/* Top row on mobile: Icon, Title, Color, Edit/Save buttons */}
           <div className="flex items-center justify-between w-full sm:w-auto sm:hidden gap-1 pl-14">
             {/* Icon */}
             <div className="relative flex-shrink-0">
               <button
                 onClick={() => setShowIconPicker(!showIconPicker)}
-                className="text-2xl p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                className="text-2xl p-1 hover:bg-neutral-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
               >
                 {selectedNote.note.icon}
               </button>
 
               {showIconPicker && (
-                <div className="absolute z-10 mt-2 p-2 bg-white dark:bg-background-card-dark border border-border dark:border-border-dark rounded-lg shadow-lg grid grid-cols-4 sm:grid-cols-8 gap-1 left-0 max-w-[calc(100vw-4rem)]">
+                <div className="absolute z-10 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg grid grid-cols-4 sm:grid-cols-8 gap-1 left-0 max-w-[calc(100vw-4rem)]">
                   {NOTE_ICONS.map(icon => (
                     <button
                       key={icon}
                       onClick={() => handleIconSelect(icon)}
-                      className={`p-1 text-lg rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
-                        selectedNote.note.icon === icon ? 'bg-primary-light dark:bg-primary/20' : ''
+                      className={`p-1 text-lg rounded hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors ${
+                        selectedNote.note.icon === icon ? 'bg-primary-50 dark:bg-primary-900/30' : ''
                       }`}
                     >
                       {icon}
@@ -164,13 +175,13 @@ export function NoteEditorPanel() {
                       setIsEditingTitle(false);
                     }
                   }}
-                  className="w-full min-w-0 px-1 py-1 text-xl font-bold border border-border dark:border-border-dark rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-background-dark text-text-default dark:text-text-dark-default"
+                  className="w-full min-w-0 px-1 py-1 text-xl font-bold border border-neutral-200 dark:border-dark-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-dark-900 text-neutral-900 dark:text-dark-50"
                   autoFocus
                 />
               ) : (
                 <h1
                   onClick={() => setIsEditingTitle(true)}
-                  className="text-xl font-bold text-text-default dark:text-text-dark-default cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 px-1 py-1 rounded-lg transition-colors truncate"
+                  className="text-xl font-bold text-neutral-900 dark:text-dark-50 cursor-pointer hover:bg-neutral-50 dark:hover:bg-dark-700 px-1 py-1 rounded-lg transition-colors truncate"
                 >
                   {selectedNote.note.title}
                 </h1>
@@ -182,29 +193,29 @@ export function NoteEditorPanel() {
               <div className="relative flex-shrink-0">
               <button
                 onClick={() => setShowColorPicker(!showColorPicker)}
-                className={`w-8 h-8 rounded border-2 border-border dark:border-border-dark transition-colors ${
-                  selectedNote.note.color ? '' : 'bg-gray-200 dark:bg-gray-700'
+                className={`w-8 h-8 rounded border-2 border-neutral-200 dark:border-dark-600 transition-colors ${
+                  selectedNote.note.color ? '' : 'bg-neutral-200 dark:bg-dark-700'
                 }`}
                 style={selectedNote.note.color ? { backgroundColor: selectedNote.note.color } : undefined}
               />
 
               {showColorPicker && (
-                <div className="absolute z-10 mt-2 p-2 bg-white dark:bg-background-card-dark border border-border dark:border-border-dark rounded-lg shadow-lg space-y-1 right-0 max-h-60 overflow-y-auto">
+                <div className="absolute z-10 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg space-y-1 right-0 max-h-60 overflow-y-auto">
                   {NOTE_COLORS.map(color => (
                     <button
                       key={color.name}
                       onClick={() => handleColorSelect(color.value)}
-                      className="flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full"
+                      className="flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors w-full"
                     >
                       {color.value ? (
                         <span
-                          className="w-3 h-3 rounded border border-border dark:border-border-dark flex-shrink-0"
+                          className="w-3 h-3 rounded border border-neutral-200 dark:border-dark-600 flex-shrink-0"
                           style={{ backgroundColor: color.value }}
                         />
                       ) : (
-                        <span className="w-3 h-3 rounded border border-dashed border-border dark:border-border-dark flex-shrink-0" />
+                        <span className="w-3 h-3 rounded border border-dashed border-neutral-200 dark:border-dark-600 flex-shrink-0" />
                       )}
-                      <span className="text-text-default dark:text-text-dark-default truncate">{color.name}</span>
+                      <span className="text-neutral-700 dark:text-dark-200 truncate">{color.name}</span>
                     </button>
                   ))}
                 </div>
@@ -215,7 +226,7 @@ export function NoteEditorPanel() {
             <button
               type="button"
               onClick={() => setIsEditing(!isEditing)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-border dark:border-border-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 dark:border-dark-600 hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors flex-shrink-0"
               title={isEditing ? 'View mode' : 'Edit mode'}
             >
               {isEditing ? (
@@ -238,8 +249,8 @@ export function NoteEditorPanel() {
                     saveStatus === 'saved'
                       ? 'bg-success text-white'
                       : saveStatus === 'error'
-                      ? 'bg-danger text-white'
-                      : 'bg-primary text-white hover:bg-primary-hover'
+                      ? 'bg-error text-white'
+                      : 'bg-primary-500 text-white hover:bg-primary-600'
                   } disabled:opacity-60 disabled:cursor-not-allowed`}
                   title={saveStatus === 'saved' ? 'Saved' : saveStatus === 'saving' ? 'Saving...' : saveStatus === 'error' ? 'Failed' : 'Save'}
                 >
@@ -275,19 +286,19 @@ export function NoteEditorPanel() {
             <div className="relative flex-shrink-0">
               <button
                 onClick={() => setShowIconPicker(!showIconPicker)}
-                className="text-2xl sm:text-3xl md:text-4xl p-1 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                className="text-2xl sm:text-3xl md:text-4xl p-1 sm:p-2 hover:bg-neutral-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
               >
                 {selectedNote.note.icon}
               </button>
 
               {showIconPicker && (
-                <div className="absolute z-10 mt-2 p-2 bg-white dark:bg-background-card-dark border border-border dark:border-border-dark rounded-lg shadow-lg grid grid-cols-4 sm:grid-cols-8 gap-1 left-0 max-w-[calc(100vw-4rem)]">
+                <div className="absolute z-10 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg grid grid-cols-4 sm:grid-cols-8 gap-1 left-0 max-w-[calc(100vw-4rem)]">
                   {NOTE_ICONS.map(icon => (
                     <button
                       key={icon}
                       onClick={() => handleIconSelect(icon)}
-                      className={`p-1 sm:p-2 text-lg sm:text-xl rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
-                        selectedNote.note.icon === icon ? 'bg-primary-light dark:bg-primary/20' : ''
+                      className={`p-1 sm:p-2 text-lg sm:text-xl rounded hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors ${
+                        selectedNote.note.icon === icon ? 'bg-primary-50 dark:bg-primary-900/30' : ''
                       }`}
                     >
                       {icon}
@@ -313,13 +324,13 @@ export function NoteEditorPanel() {
                       setIsEditingTitle(false);
                     }
                   }}
-                  className="w-full min-w-0 px-2 sm:px-3 py-1 sm:py-2 text-xl sm:text-2xl font-bold border border-border dark:border-border-dark rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-background-dark text-text-default dark:text-text-dark-default"
+                  className="w-full min-w-0 px-2 sm:px-3 py-1 sm:py-2 text-xl sm:text-2xl font-bold border border-neutral-200 dark:border-dark-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-dark-900 text-neutral-900 dark:text-dark-50"
                   autoFocus
                 />
               ) : (
                 <h1
                   onClick={() => setIsEditingTitle(true)}
-                  className="text-xl sm:text-2xl font-bold text-text-default dark:text-text-dark-default cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 px-2 sm:px-3 py-1 sm:py-2 -ml-2 sm:-ml-3 rounded-lg transition-colors truncate"
+                  className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-dark-50 cursor-pointer hover:bg-neutral-50 dark:hover:bg-dark-700 px-2 sm:px-3 py-1 sm:py-2 -ml-2 sm:-ml-3 rounded-lg transition-colors truncate"
                 >
                   {selectedNote.note.title}
                 </h1>
@@ -331,29 +342,29 @@ export function NoteEditorPanel() {
               <div className="relative flex-shrink-0 hidden sm:block">
               <button
                 onClick={() => setShowColorPicker(!showColorPicker)}
-                className={`w-8 h-8 rounded border-2 border-border dark:border-border-dark transition-colors ${
-                  selectedNote.note.color ? '' : 'bg-gray-200 dark:bg-gray-700'
+                className={`w-8 h-8 rounded border-2 border-neutral-200 dark:border-dark-600 transition-colors ${
+                  selectedNote.note.color ? '' : 'bg-neutral-200 dark:bg-dark-700'
                 }`}
                 style={selectedNote.note.color ? { backgroundColor: selectedNote.note.color } : undefined}
               />
 
               {showColorPicker && (
-                <div className="absolute z-10 mt-2 p-2 bg-white dark:bg-background-card-dark border border-border dark:border-border-dark rounded-lg shadow-lg space-y-1 right-0 max-h-60 overflow-y-auto">
+                <div className="absolute z-10 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg space-y-1 right-0 max-h-60 overflow-y-auto">
                   {NOTE_COLORS.map(color => (
                     <button
                       key={color.name}
                       onClick={() => handleColorSelect(color.value)}
-                      className="flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full"
+                      className="flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors w-full"
                     >
                       {color.value ? (
                         <span
-                          className="w-3 h-3 sm:w-4 sm:h-4 rounded border border-border dark:border-border-dark flex-shrink-0"
+                          className="w-3 h-3 sm:w-4 sm:h-4 rounded border border-neutral-200 dark:border-dark-600 flex-shrink-0"
                           style={{ backgroundColor: color.value }}
                         />
                       ) : (
-                        <span className="w-3 h-3 sm:w-4 sm:h-4 rounded border border-dashed border-border dark:border-border-dark flex-shrink-0" />
+                        <span className="w-3 h-3 sm:w-4 sm:h-4 rounded border border-dashed border-neutral-200 dark:border-dark-600 flex-shrink-0" />
                       )}
-                      <span className="text-text-default dark:text-text-dark-default truncate">{color.name}</span>
+                      <span className="text-neutral-700 dark:text-dark-200 truncate">{color.name}</span>
                     </button>
                   ))}
                 </div>
@@ -365,7 +376,7 @@ export function NoteEditorPanel() {
               <button
                 type="button"
                 onClick={() => setIsEditing(!isEditing)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-border dark:border-border-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 dark:border-dark-600 hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors"
                 title={isEditing ? 'View mode' : 'Edit mode'}
               >
                 {isEditing ? (
@@ -388,8 +399,8 @@ export function NoteEditorPanel() {
                     saveStatus === 'saved'
                       ? 'bg-success text-white'
                       : saveStatus === 'error'
-                      ? 'bg-danger text-white'
-                      : 'bg-primary text-white hover:bg-primary-hover'
+                      ? 'bg-error text-white'
+                      : 'bg-primary-500 text-white hover:bg-primary-600'
                   } disabled:opacity-60 disabled:cursor-not-allowed`}
                   title={saveStatus === 'saved' ? 'Saved' : saveStatus === 'saving' ? 'Saving...' : saveStatus === 'error' ? 'Failed' : 'Save'}
                 >

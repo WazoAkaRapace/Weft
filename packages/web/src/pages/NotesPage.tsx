@@ -16,10 +16,10 @@ export function NotesPage() {
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center max-w-md">
             <div className="text-6xl mb-4">📝</div>
-            <h2 className="text-2xl font-bold text-text-default dark:text-text-dark-default mb-2">
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-dark-50 mb-2">
               No note selected
             </h2>
-            <p className="text-text-secondary dark:text-text-dark-secondary mb-6">
+            <p className="text-neutral-500 dark:text-dark-400 mb-6">
               Select a note from the sidebar or create a new one to get started.
             </p>
           </div>
