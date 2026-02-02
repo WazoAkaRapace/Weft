@@ -1,12 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNotesContext } from '../../contexts/NotesContext';
-import { useLayoutContext } from '../../components/layout/AppLayout';
 import { NotesEditor, type NotesEditorRef } from './NotesEditor';
 import type { UpdateNoteData } from '../../hooks/useNotes';
 
 export function NoteEditorPanel() {
   const { getSelectedNote, updateNote } = useNotesContext();
-  const { setSidebarOpen } = useLayoutContext();
   const selectedNote = getSelectedNote();
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -120,27 +118,10 @@ export function NoteEditorPanel() {
   return (
     <div className="h-full flex flex-col bg-white dark:bg-background-card-dark overflow-hidden">
       {/* Header */}
-      <div className="p-1.5 sm:p-3 md:p-4 lg:p-6 border-b border-border dark:border-border-dark flex-shrink-0">
+      <div className="p-1.5 pt-5 sm:p-3 md:p-4 lg:p-6 border-b border-border dark:border-border-dark flex-shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 md:gap-4 sm:overflow-hidden sm:min-w-0">
-          {/* Top row on mobile: Burger, Icon, Title, Color, Edit/Save buttons */}
-          <div className="flex items-center justify-between w-full sm:w-auto sm:hidden gap-1">
-            {/* Burger menu button */}
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-border dark:border-border-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
-              aria-label="Open menu"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="8" y1="6" x2="21" y2="6" />
-                <line x1="8" y1="12" x2="21" y2="12" />
-                <line x1="8" y1="18" x2="21" y2="18" />
-                <line x1="3" y1="6" x2="3.01" y2="6" />
-                <line x1="3" y1="12" x2="3.01" y2="12" />
-                <line x1="3" y1="18" x2="3.01" y2="18" />
-              </svg>
-            </button>
-
+          {/* Top row on mobile: Icon, Title, Color, Edit/Save buttons */}
+          <div className="flex items-center justify-between w-full sm:w-auto sm:hidden gap-1 pl-14">
             {/* Icon */}
             <div className="relative flex-shrink-0">
               <button

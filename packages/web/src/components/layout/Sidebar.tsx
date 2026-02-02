@@ -143,7 +143,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
                   ? 'bg-primary-light dark:bg-primary/20 border-l-4 border-primary'
                   : ''
                 }
-                ${isCollapsed ? 'mx-2 px-2 py-3' : 'mx-4 px-4 py-3'}
+                ${isCollapsed ? 'px-2 py-3' : 'px-4 py-3'}
               `}
               title={item.label}
             >

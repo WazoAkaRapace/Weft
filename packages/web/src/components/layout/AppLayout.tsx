@@ -50,8 +50,8 @@ export function AppLayout({ children }: AppLayoutProps) {
         )}
 
         <main className={`flex-1 overflow-x-hidden overflow-auto ${isNotesMode ? 'pt-0 md:pt-0' : 'pt-16 md:pt-0'}`}>
-          {/* Mobile menu button - only show for non-notes mode */}
-          {!isNotesMode && (
+          {/* Mobile menu button */}
+          {(
             <button
               className="md:hidden fixed top-4 left-4 z-30 p-2 bg-white dark:bg-background-card-dark rounded-lg shadow hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               onClick={() => setSidebarOpen(true)}

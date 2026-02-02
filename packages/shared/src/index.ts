@@ -169,6 +169,22 @@ export interface JournalNote {
 }
 
 /**
+ * Unified feed entry type for dashboard
+ */
+export interface FeedEntry {
+  id: string;
+  type: 'note' | 'journal';
+  timestamp: Date;
+  title: string;
+  // Note-specific
+  icon?: string;
+  // Journal-specific
+  thumbnailPath?: string | null;
+  duration?: number;
+  dominantEmotion?: string | null;
+}
+
+/**
  * Video streaming types
  */
 export * from './video.js';
