@@ -35,6 +35,7 @@ interface UseNotesReturn {
   createNote: (data: CreateNoteData) => Promise<Note>;
   updateNote: (id: string, data: UpdateNoteData) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
+  reorderNotes: (notes: Array<{ id: string; position: number; parentId?: string | null }>) => Promise<void>;
   refresh: () => void;
 }
 
@@ -157,6 +158,37 @@ export function useNotes(): UseNotesReturn {
     setNotes(prev => prev.filter(note => note.id !== id));
   }, []);
 
+  const reorderNotes = useCallback(async (notes: Array<{ id: string; position: number; parentId?: string | null }>): Promise<void> => {
+    const response = await fetch(`${API_BASE}/api/notes/reorder`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ notes }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to reorder notes: ${response.statusText}`);
+    }
+
+    // Update local state with new positions and parentIds
+    setNotes(prev => {
+      const updateMap = new Map(notes.map(n => [n.id, { position: n.position, parentId: n.parentId }]));
+      return prev.map(note => {
+        const update = updateMap.get(note.id);
+        if (update) {
+          return {
+            ...note,
+            position: update.position,
+            ...(update.parentId !== undefined && { parentId: update.parentId }),
+          };
+        }
+        return note;
+      });
+    });
+  }, []);
+
   const refresh = useCallback(() => {
     fetchNotes();
   }, [fetchNotes]);
@@ -175,6 +207,7 @@ export function useNotes(): UseNotesReturn {
     createNote,
     updateNote,
     deleteNote,
+    reorderNotes,
     refresh,
   };
 }

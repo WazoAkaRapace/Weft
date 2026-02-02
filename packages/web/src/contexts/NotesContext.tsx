@@ -23,6 +23,7 @@ interface NotesContextValue {
   createNote: (data: CreateNoteData) => Promise<void>;
   updateNote: (id: string, data: UpdateNoteData) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
+  reorderNotes: (notes: Array<{ id: string; position: number; parentId?: string | null }>) => Promise<void>;
   refresh: () => void;
 
   // Computed
@@ -38,7 +39,7 @@ interface NotesProviderProps {
 }
 
 export function NotesProvider({ children, initialNoteId = null }: NotesProviderProps) {
-  const { noteTree, isLoading, error, createNote: createNoteApi, updateNote: updateNoteApi, deleteNote: deleteNoteApi, refresh } = useNotes();
+  const { noteTree, isLoading, error, createNote: createNoteApi, updateNote: updateNoteApi, deleteNote: deleteNoteApi, reorderNotes, refresh } = useNotes();
 
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(initialNoteId);
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
@@ -237,6 +238,7 @@ export function NotesProvider({ children, initialNoteId = null }: NotesProviderP
       createNote,
       updateNote,
       deleteNote,
+      reorderNotes,
       refresh,
       getSelectedNote,
       getChildNotes,
@@ -258,6 +260,7 @@ export function NotesProvider({ children, initialNoteId = null }: NotesProviderP
       createNote,
       updateNote,
       deleteNote,
+      reorderNotes,
       refresh,
       getSelectedNote,
       getChildNotes,

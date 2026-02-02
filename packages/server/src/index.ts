@@ -24,6 +24,7 @@ import {
   handleCreateNote,
   handleUpdateNote,
   handleDeleteNote,
+  handleReorderNotes,
   handleGetNoteJournals,
   handleLinkNoteToJournal,
   handleUnlinkNoteFromJournal,
@@ -340,6 +341,10 @@ const server = Bun.serve({
 
     if (url.pathname === '/api/notes' && request.method === 'POST') {
       return addCorsHeaders(await handleCreateNote(request), request);
+    }
+
+    if (url.pathname === '/api/notes/reorder' && request.method === 'POST') {
+      return addCorsHeaders(await handleReorderNotes(request), request);
     }
 
     // Note journals link endpoint (must be before general /api/notes/:id check)

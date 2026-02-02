@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useSession, signOut } from '../../lib/auth';
 import { useTheme } from '../../contexts/ThemeContext';
 import { navigationStructure, NavItem, NavGroup } from '../../lib/navigation';
-import { NoteTree } from '../notes/NoteTree';
+import { NoteTree } from '../notes/SortableNoteTree';
 
 interface SidebarProps {
   mode?: 'navigation' | 'notes-tree';

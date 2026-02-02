@@ -6,9 +6,13 @@ import { NoteCreateForm } from './NoteCreateForm';
 interface NoteTreeNodeProps {
   nodeId: string;
   level: number;
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+  makeChildZone?: boolean;
 }
 
-function NoteTreeNode({ nodeId, level }: NoteTreeNodeProps) {
+function NoteTreeNode({ nodeId, level, dragHandleProps, isDragging = false, isDragOver = false, makeChildZone = false }: NoteTreeNodeProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -21,7 +25,6 @@ function NoteTreeNode({ nodeId, level }: NoteTreeNodeProps) {
     selectNote,
     startCreating,
     deleteNote,
-    getChildNotes,
   } = useNotesContext();
 
   // Find this node and its children
@@ -42,7 +45,6 @@ function NoteTreeNode({ nodeId, level }: NoteTreeNodeProps) {
   const isSelected = selectedNoteId === nodeId;
   const isExpanded = expandedNodeIds.has(nodeId);
   const hasChildren = node.children.length > 0;
-  const children = getChildNotes(nodeId);
   const isShowingCreateForm = isCreating && creatingParentId === nodeId;
 
   const handleClick = () => {
@@ -87,15 +89,18 @@ function NoteTreeNode({ nodeId, level }: NoteTreeNodeProps) {
       <div
         onClick={handleClick}
         className={`
-          group flex items-center gap-2 py-2 pr-2 cursor-pointer transition-colors
+          group relative flex items-center gap-2 py-2 pr-2 cursor-pointer transition-colors
           hover:bg-neutral-100 dark:hover:bg-dark-700
           ${isSelected ? 'bg-primary-50 dark:bg-primary-900/30 border-l-4 border-primary-500' : ''}
+          ${isDragging ? 'opacity-50' : ''}
+          ${isDragOver ? 'ring-2 ring-primary-500 ring-offset-1' : ''}
         `}
         style={{
           paddingLeft: `${indent + 16}px`,
           backgroundColor: node.note.color ? `${node.note.color}10` : undefined
         }}
       >
+
         {/* Expand/Collapse Chevron */}
         {hasChildren ? (
           <button
@@ -152,16 +157,46 @@ function NoteTreeNode({ nodeId, level }: NoteTreeNodeProps) {
             </svg>
           </button>
         </div>
-      </div>
 
-      {/* Children */}
-      {(isExpanded || isShowingCreateForm) && children.length > 0 && (
-        <div>
-          {children.map(child => (
-            <NoteTreeNode key={child.note.id} nodeId={child.note.id} level={level + 1} />
-          ))}
-        </div>
-      )}
+        {/* Drag Handle - absolutely positioned on left, appears on hover */}
+        {dragHandleProps && (
+          <div
+            className="hidden group-hover:flex absolute left-0 top-1/2 -translate-y-1/2 bg-white dark:bg-dark-800 rounded-r-md shadow-sm"
+            {...dragHandleProps}
+            style={{ marginLeft: '-8px' }}
+          >
+            <div
+              className="p-1.5 hover:bg-neutral-200 dark:hover:bg-dark-600 rounded-r-md transition-colors cursor-grab active:cursor-grabbing"
+              title="Drag to reorder"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="9" cy="12" r="1" />
+                <circle cx="9" cy="5" r="1" />
+                <circle cx="9" cy="19" r="1" />
+                <circle cx="15" cy="12" r="1" />
+                <circle cx="15" cy="5" r="1" />
+                <circle cx="15" cy="19" r="1" />
+              </svg>
+            </div>
+          </div>
+        )}
+
+        {/* Drop Zone Indicator */}
+        {isDragOver && makeChildZone && (
+          <div className="absolute inset-0 flex items-center justify-center bg-primary-100 dark:bg-primary-900/40 rounded pointer-events-none z-10">
+            <span className="text-xs font-medium text-primary-700 dark:text-primary-300 bg-white dark:bg-dark-800 px-2 py-1 rounded shadow-sm">
+              Drop as child
+            </span>
+          </div>
+        )}
+        {isDragOver && !makeChildZone && (
+          <div className="absolute inset-0 flex items-center justify-center bg-neutral-200 dark:bg-dark-600/40 rounded pointer-events-none z-10">
+            <span className="text-xs font-medium text-neutral-700 dark:text-dark-300 bg-white dark:bg-dark-800 px-2 py-1 rounded shadow-sm">
+              Reorder
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* Create Form (if showing for this parent) */}
       {isShowingCreateForm && (

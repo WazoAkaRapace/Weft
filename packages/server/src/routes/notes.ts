@@ -718,6 +718,135 @@ export async function handleLinkNoteToJournal(
 }
 
 /**
+ * Reorder notes - updates positions and optionally parentIds for multiple notes
+ *
+ * POST /api/notes/reorder
+ *
+ * Body:
+ * - notes: Array of { id: string, position: number, parentId?: string | null }
+ *
+ * @returns Response indicating success or error
+ */
+export async function handleReorderNotes(request: Request): Promise<Response> {
+  try {
+    // Verify authentication
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse request body
+    const body = (await request.json().catch(() => ({}))) as {
+      notes?: Array<{ id: string; position: number; parentId?: string | null }>;
+    };
+
+    const { notes: notesToReorder } = body;
+
+    // Validate input
+    if (!notesToReorder || !Array.isArray(notesToReorder) || notesToReorder.length === 0) {
+      return new Response(
+        JSON.stringify({
+          error: 'notes array is required',
+          code: 'VALIDATION_ERROR',
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get all notes to verify ownership
+    const existingNotes = await db
+      .select()
+      .from(notes)
+      .where(and(eq(notes.userId, session.user.id), isNull(notes.deletedAt)));
+
+    const noteMap = new Map(existingNotes.map(n => [n.id, n]));
+
+    // Verify all notes exist and belong to user
+    for (const item of notesToReorder) {
+      const note = noteMap.get(item.id);
+      if (!note) {
+        return new Response(
+          JSON.stringify({
+            error: `Note ${item.id} not found`,
+            code: 'NOT_FOUND',
+          }),
+          { status: 404, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // If parentId is being changed, verify the new parent exists and belongs to user
+      if (item.parentId !== undefined && item.parentId !== null) {
+        const newParent = noteMap.get(item.parentId);
+        if (!newParent) {
+          return new Response(
+            JSON.stringify({
+              error: `Parent note ${item.parentId} not found`,
+              code: 'NOT_FOUND',
+            }),
+            { status: 404, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Prevent creating a cycle (a note cannot be its own ancestor)
+        if (item.id === item.parentId) {
+          return new Response(
+            JSON.stringify({
+              error: 'A note cannot be its own parent',
+              code: 'VALIDATION_ERROR',
+            }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+
+    // Update positions and parentIds
+    for (const item of notesToReorder) {
+      const updateData: { position: number; parentId?: string | null; updatedAt: Date } = {
+        position: item.position,
+        updatedAt: new Date(),
+      };
+
+      // Only update parentId if it's explicitly provided
+      if (item.parentId !== undefined) {
+        updateData.parentId = item.parentId;
+      }
+
+      await db
+        .update(notes)
+        .set(updateData)
+        .where(eq(notes.id, item.id));
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Notes reordered successfully',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Reorder notes error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+/**
  * Unlink a note from a journal
  *
  * DELETE /api/notes/:id/journals/:journalId
