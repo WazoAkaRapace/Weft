@@ -12,13 +12,15 @@ import { MainAppLayout } from './components/layout/MainAppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { OnboardingGuard } from './components/OnboardingGuard';
 import { OnboardingRouteGuard } from './components/OnboardingRouteGuard';
+import { NavigationProvider } from './contexts/NavigationContext';
 import './index.css';
 
 export function App() {
   return (
     <BrowserRouter>
       <VibeKanbanWebCompanion />
-      <Routes>
+      <NavigationProvider>
+        <Routes>
         {/* Onboarding route - only accessible when no users exist */}
         <Route
           path="/onboarding"
@@ -85,6 +87,7 @@ export function App() {
           }
         />
       </Routes>
+      </NavigationProvider>
     </BrowserRouter>
   );
 }

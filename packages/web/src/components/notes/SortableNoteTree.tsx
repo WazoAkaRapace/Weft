@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useNotesContext } from '../../contexts/NotesContext';
+import { useNavigationContext } from '../../contexts/NavigationContext';
 import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent, DragMoveEvent, closestCenter, useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -120,6 +121,7 @@ function NestedSortableNotes({ nodes, level, parentId, draggedOverNodeId, makeCh
 
 export function NoteTree({ isCollapsed = false }: SortableNoteTreeProps) {
   const navigate = useNavigate();
+  const { navigateWithWarning } = useNavigationContext();
   const { notes, isLoading, error, isCreating, startCreating, creatingParentId, reorderNotes } = useNotesContext();
 
   // Track drag position for detecting ON vs NEXT TO drops
@@ -341,7 +343,9 @@ export function NoteTree({ isCollapsed = false }: SortableNoteTreeProps) {
   };
 
   const handleBackToNavigation = () => {
-    navigate('/dashboard');
+    navigateWithWarning(() => {
+      navigate('/dashboard');
+    });
   };
 
   const handleNewNote = () => {

@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useNotesContext } from '../../contexts/NotesContext';
+import { useNavigationContext } from '../../contexts/NavigationContext';
 import { NoteCreateForm } from './NoteCreateForm';
 
 interface NoteTreeNodeProps {
@@ -15,6 +16,7 @@ interface NoteTreeNodeProps {
 function NoteTreeNode({ nodeId, level, dragHandleProps, isDragging = false, isDragOver = false, makeChildZone = false }: NoteTreeNodeProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { navigateWithWarning } = useNavigationContext();
   const {
     notes,
     selectedNoteId,
@@ -48,8 +50,16 @@ function NoteTreeNode({ nodeId, level, dragHandleProps, isDragging = false, isDr
   const isShowingCreateForm = isCreating && creatingParentId === nodeId;
 
   const handleClick = () => {
-    selectNote(nodeId);
-    navigate(`/notes/${nodeId}`);
+    // Don't show warning if clicking on the already-selected note
+    if (selectedNoteId === nodeId) {
+      selectNote(nodeId);
+      return;
+    }
+
+    navigateWithWarning(() => {
+      selectNote(nodeId);
+      navigate(`/notes/${nodeId}`);
+    });
   };
 
   const handleToggle = (e: React.MouseEvent) => {

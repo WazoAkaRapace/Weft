@@ -1,11 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNotesContext } from '../../contexts/NotesContext';
+import { useNavigationContext } from '../../contexts/NavigationContext';
 import { NotesEditor, type NotesEditorRef } from './NotesEditor';
 import type { UpdateNoteData } from '../../hooks/useNotes';
 
 export function NoteEditorPanel() {
   const { getSelectedNote, updateNote } = useNotesContext();
+  const { setHasUnsavedChanges } = useNavigationContext();
   const selectedNote = getSelectedNote();
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -39,6 +41,43 @@ export function NoteEditorPanel() {
       setTitleInput(selectedNote.note.title);
     }
   }, [selectedNote]);
+
+  // Warn user when leaving page with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Check if there are unsaved changes
+      const hasUnsavedChanges = notesEditorRef.current?.hasUnsavedChanges();
+      if (hasUnsavedChanges) {
+        // Show a warning dialog (browser-specific, can't be customized)
+        e.preventDefault();
+        // Chrome requires returnValue to be set
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  // Track unsaved changes and update navigation context
+  useEffect(() => {
+    const checkUnsavedChanges = () => {
+      const hasUnsaved = notesEditorRef.current?.hasUnsavedChanges() || false;
+      setHasUnsavedChanges(hasUnsaved);
+    };
+
+    // Check immediately
+    checkUnsavedChanges();
+
+    // Set up an interval to check for changes (since editor changes are async)
+    const interval = setInterval(checkUnsavedChanges, 1000);
+
+    return () => clearInterval(interval);
+  }, [setHasUnsavedChanges, selectedNote]);
 
   const handleTitleSubmit = async () => {
     if (!selectedNote || !titleInput.trim()) return;

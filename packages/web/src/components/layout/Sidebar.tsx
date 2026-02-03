@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSession, signOut } from '../../lib/auth';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useNavigationContext } from '../../contexts/NavigationContext';
 import { navigationStructure, NavItem, NavGroup } from '../../lib/navigation';
 import { NoteTree } from '../notes/SortableNoteTree';
 
@@ -20,6 +21,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
   const { data: session } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
+  const { navigateWithWarning } = useNavigationContext();
   const { theme, setTheme, effectiveTheme } = useTheme();
 
   const handleSignOut = async () => {
@@ -94,10 +96,12 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
                   <button
                     key={`group-item-${groupIndex}`}
                     onClick={() => {
-                      navigate(groupItem.path);
-                      if (window.innerWidth < 768) {
-                        onClose();
-                      }
+                      navigateWithWarning(() => {
+                        navigate(groupItem.path);
+                        if (window.innerWidth < 768) {
+                          onClose();
+                        }
+                      });
                     }}
                     className={`
                       w-full flex items-center gap-3 rounded-lg cursor-pointer mx-2
@@ -130,10 +134,12 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
             <button
               key={`item-${index}`}
               onClick={() => {
-                navigate(item.path);
-                if (window.innerWidth < 768) {
-                  onClose();
-                }
+                navigateWithWarning(() => {
+                  navigate(item.path);
+                  if (window.innerWidth < 768) {
+                    onClose();
+                  }
+                });
               }}
               className={`
                 w-full flex items-center gap-3 rounded-lg cursor-pointer mx-2

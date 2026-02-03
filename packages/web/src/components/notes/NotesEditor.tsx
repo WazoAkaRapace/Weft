@@ -27,6 +27,7 @@ import { SlashCommandMenu, useSlashCommandDetection, type SlashCommand } from '.
 
 export interface NotesEditorRef {
   save: () => Promise<void>;
+  hasUnsavedChanges: () => boolean;
 }
 
 interface NotesEditorProps {
@@ -98,7 +99,12 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
       const currentContent = mdxEditorRef.current?.getMarkdown() || currentMarkdown;
       await saveNotes(currentContent);
     },
-  }), [currentMarkdown, saveNotes]);
+    hasUnsavedChanges: () => {
+      const currentContent = mdxEditorRef.current?.getMarkdown() || currentMarkdown;
+      const initialContent = initialNotes || '';
+      return currentContent !== initialContent;
+    },
+  }), [currentMarkdown, saveNotes, initialNotes]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
