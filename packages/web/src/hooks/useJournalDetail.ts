@@ -9,6 +9,7 @@ interface UseJournalDetailReturn {
   error: Error | null;
   updateNotes: (notes: string) => Promise<void>;
   refresh: () => void;
+  setJournal: React.Dispatch<React.SetStateAction<JournalWithTranscript | null>>;
 }
 
 export function useJournalDetail(journalId: string): UseJournalDetailReturn {
@@ -110,5 +111,6 @@ export function useJournalDetail(journalId: string): UseJournalDetailReturn {
     error,
     updateNotes,
     refresh,
+    setJournal,
   };
 }

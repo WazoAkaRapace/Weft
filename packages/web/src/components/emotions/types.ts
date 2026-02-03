@@ -11,9 +11,9 @@ export interface EmotionTimelineEntry {
 }
 
 export interface EmotionData {
-  dominantEmotion: string;
-  emotionTimeline: EmotionTimelineEntry[];
-  emotionScores: Record<string, number>;
+  dominantEmotion?: string | null;
+  emotionTimeline?: EmotionTimelineEntry[] | null;
+  emotionScores?: Record<string, number> | null;
   processingStatus?: 'pending' | 'processing' | 'completed' | 'failed' | null;
 }
 

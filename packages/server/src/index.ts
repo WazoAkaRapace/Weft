@@ -19,6 +19,7 @@ import {
   handleUpdateJournal,
   handleGetTranscript,
   handleRetryTranscription,
+  handleGetJobsStatus,
 } from './routes/journals.js';
 import {
   handleGetNotes,
@@ -354,6 +355,13 @@ const server = createHttpServer(async (req, res) => {
     if (url.pathname.match(/\/api\/journals\/[^/]+\/transcript$/) && req.method === 'GET') {
       const journalId = url.pathname.split('/').slice(-2, -1)[0];
       sendResponse(res, addCorsHeaders(await handleGetTranscript(request, journalId), request));
+      return;
+    }
+
+    // Jobs status endpoint (must be before general /api/journals/:id check)
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/jobs$/) && req.method === 'GET') {
+      const journalId = url.pathname.split('/').slice(-2, -1)[0];
+      sendResponse(res, addCorsHeaders(await handleGetJobsStatus(request, journalId), request));
       return;
     }
 

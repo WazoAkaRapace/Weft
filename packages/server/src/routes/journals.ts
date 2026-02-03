@@ -1026,6 +1026,88 @@ export async function handleRetryTranscription(
     });
 
     if (!session?.user) {
+      return Response.json(
+        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get journal to verify ownership and get video path
+    const journalList = await db
+      .select()
+      .from(journals)
+      .where(eq(journals.id, journalId))
+      .limit(1);
+
+    const journal = journalList[0];
+
+    if (!journal) {
+      return Response.json(
+        { error: 'Journal not found', code: 'NOT_FOUND' },
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify ownership
+    if (journal.userId !== session.user.id) {
+      return Response.json(
+        { error: 'Forbidden', code: 'FORBIDDEN' },
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Delete existing transcript if any
+    await db.delete(transcripts).where(eq(transcripts.journalId, journalId));
+
+    // Queue new transcription job
+    const queue = getTranscriptionQueue();
+    const jobId = await queue.addJob({
+      journalId,
+      userId: journal.userId,
+      videoPath: journal.videoPath,
+    });
+    console.log(`[Journals] Transcription retry queued for journal ${journalId}`);
+
+    return Response.json(
+      {
+        data: { message: 'Transcription queued', jobId },
+        error: null,
+        code: 'SUCCESS',
+      },
+      { status: 202, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Retry transcription error:', error);
+    return Response.json(
+      {
+        error: error instanceof Error ? error.message : 'Failed to queue transcription',
+        code: 'ERROR',
+      },
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+/**
+ * Get all job statuses for a journal
+ *
+ * GET /api/journals/:id/jobs
+ *
+ * Returns the current status of transcription and emotion detection jobs.
+ *
+ * @returns Response with job statuses or error
+ */
+export async function handleGetJobsStatus(
+  request: Request,
+  journalId: string
+): Promise<Response> {
+  try {
+    // Verify authentication
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
       return new Response(
         JSON.stringify({
           error: 'Unauthorized',
@@ -1035,7 +1117,7 @@ export async function handleRetryTranscription(
       );
     }
 
-    // Get journal to verify ownership and get video path
+    // Get journal to verify ownership
     const journalList = await db
       .select()
       .from(journals)
@@ -1065,27 +1147,83 @@ export async function handleRetryTranscription(
       );
     }
 
-    // Delete existing transcript if any
-    await db.delete(transcripts).where(eq(transcripts.journalId, journalId));
+    // Check transcription job status
+    const transcriptionQueue = getTranscriptionQueue();
+    const transcriptionJob = transcriptionQueue.getJobByJournalId(journalId);
+    let transcriptionStatus: { status: string; error?: string } | null = null;
 
-    // Queue new transcription job
-    const queue = getTranscriptionQueue();
-    await queue.addJob({
-      journalId,
-      userId: journal.userId,
-      videoPath: journal.videoPath,
-    });
-    console.log(`[Journals] Transcription retry queued for journal ${journalId}`);
+    if (transcriptionJob) {
+      // Job exists in queue - use queue status
+      // But if queue says completed, verify the data actually exists in database
+      if (transcriptionJob.status === 'completed') {
+        // Verify transcript actually exists in database
+        const transcriptList = await db
+          .select()
+          .from(transcripts)
+          .where(eq(transcripts.journalId, journalId))
+          .limit(1);
+
+        if (transcriptList.length > 0 && transcriptList[0].text) {
+          transcriptionStatus = { status: 'completed' };
+        } else {
+          // Queue says completed but data not in DB yet - still processing
+          transcriptionStatus = { status: 'processing' };
+        }
+      } else {
+        transcriptionStatus = {
+          status: transcriptionJob.status,
+          error: transcriptionJob.error,
+        };
+      }
+    } else {
+      // No job in queue - check if transcript exists in database
+      const transcriptList = await db
+        .select()
+        .from(transcripts)
+        .where(eq(transcripts.journalId, journalId))
+        .limit(1);
+
+      if (transcriptList.length > 0 && transcriptList[0].text) {
+        transcriptionStatus = { status: 'completed' };
+      }
+    }
+
+    // Check emotion job status
+    const emotionQueue = getEmotionQueue();
+    const emotionJob = emotionQueue.getJobByJournalId(journalId);
+    let emotionStatus: { status: string; error?: string } | null = null;
+
+    if (emotionJob) {
+      // Job exists in queue - use queue status
+      // But if queue says completed, verify the data actually exists in database
+      if (emotionJob.status === 'completed') {
+        // Verify emotion data actually exists in database
+        if (journal.dominantEmotion && journal.emotionTimeline && journal.emotionScores) {
+          emotionStatus = { status: 'completed' };
+        } else {
+          // Queue says completed but data not in DB yet - still processing
+          emotionStatus = { status: 'processing' };
+        }
+      } else {
+        emotionStatus = {
+          status: emotionJob.status,
+          error: emotionJob.error,
+        };
+      }
+    } else if (journal.dominantEmotion && journal.emotionTimeline && journal.emotionScores) {
+      // No job in queue and data exists in database - completed
+      emotionStatus = { status: 'completed' };
+    }
 
     return new Response(
       JSON.stringify({
-        success: true,
-        message: 'Transcription queued',
+        transcription: transcriptionStatus,
+        emotion: emotionStatus,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Retry transcription error:', error);
+    console.error('Get jobs status error:', error);
     return new Response(
       JSON.stringify({
         error: 'Internal server error',

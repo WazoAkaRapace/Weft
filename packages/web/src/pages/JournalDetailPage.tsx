@@ -1,11 +1,14 @@
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useJournalDetail } from '../hooks/useJournalDetail';
+import { useJobStatus } from '../hooks/useJobStatus';
 import { VideoPlayer } from '../components/video/VideoPlayer';
 import { TranscriptDisplay } from '../components/transcript/TranscriptDisplay';
 import { NotesEditor, type NotesEditorRef } from '../components/notes/NotesEditor';
 import { EmotionDisplay } from '../components/emotions/EmotionDisplay';
+import { JobStatusIndicator, JobRetryButton } from '../components/jobs';
 import { formatDuration } from '../lib/video-stream';
+import type { Transcript } from '@weft/shared';
 
 export function JournalDetailPage() {
   const navigate = useNavigate();
@@ -17,9 +20,89 @@ export function JournalDetailPage() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const editorRef = useRef<NotesEditorRef>(null);
 
-  const { journal, isLoading, error, updateNotes, refresh } = useJournalDetail(
+  const { journal, isLoading, error, updateNotes, refresh, setJournal } = useJournalDetail(
     id || ''
   );
+
+  const {
+    jobStatus,
+    retryTranscription,
+    retryEmotion,
+    isRetryingTranscription,
+    isRetryingEmotion,
+  } = useJobStatus(id || '');
+
+  // Track previous job status to detect when jobs complete
+  const prevJobStatusRef = useRef(jobStatus);
+
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+  // Fetch only transcript data
+  const fetchTranscript = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/journals/${id}/transcript`, {
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const transcriptData = (await response.json()) as Transcript;
+        setJournal((prev) => (prev ? { ...prev, transcript: transcriptData } : prev));
+      }
+    } catch (err) {
+      console.error('Failed to fetch transcript:', err);
+    }
+  }, [id, setJournal]);
+
+  // Fetch only journal (emotion) data
+  const fetchEmotionData = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/journals/${id}`, {
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const journalData = (await response.json()) as typeof journal;
+        setJournal((prev) =>
+          prev
+            ? {
+                ...prev,
+                dominantEmotion: journalData.dominantEmotion,
+                emotionTimeline: journalData.emotionTimeline,
+                emotionScores: journalData.emotionScores,
+              }
+            : prev
+        );
+      }
+    } catch (err) {
+      console.error('Failed to fetch emotion data:', err);
+    }
+  }, [id, setJournal]);
+
+  // Update only the section that changed when jobs complete
+  useEffect(() => {
+    const prev = prevJobStatusRef.current;
+
+    // Check if transcription job just completed
+    const transcriptionJustCompleted =
+      prev.transcription?.status !== 'completed' &&
+      jobStatus.transcription?.status === 'completed';
+
+    // Check if emotion job just completed
+    const emotionJustCompleted =
+      prev.emotion?.status !== 'completed' &&
+      jobStatus.emotion?.status === 'completed';
+
+    // Update only the data that changed
+    if (transcriptionJustCompleted) {
+      fetchTranscript();
+    }
+    if (emotionJustCompleted) {
+      fetchEmotionData();
+    }
+
+    // Update ref for next comparison
+    prevJobStatusRef.current = jobStatus;
+  }, [jobStatus, fetchTranscript, fetchEmotionData]);
 
   const handleSave = useCallback(async () => {
     if (isSaving) return;
@@ -189,14 +272,52 @@ export function JournalDetailPage() {
             </div>
 
             {/* Emotion Detection */}
-            <EmotionDisplay
-              journalId={journal.id}
-              duration={journal.duration}
+            {/* Job Status Indicator */}
+            <JobStatusIndicator
+              type="emotion"
+              status={jobStatus.emotion?.status || null}
+              error={jobStatus.emotion?.error}
+              onRetry={retryEmotion}
+              isRetrying={isRetryingEmotion}
             />
 
+            <div className="bg-white dark:bg-background-card-dark rounded-lg p-6 shadow-sm">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-text-default dark:text-text-dark-default">Emotion Analysis</h3>
+                <JobRetryButton
+                  type="emotion"
+                  onRetry={retryEmotion}
+                  isRetrying={isRetryingEmotion}
+                  disabled={jobStatus.emotion?.status === 'processing' || jobStatus.emotion?.status === 'pending'}
+                />
+              </div>
+              <EmotionDisplay
+                journalId={journal.id}
+                duration={journal.duration}
+              />
+            </div>
+
             {/* Transcript */}
+            {/* Job Status Indicator */}
+            <JobStatusIndicator
+              type="transcription"
+              status={jobStatus.transcription?.status || null}
+              error={jobStatus.transcription?.error}
+              onRetry={retryTranscription}
+              isRetrying={isRetryingTranscription}
+            />
+
             {journal.transcript ? (
               <div className="bg-white dark:bg-background-card-dark rounded-lg p-6 shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-text-default dark:text-text-dark-default">Transcript</h3>
+                  <JobRetryButton
+                    type="transcription"
+                    onRetry={retryTranscription}
+                    isRetrying={isRetryingTranscription}
+                    disabled={jobStatus.transcription?.status === 'processing' || jobStatus.transcription?.status === 'pending'}
+                  />
+                </div>
                 <TranscriptDisplay
                   transcript={journal.transcript}
                   onSegmentClick={handleSegmentClick}
@@ -204,14 +325,25 @@ export function JournalDetailPage() {
                 />
               </div>
             ) : (
-              <div className="bg-white dark:bg-background-card-dark rounded-lg p-6 shadow-sm">
-                <div className="text-center py-8 text-text-secondary dark:text-text-dark-secondary">
-                  <p>Transcript not available yet</p>
-                  <p className="text-sm text-text-hint dark:text-text-dark-hint mt-2">
-                    Transcription is in progress or has not started.
-                  </p>
+              // Only show "not available" message if not processing
+              !jobStatus.transcription?.status && (
+                <div className="bg-white dark:bg-background-card-dark rounded-lg p-6 shadow-sm">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-text-default dark:text-text-dark-default">Transcript</h3>
+                    <JobRetryButton
+                      type="transcription"
+                      onRetry={retryTranscription}
+                      isRetrying={isRetryingTranscription}
+                    />
+                  </div>
+                  <div className="text-center py-8 text-text-secondary dark:text-text-dark-secondary">
+                    <p>Transcript not available yet</p>
+                    <p className="text-sm text-text-hint dark:text-text-dark-hint mt-2">
+                      Transcription is in progress or has not started.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )
             )}
           </div>
 

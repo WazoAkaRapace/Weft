@@ -114,6 +114,16 @@ export async function retryEmotionAnalysis(request: Request, params: { id: strin
 
     const queue = getEmotionQueue();
 
+    // Clear existing emotion data before retry
+    await db
+      .update(journals)
+      .set({
+        dominantEmotion: null,
+        emotionTimeline: null,
+        emotionScores: null,
+      })
+      .where(eq(journals.id, journalId));
+
     // Check if job is already in queue
     const existingJob = queue.getJobByJournalId(journalId);
     if (existingJob && (existingJob.status === 'pending' || existingJob.status === 'processing')) {

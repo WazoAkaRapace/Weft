@@ -1,5 +1,4 @@
 import type { Journal } from '@weft/shared';
-import { useState, useCallback } from 'react';
 import { EmotionBadge } from '../emotions/EmotionBadge';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -7,8 +6,6 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 interface TimelineViewProps {
   journals: Journal[];
   onJournalClick: (journalId: string) => void;
-  onRetryTranscription?: (journalId: string) => void;
-  onRetryEmotion?: (journalId: string) => void;
   isLoading: boolean;
   formatDuration: (seconds: number) => string;
 }
@@ -16,39 +13,9 @@ interface TimelineViewProps {
 export function TimelineView({
   journals,
   onJournalClick,
-  onRetryTranscription,
-  onRetryEmotion,
   isLoading,
   formatDuration,
 }: TimelineViewProps) {
-  const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
-  const [retryingEmotionIds, setRetryingEmotionIds] = useState<Set<string>>(new Set());
-
-  const handleRetry = useCallback(async (journalId: string) => {
-    setRetryingIds(prev => new Set(prev).add(journalId));
-    try {
-      await onRetryTranscription?.(journalId);
-    } finally {
-      setRetryingIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(journalId);
-        return newSet;
-      });
-    }
-  }, [onRetryTranscription]);
-
-  const handleRetryEmotion = useCallback(async (journalId: string) => {
-    setRetryingEmotionIds(prev => new Set(prev).add(journalId));
-    try {
-      await onRetryEmotion?.(journalId);
-    } finally {
-      setRetryingEmotionIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(journalId);
-        return newSet;
-      });
-    }
-  }, [onRetryEmotion]);
 
   // Group journals by date
   const groupedJournals = journals.reduce((acc, journal) => {
@@ -116,40 +83,11 @@ export function TimelineView({
                       {journal.transcriptPreview}
                     </p>
                   )}
-                  {journal.notes && (
-                    <p className="text-sm text-text-default dark:text-text-dark-default m-0.5 mb-0 line-clamp-2 overflow-hidden">
-                      {journal.notes}
-                    </p>
-                  )}
                   {journal.location && (
                     <p className="text-sm text-text-secondary dark:text-text-dark-secondary m-0.5 mb-0 mt-2">
                       📍 {journal.location}
                     </p>
                   )}
-                  <div className="mt-2 flex gap-2">
-                    <button
-                      className="px-2 py-1 bg-primary-light dark:bg-primary/20 text-primary dark:text-primary text-xs font-medium rounded cursor-pointer transition-all hover:bg-primary hover:text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRetry(journal.id);
-                      }}
-                      disabled={retryingIds.has(journal.id)}
-                      title="Retry transcription"
-                    >
-                      {retryingIds.has(journal.id) ? 'Retrying...' : '🔄 Retry Transcription'}
-                    </button>
-                    <button
-                      className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-medium rounded cursor-pointer transition-all hover:bg-purple-200 dark:hover:bg-purple-800/50 disabled:opacity-60 disabled:cursor-not-allowed"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRetryEmotion(journal.id);
-                      }}
-                      disabled={retryingEmotionIds.has(journal.id)}
-                      title="Retry emotion analysis"
-                    >
-                      {retryingEmotionIds.has(journal.id) ? 'Analyzing...' : '😊 Retry Emotion'}
-                    </button>
-                  </div>
                 </div>
               </div>
             ))}

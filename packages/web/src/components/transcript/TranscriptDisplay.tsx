@@ -17,10 +17,13 @@ export function TranscriptDisplay({
 }: TranscriptDisplayProps) {
   const [showTimestamps, setShowTimestamps] = useState(true);
 
+  // Ensure segments is always an array to prevent findIndex errors
+  const segments = Array.isArray(transcript.segments) ? transcript.segments : [];
+
   // Find current segment based on currentTime
   const currentSegmentIndex =
     currentTime !== undefined
-      ? transcript.segments.findIndex(
+      ? segments.findIndex(
           (seg) => currentTime >= seg.start && currentTime <= seg.end
         )
       : -1;
@@ -54,9 +57,9 @@ export function TranscriptDisplay({
       )}
 
       {/* Segments with timestamps */}
-      {showTimestamps && (
+      {showTimestamps && segments.length > 0 && (
         <div className="flex flex-col gap-2 max-h-96 overflow-y-auto pr-2 scrollbar-thin">
-          {transcript.segments.map((segment, index) => {
+          {segments.map((segment, index) => {
             const isActive = index === currentSegmentIndex;
             return (
               <div

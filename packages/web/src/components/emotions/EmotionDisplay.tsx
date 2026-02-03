@@ -32,7 +32,16 @@ export function EmotionDisplay({ journalId, duration, className = '' }: EmotionD
     );
   }
 
-  // Show processing status
+  // Show error state
+  if (error) {
+    return (
+      <div className={`p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 ${className}`}>
+        <p className="text-sm text-red-700 dark:text-red-300">Failed to load emotion data</p>
+      </div>
+    );
+  }
+
+  // Show processing status - check this BEFORE checking for data
   if (data?.processingStatus === 'processing' || data?.processingStatus === 'pending') {
     return (
       <div className={`p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 ${className}`}>
@@ -59,19 +68,14 @@ export function EmotionDisplay({ journalId, duration, className = '' }: EmotionD
     );
   }
 
-  // Show error state
-  if (error) {
-    return (
-      <div className={`p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 ${className}`}>
-        <p className="text-sm text-red-700 dark:text-red-300">Failed to load emotion data</p>
-      </div>
-    );
-  }
-
-  // No data available
+  // No data available - only show if we're not processing
   if (!data?.dominantEmotion) {
     return null;
   }
+
+  // Ensure emotionTimeline and emotionScores are valid arrays/objects before passing to children
+  const emotionTimeline = Array.isArray(data.emotionTimeline) ? data.emotionTimeline : [];
+  const emotionScores = data.emotionScores && typeof data.emotionScores === 'object' ? data.emotionScores : {};
 
   return (
     <div className={`p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg space-y-4 ${className}`}>
@@ -82,16 +86,16 @@ export function EmotionDisplay({ journalId, duration, className = '' }: EmotionD
       </div>
 
       {/* Timeline visualization */}
-      {data.emotionTimeline && data.emotionTimeline.length > 0 && (
+      {emotionTimeline.length > 0 && (
         <div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Emotion Timeline</p>
-          <EmotionTimeline timeline={data.emotionTimeline} duration={duration} />
+          <EmotionTimeline timeline={emotionTimeline} duration={duration} />
         </div>
       )}
 
       {/* Emotion distribution chart */}
-      {data.emotionScores && Object.keys(data.emotionScores).length > 0 && (
-        <EmotionChart scores={data.emotionScores} />
+      {Object.keys(emotionScores).length > 0 && (
+        <EmotionChart scores={emotionScores} />
       )}
     </div>
   );
