@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "transcription_model" text DEFAULT 'Xenova/whisper-small';

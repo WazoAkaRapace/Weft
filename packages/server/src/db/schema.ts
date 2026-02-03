@@ -16,6 +16,7 @@ export const users = pgTable(
     image: text('image'),
     name: text('name'),
     preferredLanguage: text('preferred_language').default('en'), // User's preferred transcription language
+    transcriptionModel: text('transcription_model').default('Xenova/whisper-small'), // User's preferred Whisper model for transcription
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },

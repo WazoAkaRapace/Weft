@@ -13,6 +13,7 @@ export interface NavGroup {
 export const navigationStructure: (NavItem | NavGroup)[] = [
   // Top-level items
   { path: '/dashboard', label: 'Dashboard', icon: '🏠', description: 'Home' },
+  { path: '/settings', label: 'Settings', icon: '⚙️', description: 'Account settings' },
   { path: '/notes', label: 'Notes', icon: '📝', description: 'Your notes' },
 
   // Journal group

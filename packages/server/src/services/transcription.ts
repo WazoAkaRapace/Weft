@@ -1,111 +1,31 @@
 /**
  * Transcription Service
- * Handles video transcription using local Whisper (Transformers.js)
+ * Handles video transcription using whisper.cpp (via nodejs-whisper)
  */
 
-import { pipeline, env } from '@huggingface/transformers';
 import { spawn } from 'node:child_process';
-import { readFile, unlink, mkdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
 import { db } from '../db/index.js';
 import { transcripts, journals, users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { nodewhisper } from 'nodejs-whisper';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { mkdir } from 'node:fs/promises';
 
-// Configure Transformers.js to use a writable cache directory and disable browser cache
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
-const CACHE_DIR = path.join(UPLOAD_DIR, 'cache');
+const MODELS_DIR = path.join(UPLOAD_DIR, 'whisper-models');
 
-// Disable browser cache and configure file system cache
-env.allowLocalModels = false;
-env.allowRemoteModels = true;
-env.useBrowserCache = false; // Disable browser cache (node_modules)
-env.useFSCache = true; // Enable file system cache
-env.cacheDir = CACHE_DIR; // Set cache directory
-
-// Ensure cache directory exists
-async function ensureCacheDir() {
-  if (!existsSync(CACHE_DIR)) {
-    await mkdir(CACHE_DIR, { recursive: true });
-    console.log(`[Transcription] Created cache directory: ${CACHE_DIR}`);
-  }
-}
-
-export interface TranscriptionJob {
-  journalId: string;
-  userId: string;
-  videoPath: string;
-  retryCount?: number;
-}
-
-export interface TranscriptSegment {
-  start: number;
-  end: number;
-  text: string;
-  confidence?: number;
-}
-
-export interface TranscriptionResult {
-  text: string;
-  segments: TranscriptSegment[];
-}
-
-// Lazy-loaded pipeline instance
-// Note: Using 'any' because the pipeline type is too complex for TypeScript
-let transcriberPipeline: any = null;
-let modelLoadingPromise: Promise<any> | null = null;
-
-/**
- * Get or initialize the transcription pipeline
- */
-async function getPipeline() {
-  if (transcriberPipeline) {
-    return transcriberPipeline;
-  }
-
-  if (modelLoadingPromise) {
-    return modelLoadingPromise;
-  }
-
-  // Ensure cache directory exists
-  await ensureCacheDir();
-
-  const modelName = process.env.TRANSCRIPTION_MODEL || 'Xenova/whisper-small';
-  console.log(`[Transcription] Loading Whisper model: ${modelName}`);
-
-  modelLoadingPromise = (async () => {
-    try {
-      const pipe = await pipeline('automatic-speech-recognition', modelName, {
-        progress_callback: (progress: any) => {
-          if (progress.status === 'download' && progress.progress !== undefined) {
-            const percent = Math.round(progress.progress * 100);
-            console.log(`[Transcription] Downloading model: ${percent}%`);
-          } else if (progress.status === 'loading') {
-            console.log(`[Transcription] Loading model...`);
-          }
-        },
-      });
-      transcriberPipeline = pipe;
-      modelLoadingPromise = null;
-      console.log(`[Transcription] Model loaded successfully`);
-      return pipe;
-    } catch (error) {
-      modelLoadingPromise = null;
-      throw new Error(`Failed to load Whisper model: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  })();
-
-  return modelLoadingPromise;
-}
+// Ensure models directory exists
+await mkdir(MODELS_DIR, { recursive: true });
 
 /**
  * Extract audio from video using FFmpeg
+ * Used by emotion detection service
  */
 export async function extractAudio(videoPath: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
     const tempDir = path.join(UPLOAD_DIR, 'temp');
+    mkdir(tempDir, { recursive: true }).catch(() => {});
     const audioPath = path.join(tempDir, `${randomUUID()}.wav`);
 
     const ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
@@ -140,24 +60,45 @@ export async function extractAudio(videoPath: string): Promise<string> {
   });
 }
 
-/**
- * Decode WAV file buffer to Float32Array
- * WAV files have a 44-byte header followed by PCM audio data
- */
-function decodeWAV(buffer: Buffer): Float32Array {
-  // Skip WAV header (44 bytes) and read PCM data
-  const dataLength = buffer.length - 44;
-  const numberOfSamples = dataLength / 2; // 16-bit = 2 bytes per sample
-  const samples = new Float32Array(numberOfSamples);
+// Convert user's model selection from Xenova format to nodejs-whisper format
+function convertModelName(xenovaModel: string): string {
+  // Map Xenova format to nodejs-whisper format
+  // nodejs-whisper uses names without "ggml-" prefix and ".bin" extension
+  const modelMap: Record<string, string> = {
+    'Xenova/whisper-tiny': 'tiny',
+    'Xenova/whisper-tiny.en': 'tiny.en',
+    'Xenova/whisper-base': 'base',
+    'Xenova/whisper-base.en': 'base.en',
+    'Xenova/whisper-small': 'small',
+    'Xenova/whisper-small.en': 'small.en',
+    'Xenova/whisper-medium': 'medium',
+    'Xenova/whisper-medium.en': 'medium.en',
+    'Xenova/whisper-large': 'large',
+    'Xenova/whisper-large-v2': 'large-v2',
+    'Xenova/whisper-large-v3': 'large-v3-turbo', // nodejs-whisper uses large-v3-turbo
+  };
 
-  // Convert 16-bit PCM to Float32Array (normalize to [-1, 1])
-  for (let i = 0; i < numberOfSamples; i++) {
-    const offset = 44 + i * 2;
-    const sample = buffer.readInt16LE(offset);
-    samples[i] = sample / 32768; // Normalize to [-1, 1]
-  }
+  // Default to small if not found
+  return modelMap[xenovaModel] || 'small';
+}
 
-  return samples;
+export interface TranscriptionJob {
+  journalId: string;
+  userId: string;
+  videoPath: string;
+  retryCount?: number;
+}
+
+export interface TranscriptSegment {
+  start: number;
+  end: number;
+  text: string;
+  confidence?: number;
+}
+
+export interface TranscriptionResult {
+  text: string;
+  segments: TranscriptSegment[];
 }
 
 /**
@@ -181,7 +122,7 @@ export async function checkFFmpegAvailable(): Promise<boolean> {
  */
 export class TranscriptionService {
   /**
-   * Transcribe a video file using local Whisper
+   * Transcribe a video file using whisper.cpp via nodejs-whisper
    */
   async transcribe(job: TranscriptionJob): Promise<TranscriptionResult> {
     const startTime = Date.now();
@@ -193,62 +134,100 @@ export class TranscriptionService {
         throw new Error('FFmpeg is not installed or not available in PATH');
       }
 
-      // Get user's preferred language
+      // Get user's preferred language and model
       const user = await db
-        .select({ preferredLanguage: users.preferredLanguage })
+        .select({ preferredLanguage: users.preferredLanguage, transcriptionModel: users.transcriptionModel })
         .from(users)
         .where(eq(users.id, job.userId))
         .limit(1);
 
       const language = user[0]?.preferredLanguage || 'en';
+      const userModel = user[0]?.transcriptionModel || 'Xenova/whisper-small';
+      const modelName = convertModelName(userModel);
+
+      console.log(`[Transcription] Using model: ${modelName} for user ${job.userId}`);
       console.log(`[Transcription] Using language: ${language} for user ${job.userId}`);
 
-      // Extract audio from video
-      console.log(`[Transcription] Extracting audio from ${job.videoPath}`);
-      const audioPath = await extractAudio(job.videoPath);
+      // Log memory before transcription
+      const memBefore = process.memoryUsage();
+      console.log(`[Transcription] Memory before transcription:`, {
+        heapUsed: `${Math.round(memBefore.heapUsed / 1024 / 1024)}MB`,
+        heapTotal: `${Math.round(memBefore.heapTotal / 1024 / 1024)}MB`,
+        rss: `${Math.round(memBefore.rss / 1024 / 1024)}MB`,
+        external: `${Math.round(memBefore.external / 1024 / 1024)}MB`,
+      });
 
-      try {
-        // Get pipeline (loads model if needed)
-        const pipe = await getPipeline();
+      console.log(`[Transcription] Starting transcription for journal ${job.journalId}`);
+      console.log(`[Transcription] Video file: ${job.videoPath}`);
 
-        // Read audio file and decode WAV to Float32Array
-        const audioBuffer = await readFile(audioPath);
-        const audioData = decodeWAV(audioBuffer);
+      // Create a temp directory for output files
+      const outputDir = path.join(UPLOAD_DIR, 'temp', randomUUID());
+      await mkdir(outputDir, { recursive: true });
 
-        console.log(`[Transcription] Starting transcription for journal ${job.journalId}`);
+      const inferenceStart = Date.now();
 
-        // Build transcription options
-        const options: any = {
-          chunk_length_s: 30,
-          stride_length_s: 5,
-          task: 'transcribe',
-          return_timestamps: true,
-        };
+      // Call nodejs-whisper
+      // nodejs-whisper handles audio conversion automatically
+      // Models are pre-downloaded during Docker build, so we skip autoDownloadModelName
+      // nodejs-whisper returns the transcription result as stdout (text with timestamps)
+      const transcriptOutput = await nodewhisper(job.videoPath, {
+        modelName: modelName,
+        // Skip autoDownloadModelName since models are pre-downloaded during Docker build
+        // This prevents permission errors when running as non-root user
+        removeWavFileAfterTranscription: true, // Clean up converted audio
+        whisperOptions: {
+          outputInJson: false,    // JSON saved to file, not needed for stdout
+          outputInText: false,
+          outputInSrt: true,      // Enable SRT output for timestamp parsing
+          outputInVtt: false,
+          outputInLrc: false,
+          outputInJsonFull: false,
+          wordTimestamps: false,  // Disable word-level timestamps for sentence-level output
+          splitOnWord: false,     // Disable word-level splitting
+        },
+      });
 
-        // Only add language parameter if not 'auto'
-        if (language !== 'auto') {
-          options.language = language;
-        }
+      const inferenceTime = Date.now() - inferenceStart;
 
-        const output = await pipe(audioData, options);
+      // Log memory after transcription
+      const memAfter = process.memoryUsage();
+      console.log(`[Transcription] Memory after transcription:`, {
+        heapUsed: `${Math.round(memAfter.heapUsed / 1024 / 1024)}MB`,
+        heapTotal: `${Math.round(memAfter.heapTotal / 1024 / 1024)}MB`,
+        rss: `${Math.round(memAfter.rss / 1024 / 1024)}MB`,
+        external: `${Math.round(memAfter.external / 1024 / 1024)}MB`,
+      });
+      console.log(`[Transcription] Memory delta:`, {
+        heapUsedDelta: `${Math.round((memAfter.heapUsed - memBefore.heapUsed) / 1024 / 1024)}MB`,
+        rssDelta: `${Math.round((memAfter.rss - memBefore.rss) / 1024 / 1024)}MB`,
+      });
+      console.log(`[Transcription] Inference completed in ${inferenceTime}ms`);
 
-        // Parse result
-        const result = this.parseTranscriptionOutput(output);
+      // The nodewhisper library returns SRT-formatted content in stdout
+      // Even with outputInSrt: true, whisper.cpp doesn't write to a file - it outputs to stdout
+      // So we use the stdout directly instead of trying to find a non-existent file
+      console.log(`[Transcription] Using stdout for transcription output`);
+      console.log(`[Transcription] Output length: ${transcriptOutput?.length || 0} characters`);
+      console.log(`[Transcription] Output preview: ${transcriptOutput?.substring(0, 200)}...`);
 
-        const duration = Date.now() - startTime;
-        console.log(`[Transcription] Completed in ${duration}ms`);
+      const result = this.parseSRTOutput(transcriptOutput);
 
-        return result;
-      } finally {
-        // Clean up temporary audio file
-        if (existsSync(audioPath)) {
-          await unlink(audioPath).catch(() => {
-            console.warn(`[Transcription] Failed to delete temp file: ${audioPath}`);
-          });
-        }
-      }
+      const duration = Date.now() - startTime;
+      console.log(`[Transcription] Completed in ${duration}ms`);
+
+      return result;
     } catch (error) {
       console.error('[Transcription] Failed:', error);
+
+      // Log memory at error time
+      const memError = process.memoryUsage();
+      console.error(`[Transcription] Memory at error time:`, {
+        heapUsed: `${Math.round(memError.heapUsed / 1024 / 1024)}MB`,
+        heapTotal: `${Math.round(memError.heapTotal / 1024 / 1024)}MB`,
+        rss: `${Math.round(memError.rss / 1024 / 1024)}MB`,
+        external: `${Math.round(memError.external / 1024 / 1024)}MB`,
+      });
+
       throw new Error(
         `Transcription failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -256,27 +235,45 @@ export class TranscriptionService {
   }
 
   /**
-   * Parse transcription output from Transformers.js
+   * Convert time string "HH:MM:SS.mmm" to seconds
    */
-  private parseTranscriptionOutput(output: any): TranscriptionResult {
-    // Transformers.js returns different formats depending on options
-    // With return_timestamps: true, we get chunks with timestamps
-    if (output?.chunks && Array.isArray(output.chunks)) {
-      return {
-        text: output.text || output.chunks.map((c: any) => c.text).join(' '),
-        segments: output.chunks.map((chunk: any) => ({
-          start: chunk.timestamp?.[0] || 0,
-          end: chunk.timestamp?.[1] || 0,
-          text: chunk.text || '',
-        })),
-      };
+  private parseTimeString(timeStr: string): number {
+    const [time, ms] = timeStr.split('.');
+    const [hours, minutes, seconds] = time.split(':').map(Number);
+    return hours * 3600 + minutes * 60 + seconds + (parseInt(ms) || 0) / 1000;
+  }
+
+  /**
+   * Parse SRT-style output from whisper.cpp
+   * Format: [00:00:00.000 --> 00:00:00.530]   et
+   */
+  private parseSRTOutput(srtText: string): TranscriptionResult {
+    if (!srtText || srtText.trim() === '') {
+      return { text: '', segments: [] };
     }
 
-    // Fallback for simple text output
-    return {
-      text: output?.text || String(output),
-      segments: [],
-    };
+    const segments: TranscriptSegment[] = [];
+    const lines = srtText.trim().split('\n');
+    const srtPattern = /\[(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})\]\s*(.+)/;
+
+    for (const line of lines) {
+      const match = line.match(srtPattern);
+      if (match) {
+        const [, startTime, endTime, text] = match;
+        segments.push({
+          start: this.parseTimeString(startTime),
+          end: this.parseTimeString(endTime),
+          text: text.trim(),
+        });
+      }
+    }
+
+    console.log(`[Transcription] Parsed ${segments.length} raw segments from SRT output`);
+
+    // Don't group segments - preserve original whisper.cpp segments for better timestamp granularity
+    // This gives users more fine-grained control over transcript navigation
+    const fullText = segments.map((s) => s.text).join(' ');
+    return { text: fullText, segments };
   }
 
   /**

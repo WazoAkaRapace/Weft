@@ -1,6 +1,8 @@
 console.log('Weft Server starting...');
 
 import path from 'node:path';
+import { createServer as createHttpServer } from 'node:http';
+import { spawn } from 'node:child_process';
 import { auth } from './lib/auth.js';
 import { db, closeDatabase } from './db/index.js';
 import { users } from './db/schema.js';
@@ -29,6 +31,10 @@ import {
   handleLinkNoteToJournal,
   handleUnlinkNoteFromJournal,
 } from './routes/notes.js';
+import {
+  handleGetUserSettings,
+  handleUpdateUserSettings,
+} from './routes/users.js';
 import { getEmotions, retryEmotionAnalysis } from './routes/emotions.js';
 import { getTranscriptionQueue } from './queue/TranscriptionQueue.js';
 import { getEmotionQueue } from './queue/EmotionQueue.js';
@@ -224,12 +230,25 @@ async function handleCreateFirstUser(request: Request): Promise<Response> {
 await runMigrations();
 
 // Check FFmpeg availability
-try {
-  await Bun.$`ffmpeg -version`.quiet();
-  console.log('✓ FFmpeg is available for thumbnail generation');
-} catch {
-  console.warn('⚠ FFmpeg not found. Thumbnail generation will be disabled.');
+async function checkFFmpeg() {
+  return new Promise<boolean>((resolve) => {
+    const ffmpeg = spawn('ffmpeg', ['-version']);
+    ffmpeg.on('close', (code) => {
+      if (code === 0) {
+        console.log('✓ FFmpeg is available for thumbnail generation');
+        resolve(true);
+      } else {
+        console.warn('⚠ FFmpeg not found. Thumbnail generation will be disabled.');
+        resolve(false);
+      }
+    });
+    ffmpeg.on('error', () => {
+      console.warn('⚠ FFmpeg not found. Thumbnail generation will be disabled.');
+      resolve(false);
+    });
+  });
 }
+await checkFFmpeg();
 
 // Start transcription queue
 const transcriptionQueue = getTranscriptionQueue();
@@ -247,155 +266,207 @@ try {
   console.warn('⚠ This is usually due to missing TensorFlow native bindings. The server will continue without emotion detection.');
 }
 
-// Main HTTP server using Bun
-const server = Bun.serve({
-  port: PORT,
-  async fetch(request) {
-    const url = new URL(request.url);
+// Main HTTP server using Node.js (compatible with Bun and Transformers.js)
+const server = createHttpServer(async (req, res) => {
+  // Build a Request object compatible with our handlers
+  const url = new URL(req.url || '', `http://${req.headers.host}`);
+  const requestInit: RequestInit = {
+    method: req.method,
+    headers: new Headers(req.headers as any),
+  };
 
+  // Add body if present
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    const bodyChunks: Buffer[] = [];
+    req.on('data', (chunk) => bodyChunks.push(chunk));
+    await new Promise((resolve) => req.on('end', resolve));
+    requestInit.body = Buffer.concat(bodyChunks);
+  }
+
+  const request = new Request(url.toString(), requestInit);
+
+  try {
     // Handle preflight OPTIONS requests
-    if (request.method === 'OPTIONS') {
-      return addCorsHeaders(new Response(null, { status: 200 }), request);
+    if (req.method === 'OPTIONS') {
+      const response = addCorsHeaders(new Response(null, { status: 200 }), request);
+      sendResponse(res, response);
+      return;
     }
 
     // Handle Better Auth endpoints at /api/auth/*
     const authResponse = await authRoutes(request);
     if (authResponse) {
-      return authResponse;
+      sendResponse(res, authResponse);
+      return;
     }
 
     // Setup/Onboarding endpoints
-    if (url.pathname === '/api/setup/check-users' && request.method === 'GET') {
-      return addCorsHeaders(await handleCheckUsers(), request);
+    if (url.pathname === '/api/setup/check-users' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleCheckUsers(), request));
+      return;
     }
 
-    if (url.pathname === '/api/setup/create-first-user' && request.method === 'POST') {
-      return addCorsHeaders(await handleCreateFirstUser(request), request);
+    if (url.pathname === '/api/setup/create-first-user' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleCreateFirstUser(request), request));
+      return;
+    }
+
+    // User settings endpoints
+    if (url.pathname === '/api/user/settings' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetUserSettings(request), request));
+      return;
+    }
+
+    if (url.pathname === '/api/user/settings' && req.method === 'PUT') {
+      sendResponse(res, addCorsHeaders(await handleUpdateUserSettings(request), request));
+      return;
     }
 
     // Journal stream endpoints
-    if (url.pathname === '/api/journals/stream/init' && request.method === 'POST') {
-      return addCorsHeaders(await handleStreamInit(request), request);
+    if (url.pathname === '/api/journals/stream/init' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleStreamInit(request), request));
+      return;
     }
 
-    if (url.pathname === '/api/journals/stream/chunk' && request.method === 'POST') {
-      return addCorsHeaders(await handleStreamChunkUpload(request), request);
+    if (url.pathname === '/api/journals/stream/chunk' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleStreamChunkUpload(request), request));
+      return;
     }
 
-    if (url.pathname === '/api/journals/stream' && request.method === 'POST') {
-      return addCorsHeaders(await handleStreamUpload(request), request);
+    if (url.pathname === '/api/journals/stream' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleStreamUpload(request), request));
+      return;
     }
 
     // Journal CRUD endpoints
     // Paginated journals endpoint (must be before /api/journals to avoid conflicts)
-    if (url.pathname === '/api/journals/paginated' && request.method === 'GET') {
-      return addCorsHeaders(await handleGetPaginatedJournals(request), request);
+    if (url.pathname === '/api/journals/paginated' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetPaginatedJournals(request), request));
+      return;
     }
 
-    if (url.pathname === '/api/journals' && request.method === 'GET') {
-      return addCorsHeaders(await handleGetJournals(request), request);
+    if (url.pathname === '/api/journals' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetJournals(request), request));
+      return;
     }
 
     // Transcript endpoint (must be before general /api/journals/:id check)
-    if (url.pathname.match(/\/api\/journals\/[^/]+\/transcript$/) && request.method === 'GET') {
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/transcript$/) && req.method === 'GET') {
       const journalId = url.pathname.split('/').slice(-2, -1)[0];
-      return addCorsHeaders(await handleGetTranscript(request, journalId), request);
+      sendResponse(res, addCorsHeaders(await handleGetTranscript(request, journalId), request));
+      return;
     }
 
     // Retry transcription endpoint (must be before general /api/journals/:id check)
-    if (url.pathname.match(/\/api\/journals\/[^/]+\/transcription\/retry$/) && request.method === 'POST') {
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/transcription\/retry$/) && req.method === 'POST') {
       const journalId = url.pathname.split('/').slice(-3, -2)[0];
-      return addCorsHeaders(await handleRetryTranscription(request, journalId), request);
+      sendResponse(res, addCorsHeaders(await handleRetryTranscription(request, journalId), request));
+      return;
     }
 
     // Emotion detection endpoints (must be before general /api/journals/:id check)
-    if (url.pathname.match(/\/api\/journals\/[^/]+\/emotions\/retry$/) && request.method === 'POST') {
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/emotions\/retry$/) && req.method === 'POST') {
       const journalId = url.pathname.split('/').slice(-3, -2)[0];
-      return addCorsHeaders(await retryEmotionAnalysis(request, { id: journalId }), request);
+      sendResponse(res, addCorsHeaders(await retryEmotionAnalysis(request, { id: journalId }), request));
+      return;
     }
 
-    if (url.pathname.match(/\/api\/journals\/[^/]+\/emotions$/) && request.method === 'GET') {
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/emotions$/) && req.method === 'GET') {
       const journalId = url.pathname.split('/').slice(-2, -1)[0];
-      return addCorsHeaders(await getEmotions(request, { id: journalId }), request);
+      sendResponse(res, addCorsHeaders(await getEmotions(request, { id: journalId }), request));
+      return;
     }
 
-    if (url.pathname.startsWith('/api/journals/') && request.method === 'GET') {
+    if (url.pathname.startsWith('/api/journals/') && req.method === 'GET') {
       const journalId = url.pathname.split('/').pop() || '';
-      return addCorsHeaders(await handleGetJournal(request, journalId), request);
+      sendResponse(res, addCorsHeaders(await handleGetJournal(request, journalId), request));
+      return;
     }
 
-    if (url.pathname.startsWith('/api/journals/') && request.method === 'DELETE') {
+    if (url.pathname.startsWith('/api/journals/') && req.method === 'DELETE') {
       const journalId = url.pathname.split('/').pop() || '';
-      return addCorsHeaders(await handleDeleteJournal(request, journalId), request);
+      sendResponse(res, addCorsHeaders(await handleDeleteJournal(request, journalId), request));
+      return;
     }
 
-    if (url.pathname.startsWith('/api/journals/') && request.method === 'PUT') {
+    if (url.pathname.startsWith('/api/journals/') && req.method === 'PUT') {
       const journalId = url.pathname.split('/').pop() || '';
-      return addCorsHeaders(await handleUpdateJournal(request, journalId), request);
+      sendResponse(res, addCorsHeaders(await handleUpdateJournal(request, journalId), request));
+      return;
     }
 
     // Notes CRUD endpoints
-    if (url.pathname === '/api/notes' && request.method === 'GET') {
-      return addCorsHeaders(await handleGetNotes(request), request);
+    if (url.pathname === '/api/notes' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetNotes(request), request));
+      return;
     }
 
-    if (url.pathname === '/api/notes' && request.method === 'POST') {
-      return addCorsHeaders(await handleCreateNote(request), request);
+    if (url.pathname === '/api/notes' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleCreateNote(request), request));
+      return;
     }
 
-    if (url.pathname === '/api/notes/reorder' && request.method === 'POST') {
-      return addCorsHeaders(await handleReorderNotes(request), request);
+    if (url.pathname === '/api/notes/reorder' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleReorderNotes(request), request));
+      return;
     }
 
     // Note journals link endpoint (must be before general /api/notes/:id check)
-    if (url.pathname.match(/\/api\/notes\/[^/]+\/journals\/[^/]+$/) && request.method === 'DELETE') {
+    if (url.pathname.match(/\/api\/notes\/[^/]+\/journals\/[^/]+$/) && req.method === 'DELETE') {
       const segments = url.pathname.split('/');
       const noteId = segments[3];
       const journalId = segments[5];
-      return addCorsHeaders(await handleUnlinkNoteFromJournal(request, noteId, journalId), request);
+      sendResponse(res, addCorsHeaders(await handleUnlinkNoteFromJournal(request, noteId, journalId), request));
+      return;
     }
 
-    if (url.pathname.match(/\/api\/notes\/[^/]+\/journals\/[^/]+$/) && request.method === 'POST') {
+    if (url.pathname.match(/\/api\/notes\/[^/]+\/journals\/[^/]+$/) && req.method === 'POST') {
       const segments = url.pathname.split('/');
       const noteId = segments[3];
       const journalId = segments[5];
-      return addCorsHeaders(await handleLinkNoteToJournal(request, noteId, journalId), request);
+      sendResponse(res, addCorsHeaders(await handleLinkNoteToJournal(request, noteId, journalId), request));
+      return;
     }
 
     // Note journals endpoint (must be before general /api/notes/:id check)
-    if (url.pathname.match(/\/api\/notes\/[^/]+\/journals$/) && request.method === 'GET') {
+    if (url.pathname.match(/\/api\/notes\/[^/]+\/journals$/) && req.method === 'GET') {
       const noteId = url.pathname.split('/').slice(-2, -1)[0];
-      return addCorsHeaders(await handleGetNoteJournals(request, noteId), request);
+      sendResponse(res, addCorsHeaders(await handleGetNoteJournals(request, noteId), request));
+      return;
     }
 
-    if (url.pathname.startsWith('/api/notes/') && request.method === 'GET') {
+    if (url.pathname.startsWith('/api/notes/') && req.method === 'GET') {
       const noteId = url.pathname.split('/').pop() || '';
-      return addCorsHeaders(await handleGetNote(request, noteId), request);
+      sendResponse(res, addCorsHeaders(await handleGetNote(request, noteId), request));
+      return;
     }
 
-    if (url.pathname.startsWith('/api/notes/') && request.method === 'PUT') {
+    if (url.pathname.startsWith('/api/notes/') && req.method === 'PUT') {
       const noteId = url.pathname.split('/').pop() || '';
-      return addCorsHeaders(await handleUpdateNote(request, noteId), request);
+      sendResponse(res, addCorsHeaders(await handleUpdateNote(request, noteId), request));
+      return;
     }
 
-    if (url.pathname.startsWith('/api/notes/') && request.method === 'DELETE') {
+    if (url.pathname.startsWith('/api/notes/') && req.method === 'DELETE') {
       const noteId = url.pathname.split('/').pop() || '';
-      return addCorsHeaders(await handleDeleteNote(request, noteId), request);
+      sendResponse(res, addCorsHeaders(await handleDeleteNote(request, noteId), request));
+      return;
     }
 
     // Health check endpoint
     if (url.pathname === '/health') {
-      return addCorsHeaders(
+      sendResponse(res, addCorsHeaders(
         Response.json(
           { status: 'ok', timestamp: new Date().toISOString() },
           { status: 200 }
         ),
         request
-      );
+      ));
+      return;
     }
 
     // Serve static files (thumbnails and videos)
-    if (url.pathname.startsWith('/uploads/') && request.method === 'GET') {
+    if (url.pathname.startsWith('/uploads/') && (req.method === 'GET' || req.method === 'HEAD')) {
       try {
         const filePath = url.pathname.substring(1); // Remove leading slash -> "uploads/..."
         const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
@@ -403,80 +474,162 @@ const server = Bun.serve({
           ? path.join(UPLOAD_DIR, filePath.substring(8)) // Remove "uploads/" prefix
           : filePath;
 
-        const file = Bun.file(fullPath);
-        const exists = await file.exists();
-
-        if (!exists) {
-          return addCorsHeaders(
+        const fs = await import('node:fs/promises');
+        try {
+          await fs.access(fullPath);
+        } catch {
+          sendResponse(res, addCorsHeaders(
             Response.json(
               { error: 'File not found', path: fullPath },
               { status: 404 }
             ),
             request
-          );
+          ));
+          return;
         }
 
-        return addCorsHeaders(
-          new Response(file, {
-            status: 200,
-            headers: {
-              'Content-Type': file.type || 'application/octet-stream',
-            },
-          }),
-          request
-        );
+        const ext = path.extname(fullPath).toLowerCase();
+        const contentType = ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
+          : ext === '.png' ? 'image/png'
+          : ext === '.webm' ? 'video/webm'
+          : ext === '.mp4' ? 'video/mp4'
+          : 'application/octet-stream';
+
+        // Set CORS headers
+        const corsHeaders = addCorsHeaders(new Response(), request);
+        corsHeaders.headers.forEach((value, key) => {
+          res.setHeader(key, value);
+        });
+
+        // Set status and content type
+        res.statusCode = 200;
+        res.setHeader('Content-Type', contentType);
+
+        // For HEAD requests, don't send body
+        if (req.method === 'HEAD') {
+          res.end();
+          return;
+        }
+
+        // Stream file to response (for large files like videos)
+        const fileStream = await import('node:fs');
+        const stat = await fs.stat(fullPath);
+        const fileSize = stat.size;
+        res.setHeader('Content-Length', fileSize.toString());
+
+        const stream = fileStream.createReadStream(fullPath);
+        stream.pipe(res);
+        return;
       } catch (error) {
         console.error('Error serving file:', error);
-        return addCorsHeaders(
+        sendResponse(res, addCorsHeaders(
           Response.json(
             { error: 'Failed to serve file' },
             { status: 500 }
           ),
           request
-        );
-      }
-    }
-
-    // Debug endpoint to check session
-    if (url.pathname === '/api/debug/session' && request.method === 'GET') {
-      try {
-        const session = await auth.api.getSession({
-          headers: request.headers,
-        });
-
-        return addCorsHeaders(
-          Response.json({
-            session: session,
-            cookies: request.headers.get('cookie'),
-            cookieHeader: request.headers.get('cookie'),
-          }),
-          request
-        );
-      } catch (error) {
-        return addCorsHeaders(
-          Response.json({
-            error: 'Failed to get session',
-            details: error instanceof Error ? error.message : String(error),
-            cookies: request.headers.get('cookie'),
-          }),
-          request
-        );
+        ));
+        return;
       }
     }
 
     // 404 for unknown routes
-    return addCorsHeaders(
+    sendResponse(res, addCorsHeaders(
       Response.json(
         { error: 'Not Found', message: `Route ${url.pathname} not found` },
         { status: 404 }
       ),
       request
-    );
-  },
+    ));
+  } catch (error) {
+    console.error('Error handling request:', error);
+    sendResponse(res, addCorsHeaders(
+      Response.json({
+        error: 'Internal Server Error',
+        details: error instanceof Error ? error.message : String(error),
+      }),
+      request
+    ));
+  }
 });
 
-console.log(`Server listening on http://localhost:${server.port}`);
-console.log(`Better Auth endpoints available at http://localhost:${server.port}/api/auth/*`);
+// Helper function to convert Web API Response to Node.js http.ServerResponse
+async function sendResponse(res: any, webResponse: Response) {
+  // Set status
+  res.statusCode = webResponse.status;
+
+  // Set headers
+  webResponse.headers.forEach((value, key) => {
+    res.setHeader(key, value);
+  });
+
+  // Send body
+  if (webResponse.body) {
+    const reader = webResponse.body.getReader();
+
+    // Check if this is binary content (images, videos, etc.)
+    const contentType = webResponse.headers.get('Content-Type') || '';
+    const isBinary = contentType.startsWith('image/') ||
+                      contentType.startsWith('video/') ||
+                      contentType.startsWith('audio/') ||
+                      contentType.startsWith('application/octet-stream');
+
+    if (isBinary) {
+      // For binary content, write raw bytes without decoding
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        // value is Uint8Array, write it directly as a Buffer
+        res.write(Buffer.from(value));
+      }
+    } else {
+      // For text content, use TextDecoder
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        res.write(chunk);
+      }
+    }
+  }
+  res.end();
+}
+
+server.listen(PORT, () => {
+  console.log(`Server listening on http://localhost:${PORT}`);
+  console.log(`Better Auth endpoints available at http://localhost:${PORT}/api/auth/*`);
+});
+
+// Debug: Log uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('[UNCAUGHT EXCEPTION]', error);
+  console.error('[UNCAUGHT EXCEPTION] Stack:', error.stack);
+  console.error('[UNCAUGHT EXCEPTION] Memory:', {
+    heapUsed: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
+    heapTotal: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`,
+    rss: `${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`,
+  });
+  // Don't exit immediately, let logs flush
+  setTimeout(() => process.exit(1), 1000);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[UNHANDLED REJECTION]', reason);
+  console.error('[UNHANDLED REJECTION] Promise:', promise);
+  console.error('[UNHANDLED REJECTION] Memory:', {
+    heapUsed: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
+    heapTotal: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`,
+    rss: `${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`,
+  });
+});
+
+// Log all signals for debugging
+['SIGINT', 'SIGTERM', 'SIGUSR1', 'SIGUSR2', 'SIGHUP'].forEach(signal => {
+  process.on(signal, () => {
+    console.log(`[SIGNAL] Received ${signal}`);
+  });
+});
 
 // Graceful shutdown handler
 process.on('SIGINT', async () => {

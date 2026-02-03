@@ -224,6 +224,9 @@ For more detailed project information, refer to the **[spec/](./spec/)** directo
 - **Database** (`spec/DATABASE.md`) - Database schema, operations, and migrations
 - **Docker** (`spec/DOCKER.md`) - Docker configuration and development environment
 - **Recording Feature** (`spec/RECORDING.md`) - Video recording implementation details
+- **Transcription Feature** (`spec/TRANSCRIPTION.md`) - Speech-to-text transcription with Whisper
+- **Emotion Detection** (`spec/EMOTION_DETECTION.md`) - Video emotion analysis service
+- **Design System** (`spec/DESIGN_SYSTEM.md`) - UI/UX guidelines and components
 - **Contributing** (`spec/CONTRIBUTING.md`) - Contribution guidelines and code style
 
 ## External Resources

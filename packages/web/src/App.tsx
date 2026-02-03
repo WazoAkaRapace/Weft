@@ -8,6 +8,7 @@ import { RecordingPage } from './pages/RecordingPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { JournalDetailPage } from './pages/JournalDetailPage';
 import { NotesPage } from './pages/NotesPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { MainAppLayout } from './components/layout/MainAppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { OnboardingGuard } from './components/OnboardingGuard';
@@ -62,6 +63,9 @@ export function App() {
         >
           {/* Dashboard */}
           <Route path="dashboard" element={<DashboardPage />} />
+
+          {/* Settings */}
+          <Route path="settings" element={<SettingsPage />} />
 
           {/* Recording */}
           <Route path="record" element={<RecordingPage />} />

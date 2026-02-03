@@ -98,13 +98,15 @@ RUN pnpm build
 FROM node:20-bullseye-slim AS production
 WORKDIR /app
 
-# Install dependencies and Bun (including FFmpeg for thumbnail generation)
+# Install dependencies (including FFmpeg for thumbnail generation)
 # Additional libraries for canvas support (required by face-api.js for emotion detection)
 # Runtime libraries for TensorFlow native bindings
+# CMake and git for building whisper.cpp
+# NOTE: Bun is installed for build tools, but Node.js runs the server for better ML compatibility
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         curl wget ca-certificates unzip ffmpeg \
-        build-essential libcairo2-dev libpango1.0-dev \
+        build-essential cmake git libcairo2-dev libpango1.0-dev \
         libjpeg-dev libgif-dev librsvg2-dev python3 \
         libgomp1 libstdc++6 && \
     curl -fsSL https://bun.sh/install | bash && \
@@ -149,6 +151,22 @@ RUN pnpm install --no-frozen-lockfile
 # Fix permissions for tfjs-node-stub for non-root user
 RUN chown -R bun:nodejs /app/packages/tfjs-node-stub
 
+# Download and setup whisper.cpp models for nodejs-whisper
+# Find the nodejs-whisper directory dynamically and set up models
+# Download large-v3-turbo model for best quality transcription
+RUN cd /app/node_modules/.pnpm && \
+    WHISPER_DIR=$(find . -maxdepth 1 -type d -name "nodejs-whisper@*" | head -1) && \
+    echo "Found whisper directory: $WHISPER_DIR" && \
+    cd "$WHISPER_DIR/node_modules/nodejs-whisper/cpp/whisper.cpp" && \
+    chmod +x models/download-ggml-model.sh && \
+    cd models && \
+    ./download-ggml-model.sh large-v3-turbo && \
+    cd .. && \
+    cmake -B build -DWHISPER_BUILD_TESTS=OFF && \
+    cmake --build build --config Release -j$(nproc) && \
+    chmod +x build/bin/whisper-cli && \
+    ls -la models/
+
 # Set production environment after dependencies are installed
 ENV NODE_ENV=production
 
@@ -168,5 +186,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3001/ || exit 1
 
 # Start the server from the server package directory
+# Using Node.js for better compatibility with Transformers.js/ONNX Runtime (WASM modules)
+# Bun is still available if needed, but Node.js handles large ML models more reliably
 WORKDIR /app/packages/server
-CMD ["bun", "dist/index.js"]
+CMD ["node", "--max-old-space-size=14336", "dist/index.js"]

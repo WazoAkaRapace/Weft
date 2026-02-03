@@ -176,6 +176,8 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       VOICE_EMOTION_API_URL: ${VOICE_EMOTION_API_URL:-http://voice-emotion-recognition:8000}
       TFJS_CPU_BACKEND: 1
+      NODE_OPTIONS: "--max-old-space-size=4096"
+      TRANSCRIPTION_WORKER_CONCURRENCY: 1
     ports:
       - "${BACKEND_PORT:-3001}:3001"
     volumes:
@@ -188,6 +190,13 @@ services:
       start_period: 10s
     networks:
       - weft-network
+    # Set memory limit to prevent OS OOM kills (16GB for large Whisper models like large-v3)
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+        reservations:
+          memory: 2G
 
 # ---------------------------------------------------------------------------
 # Named Volumes
