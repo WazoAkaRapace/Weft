@@ -7,7 +7,7 @@
 # Stage 2: Builder - Compiles TypeScript
 # Stage 3: Production - Final minimal runtime image
 #
-# Note: Uses Node.js base image with Bun installed for better compatibility
+# Note: Uses Node.js runtime for ML model compatibility
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -16,16 +16,13 @@
 FROM node:20-bullseye-slim AS dependencies
 WORKDIR /app
 
-# Install Bun and build dependencies (required for canvas compilation)
+# Install build dependencies (required for canvas compilation)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         curl wget ca-certificates unzip build-essential \
         libcairo2-dev libpango1.0-dev libjpeg-dev \
         libgif-dev librsvg2-dev python3 && \
-    curl -fsSL https://bun.sh/install | bash && \
-    mv /root/.bun/bin/bun /usr/local/bin/bun && \
     rm -rf /var/lib/apt/lists/*
-ENV PATH="/usr/local/bin/bun:${PATH}"
 
 # Copy package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -48,16 +45,13 @@ RUN pnpm install --no-frozen-lockfile
 FROM node:20-bullseye-slim AS builder
 WORKDIR /app
 
-# Install Bun and build dependencies (required for canvas compilation)
+# Install build dependencies (required for canvas compilation)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         curl wget ca-certificates unzip build-essential \
         libcairo2-dev libpango1.0-dev libjpeg-dev \
         libgif-dev librsvg2-dev python3 && \
-    curl -fsSL https://bun.sh/install | bash && \
-    mv /root/.bun/bin/bun /usr/local/bin/bun && \
     rm -rf /var/lib/apt/lists/*
-ENV PATH="/usr/local/bin/bun:${PATH}"
 
 # Copy node_modules from dependencies stage
 COPY --from=dependencies /app/node_modules ./node_modules
@@ -102,21 +96,17 @@ WORKDIR /app
 # Additional libraries for canvas support (required by face-api.js for emotion detection)
 # Runtime libraries for TensorFlow native bindings
 # CMake and git for building whisper.cpp
-# NOTE: Bun is installed for build tools, but Node.js runs the server for better ML compatibility
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         curl wget ca-certificates unzip ffmpeg \
         build-essential cmake git libcairo2-dev libpango1.0-dev \
         libjpeg-dev libgif-dev librsvg2-dev python3 \
         libgomp1 libstdc++6 && \
-    curl -fsSL https://bun.sh/install | bash && \
-    mv /root/.bun/bin/bun /usr/local/bin/bun && \
-    rm -rf /root/.bun && \
     rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN groupadd -g 1001 nodejs && \
-    useradd -u 1001 -g nodejs -s /bin/sh -d /app bun
+    useradd -u 1001 -g nodejs -s /bin/sh -d /app nodejs
 
 # Set environment
 ENV NODE_ENV=production
@@ -128,7 +118,7 @@ ENV EMOTION_MAX_RETRIES=3
 
 # Create uploads directory with proper permissions for non-root user
 RUN mkdir -p /app/uploads && \
-    chown -R bun:nodejs /app/uploads && \
+    chown -R nodejs:nodejs /app/uploads && \
     chmod 755 /app/uploads
 
 # Note: Face-api.js models will be downloaded at runtime on first use
@@ -149,7 +139,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 RUN pnpm install --no-frozen-lockfile
 
 # Fix permissions for tfjs-node-stub for non-root user
-RUN chown -R bun:nodejs /app/packages/tfjs-node-stub
+RUN chown -R nodejs:nodejs /app/packages/tfjs-node-stub
 
 # Download and setup whisper.cpp models for nodejs-whisper
 # Find the nodejs-whisper directory dynamically and set up models
@@ -171,12 +161,12 @@ RUN cd /app/node_modules/.pnpm && \
 ENV NODE_ENV=production
 
 # Copy built application from builder (preserve workspace structure)
-COPY --from=builder --chown=bun:nodejs /app/packages/server/dist ./packages/server/dist
-COPY --from=builder --chown=bun:nodejs /app/packages/server/drizzle ./packages/server/drizzle
-COPY --from=builder --chown=bun:nodejs /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder --chown=nodejs:nodejs /app/packages/server/dist ./packages/server/dist
+COPY --from=builder --chown=nodejs:nodejs /app/packages/server/drizzle ./packages/server/drizzle
+COPY --from=builder --chown=nodejs:nodejs /app/packages/shared/dist ./packages/shared/dist
 
 # Switch to non-root user
-USER bun
+USER nodejs
 
 # Expose port
 EXPOSE 3001
@@ -187,6 +177,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Start the server from the server package directory
 # Using Node.js for better compatibility with Transformers.js/ONNX Runtime (WASM modules)
-# Bun is still available if needed, but Node.js handles large ML models more reliably
 WORKDIR /app/packages/server
 CMD ["node", "--max-old-space-size=14336", "dist/index.js"]

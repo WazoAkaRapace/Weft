@@ -14,7 +14,7 @@ import { eq } from 'drizzle-orm';
  * GET /api/journals/:id/emotions
  * Get emotion detection results for a journal
  */
-export async function getEmotions(request: Request, params: { id: string }) {
+export async function getEmotions(request: Request, params: { id: string }): Promise<Response> {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
     if (!session?.user) {
@@ -79,7 +79,7 @@ export async function getEmotions(request: Request, params: { id: string }) {
  * POST /api/journals/:id/emotions/retry
  * Re-run emotion analysis for a journal
  */
-export async function retryEmotionAnalysis(request: Request, params: { id: string }) {
+export async function retryEmotionAnalysis(request: Request, params: { id: string }): Promise<Response> {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
     if (!session?.user) {

@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "$HOME/.bun/bin/bun --watch src/index.ts",
+    "dev": "tsx --watch src/index.ts",
     "build": "tsc",
-    "start": "$HOME/.bun/bin/bun dist/index.js",
+    "start": "node dist/index.js",
     "lint": "eslint .",
     "test": "vitest",
     "clean": "rm -rf dist .turbo node_modules",
@@ -14,28 +14,21 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "$HOME/.bun/bin/bun src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
-    "@huggingface/transformers": "^3.8.1",
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "@tensorflow/tfjs-converter": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
     "@tensorflow/tfjs-node": "file:../tfjs-node-stub",
     "@vladmandic/face-api": "^1.7.15",
-    "@weft/shared": "workspace:*",
-    "axios": "^1.13.4",
     "better-auth": "^1.4.17",
     "canvas": "^3.2.1",
     "drizzle-orm": "^0.45.1",
-    "form-data": "^4.0.5",
-    "node-fetch": "^3.3.2",
     "nodejs-whisper": "^0.2.9",
-    "postgres": "^3.4.8",
-    "undici": "^7.19.2"
+    "postgres": "^3.4.8"
   },
   "devDependencies": {
-    "@types/bun": "latest",
     "@types/node": "^22.10.5",
     "@types/pg": "^8.16.0",
     "drizzle-kit": "^0.31.8",

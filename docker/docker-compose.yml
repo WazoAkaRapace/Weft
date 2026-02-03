@@ -8,7 +8,7 @@
 #   - redis: Redis 7 cache
 #   - frontend: React + Vite frontend service (nginx)
 #   - voice-emotion-recognition: Python SpeechBrain service for voice emotion detection
-#   - backend: Node.js/Bun backend service
+#   - backend: Node.js backend service
 #
 # Usage:
 #   docker compose up -d     # Start all services

@@ -76,7 +76,7 @@ function addCorsHeaders(response: Response, request: Request): Response {
 }
 
 // Better Auth handler for authentication endpoints
-// Note: Better Auth works with various frameworks. For Bun, we'll use the fetch API handler
+// Note: Better Auth works with various frameworks. Using fetch API handler for Node.js
 const authRoutes = async (request: Request) => {
   const url = new URL(request.url);
   const authPath = '/api/auth';
@@ -266,7 +266,7 @@ try {
   console.warn('⚠ This is usually due to missing TensorFlow native bindings. The server will continue without emotion detection.');
 }
 
-// Main HTTP server using Node.js (compatible with Bun and Transformers.js)
+// Main HTTP server using Node.js (compatible with Transformers.js)
 const server = createHttpServer(async (req, res) => {
   // Build a Request object compatible with our handlers
   const url = new URL(req.url || '', `http://${req.headers.host}`);

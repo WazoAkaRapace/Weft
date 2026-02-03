@@ -24,6 +24,10 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
   const { navigateWithWarning } = useNavigationContext();
   const { theme, setTheme, effectiveTheme } = useTheme();
 
+  const isActive = (path: string) => {
+    return location.pathname === path || (path !== '/dashboard' && location.pathname.startsWith(path));
+  };
+
   const handleSignOut = async () => {
     await signOut({
       fetchOptions: {
@@ -44,10 +48,6 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
     if (theme === 'light') return '☀️';
     if (theme === 'dark') return '🌙';
     return '💻'; // system
-  };
-
-  const isActive = (path: string) => {
-    return location.pathname === path || (path !== '/dashboard' && location.pathname.startsWith(path));
   };
 
   return (
@@ -77,7 +77,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 overflow-y-auto py-4">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4">
         {navigationStructure.map((item, index) => {
           if (isNavGroup(item)) {
             return (
@@ -167,7 +167,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
       </nav>
 
       {/* Bottom Section */}
-      <div className="border-t border-neutral-200 dark:border-dark-600">
+      <div className="border-t border-neutral-200 dark:border-dark-600 overflow-x-hidden">
         {/* User Info */}
         <div
           className={`flex items-center gap-3 py-3 hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors mx-2 rounded-lg ${
@@ -201,6 +201,36 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
             }`}
           >
             Theme
+          </span>
+        </button>
+
+        {/* Settings */}
+        <button
+          onClick={() => {
+            navigateWithWarning(() => {
+              navigate('/settings');
+              if (window.innerWidth < 768) {
+                onClose();
+              }
+            });
+          }}
+          className={`
+            w-full flex items-center gap-3 text-left hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors mx-2 rounded-lg
+            ${isActive('/settings')
+              ? 'bg-primary-50 dark:bg-primary-900/30 border-l-4 border-primary-500'
+              : ''
+            }
+            ${isCollapsed ? 'px-2 py-2' : 'px-4 py-2'}
+          `}
+          title="Settings"
+        >
+          <span className="text-lg flex-shrink-0">⚙️</span>
+          <span
+            className={`text-neutral-700 dark:text-dark-200 transition-opacity duration-200 ${
+              isCollapsed ? 'opacity-0 group-hover:opacity-100 hidden group-hover:block whitespace-nowrap overflow-hidden' : ''
+            }`}
+          >
+            Settings
           </span>
         </button>
 
