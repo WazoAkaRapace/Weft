@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNotesContext } from '../../contexts/NotesContext';
 import { NotesEditor, type NotesEditorRef } from './NotesEditor';
 import type { UpdateNoteData } from '../../hooks/useNotes';
@@ -11,10 +12,12 @@ export function NoteEditorPanel() {
   const [titleInput, setTitleInput] = useState('');
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [colorPickerPosition, setColorPickerPosition] = useState<{ top: number; right: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const notesEditorRef = useRef<NotesEditorRef>(null);
+  const colorButtonRef = useRef<HTMLButtonElement>(null);
 
   // Note icons
   const NOTE_ICONS = ['📝', '📁', '💡', '📌', '🎯', '🔖', '📋', '✨', '🚀', '💼', '📚', '🎨', '🔧', '💻', '📊', '🗂️'];
@@ -69,6 +72,21 @@ export function NoteEditorPanel() {
 
     await updateNote(selectedNote.note.id, updateData);
     setShowColorPicker(false);
+    setColorPickerPosition(null);
+  };
+
+  const handleToggleColorPicker = () => {
+    if (showColorPicker) {
+      setShowColorPicker(false);
+      setColorPickerPosition(null);
+    } else if (colorButtonRef.current) {
+      const rect = colorButtonRef.current.getBoundingClientRect();
+      setColorPickerPosition({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+      setShowColorPicker(true);
+    }
   };
 
   const handleSaveClick = async () => {
@@ -116,7 +134,7 @@ export function NoteEditorPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-dark-800 overflow-hidden">
+    <div className="h-full flex flex-col bg-white dark:bg-dark-800">
       {/* Header */}
       <div
         className="p-1.5 pt-5 sm:p-3 md:p-4 lg:p-6 border-b flex-shrink-0 relative"
@@ -130,7 +148,7 @@ export function NoteEditorPanel() {
         }
       >
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 md:gap-4 sm:overflow-hidden sm:min-w-0 relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 md:gap-4 sm:overflow-hidden sm:min-w-0 relative z-50">
           {/* Top row on mobile: Icon, Title, Color, Edit/Save buttons */}
           <div className="flex items-center justify-between w-full sm:w-auto sm:hidden gap-1 pl-14">
             {/* Icon */}
@@ -143,7 +161,7 @@ export function NoteEditorPanel() {
               </button>
 
               {showIconPicker && (
-                <div className="absolute z-10 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg grid grid-cols-4 sm:grid-cols-8 gap-1 left-0 max-w-[calc(100vw-4rem)]">
+                <div className="absolute z-50 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg grid grid-cols-4 sm:grid-cols-8 gap-1 left-0 max-w-[calc(100vw-4rem)]">
                   {NOTE_ICONS.map(icon => (
                     <button
                       key={icon}
@@ -192,15 +210,17 @@ export function NoteEditorPanel() {
               {/* Color */}
               <div className="relative flex-shrink-0">
               <button
-                onClick={() => setShowColorPicker(!showColorPicker)}
+                ref={colorButtonRef}
+                onClick={handleToggleColorPicker}
                 className={`w-8 h-8 rounded border-2 border-neutral-200 dark:border-dark-600 transition-colors ${
                   selectedNote.note.color ? '' : 'bg-neutral-200 dark:bg-dark-700'
                 }`}
                 style={selectedNote.note.color ? { backgroundColor: selectedNote.note.color } : undefined}
               />
 
-              {showColorPicker && (
-                <div className="absolute z-10 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg space-y-1 right-0 max-h-60 overflow-y-auto">
+              {showColorPicker && colorPickerPosition && createPortal(
+                <div className="fixed z-50 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg space-y-1 max-h-60 overflow-y-auto"
+                     style={{ top: `${colorPickerPosition.top}px`, right: `${colorPickerPosition.right}px` }}>
                   {NOTE_COLORS.map(color => (
                     <button
                       key={color.name}
@@ -218,7 +238,8 @@ export function NoteEditorPanel() {
                       <span className="text-neutral-700 dark:text-dark-200 truncate">{color.name}</span>
                     </button>
                   ))}
-                </div>
+                </div>,
+                document.body
               )}
             </div>
 
@@ -292,7 +313,7 @@ export function NoteEditorPanel() {
               </button>
 
               {showIconPicker && (
-                <div className="absolute z-10 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg grid grid-cols-4 sm:grid-cols-8 gap-1 left-0 max-w-[calc(100vw-4rem)]">
+                <div className="absolute z-50 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg grid grid-cols-4 sm:grid-cols-8 gap-1 left-0 max-w-[calc(100vw-4rem)]">
                   {NOTE_ICONS.map(icon => (
                     <button
                       key={icon}
@@ -341,15 +362,17 @@ export function NoteEditorPanel() {
               {/* Color - desktop only */}
               <div className="relative flex-shrink-0 hidden sm:block">
               <button
-                onClick={() => setShowColorPicker(!showColorPicker)}
+                ref={colorButtonRef}
+                onClick={handleToggleColorPicker}
                 className={`w-8 h-8 rounded border-2 border-neutral-200 dark:border-dark-600 transition-colors ${
                   selectedNote.note.color ? '' : 'bg-neutral-200 dark:bg-dark-700'
                 }`}
                 style={selectedNote.note.color ? { backgroundColor: selectedNote.note.color } : undefined}
               />
 
-              {showColorPicker && (
-                <div className="absolute z-10 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg space-y-1 right-0 max-h-60 overflow-y-auto">
+              {showColorPicker && colorPickerPosition && createPortal(
+                <div className="fixed z-50 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg space-y-1 max-h-60 overflow-y-auto"
+                     style={{ top: `${colorPickerPosition.top}px`, right: `${colorPickerPosition.right}px` }}>
                   {NOTE_COLORS.map(color => (
                     <button
                       key={color.name}
@@ -367,7 +390,8 @@ export function NoteEditorPanel() {
                       <span className="text-neutral-700 dark:text-dark-200 truncate">{color.name}</span>
                     </button>
                   ))}
-                </div>
+                </div>,
+                document.body
               )}
             </div>
 
