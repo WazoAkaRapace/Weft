@@ -8,7 +8,7 @@
 
 import { auth } from '../lib/auth.js';
 import { db } from '../db/index.js';
-import { journals, transcripts } from '../db/schema.js';
+import { journals, transcripts, notes, journalNotes } from '../db/schema.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile, unlink, appendFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -705,6 +705,97 @@ export async function handleGetJournal(request: Request, journalId: string): Pro
     );
   } catch (error) {
     console.error('Get journal error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+/**
+ * Get notes linked to a journal
+ *
+ * GET /api/journals/:id/notes
+ *
+ * @returns Response with list of linked notes or error
+ */
+export async function handleGetJournalNotes(request: Request, journalId: string): Promise<Response> {
+  try {
+    // Verify authentication
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify journal exists and belongs to user
+    const journalList = await db
+      .select()
+      .from(journals)
+      .where(eq(journals.id, journalId))
+      .limit(1);
+
+    const journal = journalList[0];
+
+    if (!journal) {
+      return new Response(
+        JSON.stringify({
+          error: 'Journal not found',
+          code: 'NOT_FOUND',
+        }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (journal.userId !== session.user.id) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get linked notes
+    const linkedNotes = await db
+      .select({
+        id: notes.id,
+        userId: notes.userId,
+        title: notes.title,
+        content: notes.content,
+        icon: notes.icon,
+        color: notes.color,
+        parentId: notes.parentId,
+        position: notes.position,
+        createdAt: notes.createdAt,
+        updatedAt: notes.updatedAt,
+        linkedAt: journalNotes.createdAt,
+      })
+      .from(journalNotes)
+      .innerJoin(notes, eq(journalNotes.noteId, notes.id))
+      .where(eq(journalNotes.journalId, journalId))
+      .orderBy(desc(journalNotes.createdAt));
+
+    return new Response(
+      JSON.stringify({
+        notes: linkedNotes,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Get journal notes error:', error);
     return new Response(
       JSON.stringify({
         error: 'Internal server error',

@@ -1,13 +1,18 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { useNotesContext } from '../../contexts/NotesContext';
 import { useNavigationContext } from '../../contexts/NavigationContext';
 import { NotesEditor, type NotesEditorRef } from './NotesEditor';
+import { JournalLinker } from '../journal/JournalLinker';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import type { UpdateNoteData } from '../../hooks/useNotes';
+import type { Journal } from '@weft/shared';
 
 export function NoteEditorPanel() {
   const { getSelectedNote, updateNote } = useNotesContext();
   const { setHasUnsavedChanges } = useNavigationContext();
+  const navigate = useNavigate();
   const selectedNote = getSelectedNote();
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -20,6 +25,11 @@ export function NoteEditorPanel() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const notesEditorRef = useRef<NotesEditorRef>(null);
   const colorButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Linked journals state
+  const [linkedJournals, setLinkedJournals] = useState<Journal[]>([]);
+  const [isJournalsLoading, setIsJournalsLoading] = useState(false);
+  const [pendingJournalId, setPendingJournalId] = useState<string | null>(null);
 
   // Note icons
   const NOTE_ICONS = ['📝', '📁', '💡', '📌', '🎯', '🔖', '📋', '✨', '🚀', '💼', '📚', '🎨', '🔧', '💻', '📊', '🗂️'];
@@ -78,6 +88,81 @@ export function NoteEditorPanel() {
 
     return () => clearInterval(interval);
   }, [setHasUnsavedChanges, selectedNote]);
+
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+  // Fetch linked journals
+  const fetchLinkedJournals = useCallback(async () => {
+    if (!selectedNote) return;
+    setIsJournalsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/notes/${selectedNote.note.id}/journals`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setLinkedJournals(data.journals);
+      }
+    } catch (err) {
+      console.error('Failed to fetch linked journals:', err);
+    } finally {
+      setIsJournalsLoading(false);
+    }
+  }, [selectedNote]);
+
+  // Link a journal to the note
+  const handleLinkJournal = useCallback(async (journalId: string) => {
+    if (!selectedNote) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/notes/${selectedNote.note.id}/journals/${journalId}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (response.ok) {
+        await fetchLinkedJournals();
+      }
+    } catch (err) {
+      console.error('Failed to link journal:', err);
+    }
+  }, [selectedNote, fetchLinkedJournals]);
+
+  // Unlink a journal from the note
+  const handleUnlinkJournal = useCallback(async (journalId: string) => {
+    if (!selectedNote) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/notes/${selectedNote.note.id}/journals/${journalId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (response.ok) {
+        setLinkedJournals(prev => prev.filter(j => j.id !== journalId));
+      }
+    } catch (err) {
+      console.error('Failed to unlink journal:', err);
+    }
+  }, [selectedNote]);
+
+  // Handle journal click - check for unsaved changes before navigating
+  const handleJournalClick = useCallback((journalId: string) => {
+    const hasUnsavedChanges = notesEditorRef.current?.hasUnsavedChanges();
+    if (hasUnsavedChanges) {
+      setPendingJournalId(journalId);
+    } else {
+      navigate(`/journal/${journalId}`);
+    }
+  }, [navigate]);
+
+  const confirmNavigate = useCallback(() => {
+    if (pendingJournalId) {
+      navigate(`/journal/${pendingJournalId}`);
+      setPendingJournalId(null);
+    }
+  }, [pendingJournalId, navigate]);
+
+  // Fetch linked journals when note changes
+  useEffect(() => {
+    fetchLinkedJournals();
+  }, [fetchLinkedJournals]);
 
   const handleTitleSubmit = async () => {
     if (!selectedNote || !titleInput.trim()) return;
@@ -173,7 +258,8 @@ export function NoteEditorPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-dark-800">
+    <>
+      <div className="h-full flex flex-col bg-white dark:bg-dark-800">
       {/* Header */}
       <div
         className="p-1.5 pt-5 sm:p-3 md:p-4 lg:p-6 border-b flex-shrink-0 relative"
@@ -519,6 +605,31 @@ export function NoteEditorPanel() {
           isSaving={isSaving}
         />
       </div>
+
+      {/* Linked Journals */}
+      <div className="border-t border-neutral-200 dark:border-dark-600 pt-4 px-4 sm:px-6 pb-4">
+        <JournalLinker
+          noteId={selectedNote.note.id}
+          linkedJournals={linkedJournals}
+          onLink={handleLinkJournal}
+          onUnlink={handleUnlinkJournal}
+          onJournalClick={handleJournalClick}
+          isLoading={isJournalsLoading}
+        />
+      </div>
     </div>
+
+    {pendingJournalId && (
+      <ConfirmDialog
+        isOpen={!!pendingJournalId}
+        title="Unsaved Changes"
+        message="You have unsaved changes. Do you want to leave anyway?"
+        confirmLabel="Leave"
+        cancelLabel="Stay"
+        onConfirm={confirmNavigate}
+        onCancel={() => setPendingJournalId(null)}
+      />
+    )}
+    </>
   );
 }

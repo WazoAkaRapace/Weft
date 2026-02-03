@@ -15,6 +15,7 @@ import {
   handleGetJournals,
   handleGetPaginatedJournals,
   handleGetJournal,
+  handleGetJournalNotes,
   handleDeleteJournal,
   handleUpdateJournal,
   handleGetTranscript,
@@ -382,6 +383,13 @@ const server = createHttpServer(async (req, res) => {
     if (url.pathname.match(/\/api\/journals\/[^/]+\/emotions$/) && req.method === 'GET') {
       const journalId = url.pathname.split('/').slice(-2, -1)[0];
       sendResponse(res, addCorsHeaders(await getEmotions(request, { id: journalId }), request));
+      return;
+    }
+
+    // Journal notes endpoint (must be before general /api/journals/:id check)
+    if (url.pathname.match(/\/api\/journals\/[^/]+\/notes$/) && req.method === 'GET') {
+      const journalId = url.pathname.split('/').slice(-2, -1)[0];
+      sendResponse(res, addCorsHeaders(await handleGetJournalNotes(request, journalId), request));
       return;
     }
 

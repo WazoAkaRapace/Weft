@@ -9,6 +9,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useVideoStreamer } from '../hooks/useVideoStreamer';
+import { RecordingNotePanel } from './recording/RecordingNotePanel';
 import type { StreamCompleteResponse } from '@weft/shared';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -30,6 +31,10 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
   const [titleError, setTitleError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  // Note selection state
+  const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([]);
+  const [notePanelCollapsed, setNotePanelCollapsed] = useState(true);
 
   // Ref for title input auto-focus
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -175,6 +180,18 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
         throw new Error('Failed to save journal title');
       }
 
+      // Link selected notes to the journal
+      if (selectedNoteIds.length > 0) {
+        await Promise.all(
+          selectedNoteIds.map(noteId =>
+            fetch(`${API_BASE}/api/notes/${noteId}/journals/${journalId}`, {
+              method: 'POST',
+              credentials: 'include',
+            })
+          )
+        );
+      }
+
       // Success - call callback
       onSaveComplete?.();
     } catch (err) {
@@ -183,7 +200,7 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
     } finally {
       setIsSaving(false);
     }
-  }, [journalId, title, validateTitle, onSaveComplete]);
+  }, [journalId, title, validateTitle, onSaveComplete, selectedNoteIds]);
 
   /**
    * Handle Enter key in title input
@@ -200,7 +217,18 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
       <div className="min-h-screen flex items-center justify-center p-4 bg-background dark:bg-background-dark">
         <div className="bg-white dark:bg-background-card-dark rounded-lg p-8 w-full max-w-md shadow-lg text-center">
           <h2 className="text-xl text-text-default dark:text-text-dark-default mb-2">New Journal Entry</h2>
-          <p className="text-text-secondary dark:text-text-dark-secondary mb-6">Record a video to add a new entry to your journal</p>
+          <p className="text-text-secondary dark:text-text-dark-secondary mb-4">Record a video to add a new entry to your journal</p>
+
+          {/* Note selection */}
+          <button
+            onClick={() => {}}
+            className="mb-6 px-4 py-2 text-sm border border-border dark:border-border-dark rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors"
+          >
+            {selectedNoteIds.length > 0
+              ? `${selectedNoteIds.length} note${selectedNoteIds.length > 1 ? 's' : ''} selected`
+              : 'Select notes to link'}
+          </button>
+
           <button
             className="px-6 py-3 bg-primary text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-primary-hover"
             onClick={handleStartRecording}
@@ -209,6 +237,13 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
             Start Recording
           </button>
         </div>
+
+        <RecordingNotePanel
+          selectedNoteIds={selectedNoteIds}
+          onSelectionChange={setSelectedNoteIds}
+          isCollapsed={true}
+          onToggleCollapse={() => {}}
+        />
       </div>
     );
   }
@@ -322,6 +357,13 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
             </div>
           </div>
         </div>
+
+        <RecordingNotePanel
+          selectedNoteIds={selectedNoteIds}
+          onSelectionChange={setSelectedNoteIds}
+          isCollapsed={notePanelCollapsed}
+          onToggleCollapse={() => setNotePanelCollapsed(!notePanelCollapsed)}
+        />
       </div>
     );
   }
@@ -377,6 +419,19 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
                 Enter a title for your journal entry (1-200 characters)
               </span>
             )}
+          </div>
+
+          {/* Note selection */}
+          <div className="flex flex-col gap-2 mb-6">
+            <label className="text-sm font-medium text-text-muted dark:text-text-dark-muted">Linked Notes</label>
+            <button
+              type="button"
+              className="w-full px-4 py-3 border border-border dark:border-border-dark rounded-lg text-left hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors"
+            >
+              {selectedNoteIds.length > 0
+                ? `${selectedNoteIds.length} note${selectedNoteIds.length > 1 ? 's' : ''} selected`
+                : 'Select notes to link'}
+            </button>
           </div>
 
           <div className="recording-controls flex gap-2">

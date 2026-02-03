@@ -7,8 +7,11 @@ import { TranscriptDisplay } from '../components/transcript/TranscriptDisplay';
 import { NotesEditor, type NotesEditorRef } from '../components/notes/NotesEditor';
 import { EmotionDisplay } from '../components/emotions/EmotionDisplay';
 import { JobStatusIndicator, JobRetryButton } from '../components/jobs';
+import { LinkedNotesList } from '../components/journal/LinkedNotesList';
+import { NoteViewModal } from '../components/notes/NoteViewModal';
+import { NoteSelector } from '../components/notes/NoteSelector';
 import { formatDuration } from '../lib/video-stream';
-import type { Transcript } from '@weft/shared';
+import type { Transcript, Note } from '@weft/shared';
 
 export function JournalDetailPage() {
   const navigate = useNavigate();
@@ -19,6 +22,12 @@ export function JournalDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const editorRef = useRef<NotesEditorRef>(null);
+
+  // Linked notes state
+  const [linkedNotes, setLinkedNotes] = useState<Note[]>([]);
+  const [isNotesLoading, setIsNotesLoading] = useState(false);
+  const [selectedNoteForModal, setSelectedNoteForModal] = useState<Note | null>(null);
+  const [showNoteSelector, setShowNoteSelector] = useState(false);
 
   const { journal, isLoading, error, updateNotes, refresh, setJournal } = useJournalDetail(
     id || ''
@@ -136,6 +145,64 @@ export function JournalDetailPage() {
   const handleBack = useCallback(() => {
     navigate('/history');
   }, [navigate]);
+
+  // Fetch linked notes
+  const fetchLinkedNotes = useCallback(async () => {
+    if (!id) return;
+    setIsNotesLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/journals/${id}/notes`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setLinkedNotes(data.notes);
+      }
+    } catch (err) {
+      console.error('Failed to fetch linked notes:', err);
+    } finally {
+      setIsNotesLoading(false);
+    }
+  }, [id]);
+
+  // Link a note to the journal
+  const handleLinkNote = useCallback(async (noteId: string) => {
+    if (!id) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/notes/${noteId}/journals/${id}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (response.ok) {
+        await fetchLinkedNotes();
+      }
+    } catch (err) {
+      console.error('Failed to link note:', err);
+    }
+  }, [id, fetchLinkedNotes]);
+
+  // Unlink a note from the journal
+  const handleUnlinkNote = useCallback(async (noteId: string) => {
+    if (!id) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/notes/${noteId}/journals/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (response.ok) {
+        setLinkedNotes(prev => prev.filter(n => n.id !== noteId));
+      }
+    } catch (err) {
+      console.error('Failed to unlink note:', err);
+    }
+  }, [id]);
+
+  // Fetch linked notes when journal loads
+  useEffect(() => {
+    if (id && journal) {
+      fetchLinkedNotes();
+    }
+  }, [id, journal, fetchLinkedNotes]);
 
   // Handle journal not found
   if (!isLoading && error?.message === 'Journal not found') {
@@ -297,6 +364,26 @@ export function JournalDetailPage() {
               />
             </div>
 
+            {/* Linked Notes */}
+            <div className="bg-white dark:bg-background-card-dark rounded-lg p-6 shadow-sm">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-text-default dark:text-text-dark-default">Linked Notes</h3>
+                <button
+                  onClick={() => setShowNoteSelector(true)}
+                  className="px-3 py-1 text-sm bg-primary text-white rounded-lg hover:bg-primary-hover"
+                >
+                  + Link Note
+                </button>
+              </div>
+              <LinkedNotesList
+                journalId={id || ''}
+                notes={linkedNotes}
+                onUnlink={handleUnlinkNote}
+                onNoteClick={setSelectedNoteForModal}
+                isLoading={isNotesLoading}
+              />
+            </div>
+
             {/* Transcript */}
             {/* Job Status Indicator */}
             <JobStatusIndicator
@@ -436,6 +523,27 @@ export function JournalDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Modals */}
+        <NoteViewModal
+          note={selectedNoteForModal}
+          isOpen={selectedNoteForModal !== null}
+          onClose={() => setSelectedNoteForModal(null)}
+        />
+
+        {showNoteSelector && (
+          <NoteSelector
+            selectedNoteIds={linkedNotes.map(n => n.id)}
+            onSelectionChange={(noteIds) => {
+              // For each newly selected note, link it to the journal
+              const newNoteIds = noteIds.filter(id => !linkedNotes.some(n => n.id === id));
+              Promise.all(newNoteIds.map(id => handleLinkNote(id)));
+            }}
+            excludeIds={linkedNotes.map(n => n.id)}
+            isOpen={showNoteSelector}
+            onClose={() => setShowNoteSelector(false)}
+          />
+        )}
       </div>
     );
 }
