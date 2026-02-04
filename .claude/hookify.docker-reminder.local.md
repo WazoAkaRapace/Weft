@@ -26,7 +26,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 **Frontend changes only?**
 ```bash
-docker compose -f docker/docker-compose.yml up -d --build web
+docker compose -f docker/docker-compose.yml up -d --build frontend
 ```
 
 **Backend changes only?**

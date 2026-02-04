@@ -134,21 +134,24 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
     }
 
     // Find the slash command in the text before cursor
-    // Captures the text after the slash (e.g., "/q" captures "q", "/h1" captures "h1", "/" captures "")
-    const slashMatch = textBeforeCursor.match(/\/([a-zA-Z0-9]*)$/);
+    // Captures the text after the slash (e.g., "/q" captures "q", "/h1" captures "h1", "/" or "//" captures "")
+    const slashMatch = textBeforeCursor.match(/\/\/?([a-zA-Z0-9]*)$/);
     if (!slashMatch) {
       return;
     }
 
-    const query = slashMatch[1]; // The captured text after slash: "q", "h1", "note", or "" for just "/"
-    const slashText = query ? '/' + query : '/'; // Full slash command: "/q", "/h1", "/"
+    const query = slashMatch[1]; // The captured text after slash: "q", "h1", "note", or "" for just "/" or "//"
+    const isDoubleSlash = textBeforeCursor.match(/\/\/([a-zA-Z0-9]*)$/);
+    const slashText = isDoubleSlash ? ('//' + query) : (query ? '/' + query : '/'); // Full slash command: "//", "/", "/q", "/h1"
 
     // Get the ACTUAL current markdown from the editor (not React state which might be stale)
     const markdown = mdxEditorRef.current?.getMarkdown() || currentMarkdown;
 
     // Build pattern to find the slash command in the markdown
-    // Look for the slash command at the end of a line (e.g., "/q", "/", "/h1")
-    const pattern = query ? new RegExp(`/${query}$`) : /\/$/;
+    // Look for the slash command at the end of a line (e.g., "/q", "/", "//", "/h1")
+    const pattern = isDoubleSlash
+      ? (query ? new RegExp(`//${query}$`) : /\/\/$/)
+      : (query ? new RegExp(`/${query}$`) : /\/$/);
 
     // Find the last line that ends with the slash command
     const lines = markdown.split('\n');
@@ -169,7 +172,10 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
     lines[foundLineIndex] = lines[foundLineIndex].replace(pattern, '');
 
     // Insert the command text with a marker for cursor position
-    const insertText = command.insertText;
+    // Resolve insertText if it's a function (for dynamic values like today's date)
+    const insertText = typeof command.insertText === 'function'
+      ? command.insertText()
+      : command.insertText;
     const CURSOR_MARKER = '%%CURSOR%%';
 
     if (insertText.startsWith(':::')) {
@@ -235,7 +241,7 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
   }, [currentMarkdown, handleChange]);
 
   // Set up slash command detection (only in edit mode)
-  const { menuOpen, menuPosition, query, closeMenu, markJustSelected } = useSlashCommandDetection(
+  const { menuOpen, menuPosition, query, isDoubleSlash, closeMenu, markJustSelected } = useSlashCommandDetection(
     handleSlashCommandSelect
   );
 
@@ -293,6 +299,7 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
           isOpen={menuOpen}
           position={menuPosition}
           query={query}
+          isDoubleSlash={isDoubleSlash}
           onSelect={handleSlashCommandSelect}
           onClose={closeMenu}
         />

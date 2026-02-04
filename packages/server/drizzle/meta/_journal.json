@@ -43,6 +43,13 @@
       "when": 1770112971480,
       "tag": "0005_talented_nightmare",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1770207462571,
+      "tag": "0006_friendly_rafael_vega",
+      "breakpoints": true
     }
   ]
 }

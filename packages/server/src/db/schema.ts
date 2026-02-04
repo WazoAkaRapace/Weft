@@ -189,6 +189,30 @@ export const journalNotes = pgTable(
 );
 
 /**
+ * Templates table
+ * Stores user-specific note templates with predefined content
+ */
+export const templates = pgTable(
+  'templates',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    content: text('content'), // Markdown content template
+    icon: text('icon').default('📝'), // Emoji or icon for visual identification
+    color: text('color'), // Hex color code for organization
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('templates_user_id_idx').on(table.userId),
+    createdAtIdx: index('templates_created_at_idx').on(table.createdAt),
+  })
+);
+
+/**
  * Transcripts table
  * Stores transcript data for journal entries
  */
@@ -252,6 +276,8 @@ export type Note = typeof notes.$inferSelect;
 export type NewNote = typeof notes.$inferInsert;
 export type JournalNote = typeof journalNotes.$inferSelect;
 export type NewJournalNote = typeof journalNotes.$inferInsert;
+export type Template = typeof templates.$inferSelect;
+export type NewTemplate = typeof templates.$inferInsert;
 export type Transcript = typeof transcripts.$inferSelect;
 export type NewTranscript = typeof transcripts.$inferInsert;
 export type Tag = typeof tags.$inferSelect;

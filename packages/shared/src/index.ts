@@ -169,6 +169,20 @@ export interface JournalNote {
 }
 
 /**
+ * Template entry type - user-specific reusable note templates
+ */
+export interface Template {
+  id: string;
+  userId: string;
+  title: string;
+  content: string | null;
+  icon: string;
+  color: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
  * Unified feed entry type for dashboard
  */
 export interface FeedEntry {

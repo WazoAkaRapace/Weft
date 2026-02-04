@@ -8,6 +8,7 @@ import { RecordingPage } from './pages/RecordingPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { JournalDetailPage } from './pages/JournalDetailPage';
 import { NotesPage } from './pages/NotesPage';
+import { TemplatesPage } from './pages/TemplatesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { MainAppLayout } from './components/layout/MainAppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -79,6 +80,9 @@ export function App() {
           {/* Notes */}
           <Route path="notes" element={<NotesPage />} />
           <Route path="notes/:noteId" element={<NotesPage />} />
+          <Route path="notes/templates" element={<TemplatesPage />} />
+          <Route path="notes/templates/new" element={<TemplatesPage />} />
+          <Route path="notes/templates/:templateId" element={<TemplatesPage />} />
         </Route>
 
         {/* Root route - redirects based on onboarding status */}

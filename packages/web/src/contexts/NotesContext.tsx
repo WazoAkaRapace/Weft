@@ -20,7 +20,7 @@ interface NotesContextValue {
   collapseNode: (id: string) => void;
   startCreating: (parentId: string | null) => void;
   cancelCreating: () => void;
-  createNote: (data: CreateNoteData) => Promise<void>;
+  createNote: (data: CreateNoteData) => Promise<{ id: string }>;
   updateNote: (id: string, data: UpdateNoteData) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
   reorderNotes: (notes: Array<{ id: string; position: number; parentId?: string | null }>) => Promise<void>;
@@ -168,6 +168,9 @@ export function NotesProvider({ children, initialNoteId = null }: NotesProviderP
     // Clear creation state
     setIsCreating(false);
     setCreatingParentId(null);
+
+    // Return the created note ID so caller can navigate to it
+    return { id: createdNote.id };
   }, [createNoteApi, selectNote, expandNode]);
 
   const updateNote = useCallback(async (id: string, data: UpdateNoteData) => {

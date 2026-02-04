@@ -34,6 +34,14 @@ import {
   handleUnlinkNoteFromJournal,
 } from './routes/notes.js';
 import {
+  handleGetTemplates,
+  handleGetTemplate,
+  handleCreateTemplate,
+  handleUpdateTemplate,
+  handleDeleteTemplate,
+  handleCreateTemplateFromNote,
+} from './routes/templates.js';
+import {
   handleGetUserSettings,
   handleUpdateUserSettings,
 } from './routes/users.js';
@@ -466,6 +474,42 @@ const server = createHttpServer(async (req, res) => {
     if (url.pathname.startsWith('/api/notes/') && req.method === 'DELETE') {
       const noteId = url.pathname.split('/').pop() || '';
       sendResponse(res, addCorsHeaders(await handleDeleteNote(request, noteId), request));
+      return;
+    }
+
+    // Templates CRUD endpoints
+    if (url.pathname === '/api/templates' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetTemplates(request), request));
+      return;
+    }
+
+    if (url.pathname === '/api/templates' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleCreateTemplate(request), request));
+      return;
+    }
+
+    // Create from note endpoint (must be before general /api/templates/:id check)
+    if (url.pathname.match(/\/api\/templates\/from-note\/[^/]+$/) && req.method === 'POST') {
+      const noteId = url.pathname.split('/').slice(-1)[0];
+      sendResponse(res, addCorsHeaders(await handleCreateTemplateFromNote(request, noteId), request));
+      return;
+    }
+
+    if (url.pathname.startsWith('/api/templates/') && req.method === 'GET') {
+      const templateId = url.pathname.split('/').pop() || '';
+      sendResponse(res, addCorsHeaders(await handleGetTemplate(request, templateId), request));
+      return;
+    }
+
+    if (url.pathname.startsWith('/api/templates/') && req.method === 'PUT') {
+      const templateId = url.pathname.split('/').pop() || '';
+      sendResponse(res, addCorsHeaders(await handleUpdateTemplate(request, templateId), request));
+      return;
+    }
+
+    if (url.pathname.startsWith('/api/templates/') && req.method === 'DELETE') {
+      const templateId = url.pathname.split('/').pop() || '';
+      sendResponse(res, addCorsHeaders(await handleDeleteTemplate(request, templateId), request));
       return;
     }
 

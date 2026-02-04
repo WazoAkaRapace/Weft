@@ -2,8 +2,10 @@ import { memo, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useNotesContext } from '../../contexts/NotesContext';
 import { useNavigationContext } from '../../contexts/NavigationContext';
+import { useTemplates } from '../../hooks/useTemplates';
 import { NoteCreateForm } from './NoteCreateForm';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { DropdownMenu } from '../ui/DropdownMenu';
 
 interface NoteTreeNodeProps {
   nodeId: string;
@@ -18,6 +20,7 @@ function NoteTreeNode({ nodeId, level, dragHandleProps, isDragging = false, isDr
   const navigate = useNavigate();
   const location = useLocation();
   const { navigateWithWarning } = useNavigationContext();
+  const { createTemplateFromNote } = useTemplates();
   const {
     notes,
     selectedNoteId,
@@ -31,6 +34,7 @@ function NoteTreeNode({ nodeId, level, dragHandleProps, isDragging = false, isDr
   } = useNotesContext();
 
   const [noteToDelete, setNoteToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
 
   // Find this node and its children
   const findNode = (nodes: typeof notes): typeof nodes[0] | null => {
@@ -80,8 +84,7 @@ function NoteTreeNode({ nodeId, level, dragHandleProps, isDragging = false, isDr
     selectNote(nodeId);
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDelete = () => {
     setNoteToDelete({ id: nodeId, title: node.note.title });
   };
 
@@ -97,6 +100,21 @@ function NoteTreeNode({ nodeId, level, dragHandleProps, isDragging = false, isDr
     }
     setNoteToDelete(null);
   }, [noteToDelete, deleteNote, location, navigate]);
+
+  const handleCreateTemplate = useCallback(async () => {
+    if (isCreatingTemplate) return;
+
+    setIsCreatingTemplate(true);
+    try {
+      const createdTemplate = await createTemplateFromNote(nodeId);
+      // Navigate to templates page to edit the newly created template
+      navigate(`/notes/templates/${createdTemplate.id}`);
+    } catch (error) {
+      console.error('Failed to create template:', error);
+    } finally {
+      setIsCreatingTemplate(false);
+    }
+  }, [nodeId, createTemplateFromNote, isCreatingTemplate, navigate]);
 
   // Calculate indentation based on level
   const indent = level * 16; // 16px per level
@@ -164,17 +182,46 @@ function NoteTreeNode({ nodeId, level, dragHandleProps, isDragging = false, isDr
               </svg>
             </button>
 
-            {/* Delete Button */}
-            <button
-              onClick={handleDelete}
-              className="p-1 hover:bg-error-light dark:hover:bg-error-dark-light/30 text-error rounded transition-colors"
-              title="Delete note"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
-            </button>
+            {/* Dropdown Menu */}
+            <DropdownMenu
+              trigger={
+                <button
+                  className="p-1 hover:bg-neutral-200 dark:hover:bg-dark-600 rounded transition-colors"
+                  title="More options"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="1" />
+                    <circle cx="12" cy="5" r="1" />
+                    <circle cx="12" cy="19" r="1" />
+                  </svg>
+                </button>
+              }
+              items={[
+                {
+                  id: 'create-template',
+                  label: isCreatingTemplate ? 'Creating...' : 'Create template',
+                  icon: (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                  ),
+                  onClick: handleCreateTemplate,
+                },
+                {
+                  id: 'delete',
+                  label: 'Delete',
+                  icon: (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                  ),
+                  onClick: handleDelete,
+                  variant: 'danger',
+                },
+              ]}
+            />
           </div>
 
           {/* Drag Handle - absolutely positioned on left, appears on hover */}

@@ -6,7 +6,7 @@ export interface SlashCommand {
   description: string;
   icon: string;
   keywords?: string[];
-  insertText: string;
+  insertText: string | (() => string);
 }
 
 const SLASH_COMMANDS: SlashCommand[] = [
@@ -126,6 +126,15 @@ const SLASH_COMMANDS: SlashCommand[] = [
     keywords: ['table', 'grid'],
     insertText: '| Column 1 | Column 2 | Column 3 |\n|----------|----------|----------|\n| Cell 1   | Cell 2   | Cell 3   |',
   },
+  // Date
+  {
+    id: 'date',
+    label: 'Today\'s Date',
+    description: 'Insert today\'s date',
+    icon: '📅',
+    keywords: ['date', 'today'],
+    insertText: () => new Date().toISOString().split('T')[0],
+  },
 ];
 
 /**
@@ -182,16 +191,22 @@ interface SlashCommandMenuProps {
   isOpen: boolean;
   position: { x: number; y: number };
   query: string;
+  isDoubleSlash?: boolean;
   onSelect: (command: SlashCommand) => void;
   onClose: () => void;
 }
 
-export function SlashCommandMenu({ isOpen, position, query, onSelect, onClose }: SlashCommandMenuProps) {
+export function SlashCommandMenu({ isOpen, position, query, isDoubleSlash, onSelect, onClose }: SlashCommandMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Filter commands based on query
   const filteredCommands = SLASH_COMMANDS.filter(cmd => {
+    // If double slash, only show date command
+    if (isDoubleSlash) {
+      return cmd.id === 'date';
+    }
+
     const searchStr = `${cmd.label} ${cmd.description} ${(cmd.keywords || []).join(' ')}`.toLowerCase();
     return searchStr.includes(query.toLowerCase());
   });
@@ -273,11 +288,7 @@ export function SlashCommandMenu({ isOpen, position, query, onSelect, onClose }:
   };
 
   if (filteredCommands.length === 0) {
-    return (
-      <div ref={menuRef} style={menuStyle} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 min-w-[280px]">
-        <p className="text-sm text-gray-500 dark:text-gray-400">No commands found</p>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -321,6 +332,7 @@ export function useSlashCommandDetection(
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const [query, setQuery] = useState('');
+  const [isDoubleSlash, setIsDoubleSlash] = useState(false);
   const justSelectedRef = useRef(false);
 
   // Listen to input events to detect slash commands
@@ -366,11 +378,13 @@ export function useSlashCommandDetection(
       }
 
       // Check if there's a slash followed by non-space characters immediately before cursor
-      const slashMatch = textBeforeCursor.match(/\/([^\s\/][^\s]*)?$/);
+      const slashMatch = textBeforeCursor.match(/\/\/?([^\s\/][^\s]*)?$/);
+      const doubleSlashMatch = textBeforeCursor.match(/\/\/$/);
 
       if (slashMatch) {
         const queryText = slashMatch[1] || '';
         setQuery(queryText);
+        setIsDoubleSlash(!!doubleSlashMatch);
 
         // Get cursor position for menu
         const rect = range.getBoundingClientRect();
@@ -382,6 +396,7 @@ export function useSlashCommandDetection(
       } else {
         setMenuOpen(false);
         setQuery('');
+        setIsDoubleSlash(false);
       }
     };
 
@@ -412,6 +427,7 @@ export function useSlashCommandDetection(
     menuOpen,
     menuPosition,
     query,
+    isDoubleSlash,
     closeMenu: () => setMenuOpen(false),
     markJustSelected: () => { justSelectedRef.current = true; },
     onSelect,
