@@ -10,6 +10,7 @@ import { JobStatusIndicator, JobRetryButton } from '../components/jobs';
 import { LinkedNotesList } from '../components/journal/LinkedNotesList';
 import { NoteViewModal } from '../components/notes/NoteViewModal';
 import { NoteSelector } from '../components/notes/NoteSelector';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { formatDuration } from '../lib/video-stream';
 import type { Transcript, Note } from '@weft/shared';
 
@@ -28,6 +29,10 @@ export function JournalDetailPage() {
   const [isNotesLoading, setIsNotesLoading] = useState(false);
   const [selectedNoteForModal, setSelectedNoteForModal] = useState<Note | null>(null);
   const [showNoteSelector, setShowNoteSelector] = useState(false);
+
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { journal, isLoading, error, updateNotes, refresh, setJournal } = useJournalDetail(
     id || ''
@@ -197,6 +202,28 @@ export function JournalDetailPage() {
     }
   }, [id]);
 
+  // Delete journal
+  const handleDelete = useCallback(async () => {
+    if (!id) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/journals/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (response.ok) {
+        // Navigate back to history after successful deletion
+        navigate('/history');
+      } else {
+        console.error('Failed to delete journal');
+        setIsDeleting(false);
+      }
+    } catch (err) {
+      console.error('Failed to delete journal:', err);
+      setIsDeleting(false);
+    }
+  }, [id, navigate]);
+
   // Fetch linked notes when journal loads
   useEffect(() => {
     if (id && journal) {
@@ -282,13 +309,38 @@ export function JournalDetailPage() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-        {/* Back button */}
-        <button
-          onClick={handleBack}
-          className="mb-6 px-4 py-2 bg-transparent text-primary dark:text-primary border border-primary rounded-lg cursor-pointer transition-all hover:bg-primary-light"
-        >
-          ← Back to History
-        </button>
+        {/* Header with back button and delete button */}
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={handleBack}
+            className="px-4 py-2 bg-transparent text-primary dark:text-primary border border-primary rounded-lg cursor-pointer transition-all hover:bg-primary-light"
+          >
+            ← Back to History
+          </button>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={isDeleting}
+            className="px-4 py-2 bg-danger text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-danger-hover disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isDeleting ? (
+              <>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+                  <circle cx="12" cy="12" r="10" opacity="0.25" />
+                  <path d="M12 2a10 10 0 0 1 10 10" />
+                </svg>
+                Deleting...
+              </>
+            ) : (
+              <>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+                Delete Entry
+              </>
+            )}
+          </button>
+        </div>
 
         {/* Page title */}
         <h1 className="text-3xl font-bold text-text-default dark:text-text-dark-default mb-8">
@@ -544,6 +596,18 @@ export function JournalDetailPage() {
             onClose={() => setShowNoteSelector(false)}
           />
         )}
+
+        {/* Delete confirmation dialog */}
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          title="Delete Journal Entry?"
+          message={`Are you sure you want to delete "${journal.title}"? This action cannot be undone. The video and all associated data will be permanently deleted. Linked notes will not be deleted.`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+          isDestructive={true}
+        />
       </div>
     );
 }
