@@ -39,41 +39,42 @@ export function EmotionChart({ scores, className = '' }: EmotionChartProps) {
     <div className={`space-y-3 ${className}`}>
       <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Emotion Distribution</h4>
 
-      {/* Pie chart visualization using CSS conic-gradient */}
-      <div className="flex items-center gap-4">
+      {/* Pie chart and legend */}
+      <div className="flex items-center gap-6">
+        {/* Pie chart visualization using CSS conic-gradient */}
         <div
-          className="relative w-24 h-24 rounded-full"
+          className="relative w-24 h-24 rounded-full flex-shrink-0"
           style={{
-            background: slices
+            background: `conic-gradient(${slices
               .map(
                 ({ emotion, startPercent, percent }) =>
                   `${getPieColor(emotion)} ${startPercent}% ${startPercent + percent}%`
               )
-              .join(', '),
+              .join(', ')})`,
           }}
           aria-label="Emotion distribution pie chart"
         />
-      </div>
 
-      {/* Legend */}
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        {slices.map(({ emotion, score, percent }) => {
-          const config = EMOTION_CONFIG[emotion] || EMOTION_CONFIG.neutral;
-          return (
-            <div key={emotion} className="flex items-center gap-2">
-              <span
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: getPieColor(emotion) }}
-              />
-              <span className="flex-1 text-gray-600 dark:text-gray-400">
-                {config.icon} {config.label}
-              </span>
-              <span className="font-medium text-gray-900 dark:text-gray-100">
-                {Math.round(percent)}%
-              </span>
-            </div>
-          );
-        })}
+        {/* Legend - single column on the right */}
+        <div className="flex flex-col gap-2 text-sm">
+          {slices.map(({ emotion, score, percent }) => {
+            const config = EMOTION_CONFIG[emotion] || EMOTION_CONFIG.neutral;
+            return (
+              <div key={emotion} className="flex items-center gap-2">
+                <span
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: getPieColor(emotion) }}
+                />
+                <span className="flex-1 text-gray-600 dark:text-gray-400">
+                  {config.icon} {config.label}
+                </span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {Math.round(percent)}%
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

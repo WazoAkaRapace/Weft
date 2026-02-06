@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { formatDuration } from '../../lib/video-stream';
+import Hls from 'hls.js';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -10,6 +11,7 @@ interface VideoPlayerProps {
   onTimeUpdate?: (currentTime: number) => void;
   seekTo?: number; // External time to seek to
   className?: string;
+  hlsManifestPath?: string | null; // HLS manifest path if available
 }
 
 export function VideoPlayer({
@@ -19,9 +21,11 @@ export function VideoPlayer({
   onTimeUpdate,
   seekTo,
   className = '',
+  hlsManifestPath,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const isSeekingRef = useRef(false); // Track if user is currently seeking
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -34,6 +38,19 @@ export function VideoPlayer({
     () => (thumbnailPath ? API_BASE + thumbnailPath.replace(/^\/app/, '') : undefined),
     [thumbnailPath]
   );
+
+  // Determine the HLS manifest URL
+  const hlsManifestUrl = useMemo(() => {
+    if (hlsManifestPath) {
+      return API_BASE + hlsManifestPath.replace(/^\/app/, '');
+    }
+    return null;
+  }, [hlsManifestPath]);
+
+  // Detect if video should use HLS (has HLS manifest path or videoPath is HLS)
+  const isHLS = useMemo(() => {
+    return !!hlsManifestUrl || videoPath.endsWith('.m3u8') || videoPath.includes('-hls/');
+  }, [hlsManifestUrl, videoPath]);
 
   const togglePlayPause = useCallback(() => {
     const video = videoRef.current;
@@ -95,6 +112,98 @@ export function VideoPlayer({
     onTimeUpdate?.(time);
   }, [onTimeUpdate]);
 
+  // HLS.js initialization
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Clean up any existing HLS instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    if (isHLS) {
+      if (Hls.isSupported()) {
+        // HLS.js is supported
+        console.log('[VideoPlayer] Initializing HLS.js');
+
+        const hls = new Hls({
+          // Configuration for long videos
+          maxBufferLength: 30, // Maximum buffer length in seconds
+          maxMaxBufferLength: 60, // Maximum buffer length for long videos
+          maxBufferSize: 60 * 1000 * 1000, // 60 MB
+          maxBufferHole: 0.5, // Maximum buffer hole in seconds
+          // Enable quality switching
+          abrEwmaFastLive: 3,
+          abrEwmaSlowLive: 10,
+          abrEwmaFastVoD: 3,
+          abrEwmaSlowVoD: 10,
+          abrMaxWithRealBitrate: true,
+          // Error recovery
+          maxLoadingDelay: 8,
+          maxStarvationDelay: 4,
+        });
+
+        hlsRef.current = hls;
+
+        // Use HLS manifest URL if available, otherwise fall back to video URL
+        const sourceUrl = hlsManifestUrl || videoUrl;
+        hls.loadSource(sourceUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
+          console.log('[VideoPlayer] HLS Manifest loaded, quality levels:', data.levels.length);
+          // Auto-play if already playing
+          if (isPlaying) {
+            video.play().catch(console.error);
+          }
+        });
+
+        hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
+          console.log('[VideoPlayer] HLS Level switched:', data.level, hls.levels[data.level]?.height);
+        });
+
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          console.error('[VideoPlayer] HLS Error:', data.type, data.details, data.fatal);
+
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.error('[VideoPlayer] Fatal network error, trying to recover...');
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.error('[VideoPlayer] Fatal media error, trying to recover...');
+                hls.recoverMediaError();
+                break;
+              default:
+                console.error('[VideoPlayer] Fatal error, cannot recover');
+                hls.destroy();
+                break;
+            }
+          }
+        });
+
+        return () => {
+          hls.destroy();
+          hlsRef.current = null;
+        };
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS support (Safari)
+        console.log('[VideoPlayer] Using native HLS support');
+        video.src = videoUrl;
+      } else {
+        console.warn('[VideoPlayer] HLS not supported, fallback to direct playback');
+        video.src = videoUrl;
+      }
+    } else {
+      // Direct video playback (non-HLS)
+      video.src = videoUrl;
+    }
+  }, [videoUrl, isHLS, hlsManifestUrl]); // Note: isPlaying is intentionally not in deps to avoid re-init
+
+  // Video event listeners
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -147,6 +256,16 @@ export function VideoPlayer({
     }
   }, [seekTo]);
 
+  // Cleanup HLS instance on unmount
+  useEffect(() => {
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, []);
+
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
@@ -154,10 +273,10 @@ export function VideoPlayer({
       <div ref={containerRef} className="relative w-full bg-black rounded-lg overflow-hidden">
         <video
           ref={videoRef}
-          src={videoUrl}
           poster={thumbnailUrl}
           className="w-full aspect-video object-contain bg-black"
           controls={false}
+          // Don't set src here - it's set by HLS.js or in the useEffect
         />
 
         {/* Custom controls overlay */}

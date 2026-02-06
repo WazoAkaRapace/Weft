@@ -48,6 +48,7 @@ import {
 import { getEmotions, retryEmotionAnalysis } from './routes/emotions.js';
 import { getTranscriptionQueue } from './queue/TranscriptionQueue.js';
 import { getEmotionQueue } from './queue/EmotionQueue.js';
+import { getHLSQueue } from './queue/HLSQueue.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -275,6 +276,11 @@ try {
   console.warn('⚠ Emotion detection queue failed to start. Emotion analysis will be disabled:', error);
   console.warn('⚠ This is usually due to missing TensorFlow native bindings. The server will continue without emotion detection.');
 }
+
+// Start HLS transcoding queue
+const hlsQueue = getHLSQueue();
+await hlsQueue.start();
+console.log('HLS transcoding queue started');
 
 // Main HTTP server using Node.js (compatible with Transformers.js)
 const server = createHttpServer(async (req, res) => {
@@ -553,6 +559,8 @@ const server = createHttpServer(async (req, res) => {
           : ext === '.png' ? 'image/png'
           : ext === '.webm' ? 'video/webm'
           : ext === '.mp4' ? 'video/mp4'
+          : ext === '.m3u8' ? 'application/vnd.apple.mpegurl'
+          : ext === '.ts' ? 'video/mp2t'
           : 'application/octet-stream';
 
         // Set CORS headers

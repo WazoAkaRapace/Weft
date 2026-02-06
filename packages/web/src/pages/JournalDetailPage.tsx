@@ -357,6 +357,7 @@ export function JournalDetailPage() {
                 duration={journal.duration}
                 onTimeUpdate={handleTimeUpdate}
                 seekTo={seekTo}
+                hlsManifestPath={(journal as any).hlsManifestPath}
               />
             </div>
 

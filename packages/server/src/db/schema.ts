@@ -122,6 +122,11 @@ export const journals = pgTable(
       confidence: number; // 0-1 confidence score
     }>>(), // Frame-by-frame emotion timeline
     emotionScores: jsonb('emotion_scores').$type<Record<string, number>>(), // Emotion distribution: { happy: 0.45, ... }
+    // HLS streaming fields
+    hlsManifestPath: text('hls_manifest_path'), // Path to HLS master playlist
+    hlsStatus: text('hls_status'), // HLS transcoding status: 'pending' | 'processing' | 'completed' | 'failed'
+    hlsError: text('hls_error'), // Error message if HLS transcoding failed
+    hlsCreatedAt: timestamp('hls_created_at'), // When HLS transcoding completed
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },

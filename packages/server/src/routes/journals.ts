@@ -16,7 +16,9 @@ import path from 'node:path';
 import { eq, desc, gte, lte, or, ilike, and, sql } from 'drizzle-orm';
 import { getTranscriptionQueue } from '../queue/TranscriptionQueue.js';
 import { getEmotionQueue } from '../queue/EmotionQueue.js';
+import { getHLSQueue } from '../queue/HLSQueue.js';
 import { generateThumbnailForVideo } from '../lib/thumbnail.js';
+import { cleanupHLSFiles } from '../lib/hls.js';
 
 // Upload directory configuration
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
@@ -261,6 +263,20 @@ export async function handleStreamUpload(request: Request): Promise<Response> {
       console.error('[Journals] Failed to queue emotion detection job:', error);
     }
 
+    // Start HLS transcoding job (non-blocking)
+    try {
+      const hlsQueue = getHLSQueue();
+      await hlsQueue.addJob({
+        journalId,
+        userId: streamData.userId,
+        videoPath: finalFilePath,
+      });
+      console.log(`[Journals] HLS transcoding job queued for journal ${journalId}`);
+    } catch (error) {
+      // Log error but don't fail the upload
+      console.error('[Journals] Failed to queue HLS transcoding job:', error);
+    }
+
     // Clean up active stream tracking
     activeStreams.delete(streamId);
 
@@ -411,6 +427,20 @@ export async function handleStreamChunkUpload(request: Request): Promise<Respons
       } catch (error) {
         // Log error but don't fail the upload
         console.error('[Journals] Failed to queue emotion detection job:', error);
+      }
+
+      // Start HLS transcoding job (non-blocking)
+      try {
+        const hlsQueue = getHLSQueue();
+        await hlsQueue.addJob({
+          journalId,
+          userId: streamData.userId,
+          videoPath: finalFilePath,
+        });
+        console.log(`[Journals] HLS transcoding job queued for journal ${journalId}`);
+      } catch (error) {
+        // Log error but don't fail the upload
+        console.error('[Journals] Failed to queue HLS transcoding job:', error);
       }
 
       // Clean up active stream tracking
@@ -869,6 +899,13 @@ export async function handleDeleteJournal(request: Request, journalId: string): 
         // Ignore file deletion errors
         console.warn(`Failed to delete video file: ${journal.videoPath}`);
       });
+    }
+
+    // Clean up HLS files
+    try {
+      await cleanupHLSFiles(journal.videoPath);
+    } catch (error) {
+      console.warn(`[Journals] Failed to clean up HLS files:`, error);
     }
 
     return new Response(
