@@ -28,8 +28,8 @@ export function FeedCard({ entry, onClick }: FeedCardProps) {
             <div className="w-full h-full bg-gradient-to-br from-primary-400 via-primary-500 to-primary-600 flex items-center justify-center" />
           )}
           <div className="absolute bottom-1 left-1 flex items-center gap-1.5">
-            {entry.dominantEmotion && (
-              <EmotionBadge emotion={entry.dominantEmotion} showLabel={false} className="text-xs px-1.5 py-0.5" />
+            {((entry as any).manualMood ?? entry.dominantEmotion) && (
+              <EmotionBadge emotion={(entry as any).manualMood ?? entry.dominantEmotion!} showLabel={false} className="text-xs px-1.5 py-0.5" />
             )}
             {entry.duration !== undefined && (
               <span className="bg-black/70 text-white px-1.5 py-0.5 rounded text-xs">

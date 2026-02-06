@@ -7,6 +7,7 @@ interface TranscriptDisplayProps {
   onSegmentClick?: (startTime: number) => void;
   currentTime?: number;
   className?: string;
+  showHeading?: boolean;
 }
 
 export function TranscriptDisplay({
@@ -14,6 +15,7 @@ export function TranscriptDisplay({
   onSegmentClick,
   currentTime,
   className = '',
+  showHeading = true,
 }: TranscriptDisplayProps) {
   const [showTimestamps, setShowTimestamps] = useState(true);
 
@@ -35,9 +37,11 @@ export function TranscriptDisplay({
   return (
     <div className={`flex flex-col gap-6 ${className}`}>
       <div className="flex justify-between items-center">
-        <h3 className="text-xl text-text-default dark:text-text-dark-default">
-          Transcript
-        </h3>
+        {showHeading && (
+          <h3 className="text-xl text-text-default dark:text-text-dark-default">
+            Transcript
+          </h3>
+        )}
         <button
           type="button"
           onClick={() => setShowTimestamps(!showTimestamps)}

@@ -29,6 +29,7 @@ export function DashboardPage() {
     thumbnailPath: journal.thumbnailPath,
     duration: journal.duration,
     dominantEmotion: journal.dominantEmotion,
+    manualMood: journal.manualMood,
   }));
 
   // Merge and sort by timestamp (newest first), limit to 10 total

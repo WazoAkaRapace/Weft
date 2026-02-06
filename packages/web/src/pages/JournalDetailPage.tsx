@@ -6,6 +6,9 @@ import { VideoPlayer } from '../components/video/VideoPlayer';
 import { TranscriptDisplay } from '../components/transcript/TranscriptDisplay';
 import { NotesEditor, type NotesEditorRef } from '../components/notes/NotesEditor';
 import { EmotionDisplay } from '../components/emotions/EmotionDisplay';
+import { CollapsibleSection } from '../components/ui/CollapsibleSection';
+import { MoodSelector } from '../components/moods/MoodSelector';
+import type { EmotionLabel } from '../components/emotions/types';
 import { JobStatusIndicator, JobRetryButton } from '../components/jobs';
 import { LinkedNotesList } from '../components/journal/LinkedNotesList';
 import { NoteViewModal } from '../components/notes/NoteViewModal';
@@ -33,6 +36,14 @@ export function JournalDetailPage() {
   // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Manual mood state
+  const [manualMood, setManualMood] = useState<string | null>(null);
+
+  // Title editing state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
 
   const { journal, isLoading, error, updateNotes, refresh, setJournal } = useJournalDetail(
     id || ''
@@ -91,6 +102,68 @@ export function JournalDetailPage() {
       console.error('Failed to fetch emotion data:', err);
     }
   }, [id, setJournal]);
+
+  // Sync manual mood with journal data
+  useEffect(() => {
+    if (journal) {
+      setManualMood(journal.manualMood ?? null);
+    }
+  }, [journal]);
+
+  // Update manual mood
+  const handleUpdateManualMood = useCallback(async (mood: string | null) => {
+    if (!id) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/journals/${id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manualMood: mood }),
+      });
+      if (response.ok) {
+        setManualMood(mood);
+        setJournal((prev) => (prev ? { ...prev, manualMood: mood } : prev));
+      }
+    } catch (err) {
+      console.error('Failed to update manual mood:', err);
+    }
+  }, [id, setJournal]);
+
+  // Update journal title
+  const handleUpdateTitle = useCallback(async () => {
+    if (!id || !editingTitle.trim()) return;
+    setIsSavingTitle(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/journals/${id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: editingTitle.trim() }),
+      });
+      if (response.ok) {
+        setJournal((prev) => (prev ? { ...prev, title: editingTitle.trim() } : prev));
+        setIsEditingTitle(false);
+      }
+    } catch (err) {
+      console.error('Failed to update title:', err);
+    } finally {
+      setIsSavingTitle(false);
+    }
+  }, [id, editingTitle, setJournal]);
+
+  // Start editing title
+  const handleStartEditingTitle = useCallback(() => {
+    if (journal) {
+      setEditingTitle(journal.title);
+      setIsEditingTitle(true);
+    }
+  }, [journal]);
+
+  // Cancel editing title
+  const handleCancelEditingTitle = useCallback(() => {
+    setIsEditingTitle(false);
+    setEditingTitle('');
+  }, []);
 
   // Update only the section that changed when jobs complete
   useEffect(() => {
@@ -343,9 +416,71 @@ export function JournalDetailPage() {
         </div>
 
         {/* Page title */}
-        <h1 className="text-3xl font-bold text-text-default dark:text-text-dark-default mb-8">
-          {journal.title}
-        </h1>
+        <div className="mb-8">
+          {isEditingTitle ? (
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={editingTitle}
+                onChange={(e) => setEditingTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleUpdateTitle();
+                  } else if (e.key === 'Escape') {
+                    handleCancelEditingTitle();
+                  }
+                }}
+                className="flex-1 text-3xl font-bold text-text-default dark:text-text-dark-default bg-white dark:bg-background-card-dark border-2 border-primary rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                autoFocus
+                disabled={isSavingTitle}
+              />
+              <button
+                onClick={handleUpdateTitle}
+                disabled={isSavingTitle || !editingTitle.trim()}
+                className="p-2 rounded-lg bg-primary text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Save"
+              >
+                {isSavingTitle ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+                    <circle cx="12" cy="12" r="10" opacity="0.25" />
+                    <path d="M12 2a10 10 0 0 1 10 10" />
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={handleCancelEditingTitle}
+                disabled={isSavingTitle}
+                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Cancel"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 group">
+              <h1 className="text-3xl font-bold text-text-default dark:text-text-dark-default">
+                {journal.title}
+              </h1>
+              <button
+                onClick={handleStartEditingTitle}
+                className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+                title="Edit title"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-8">
           {/* Left column: Video and Transcript */}
@@ -402,19 +537,33 @@ export function JournalDetailPage() {
             />
 
             <div className="bg-white dark:bg-background-card-dark rounded-lg p-6 shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-text-default dark:text-text-dark-default">Emotion Analysis</h3>
-                <JobRetryButton
-                  type="emotion"
-                  onRetry={retryEmotion}
-                  isRetrying={isRetryingEmotion}
-                  disabled={jobStatus.emotion?.status === 'processing' || jobStatus.emotion?.status === 'pending'}
-                />
-              </div>
-              <EmotionDisplay
-                journalId={journal.id}
-                duration={journal.duration}
-              />
+              <CollapsibleSection
+                title="Mood"
+                defaultExpanded={true}
+                headerAction={
+                  <MoodSelector
+                    value={manualMood as EmotionLabel | null}
+                    onChange={handleUpdateManualMood}
+                  />
+                }
+              >
+                {({ isExpanded }) => (
+                  <EmotionDisplay
+                    journalId={journal.id}
+                    duration={journal.duration}
+                    manualMood={manualMood}
+                    isExpanded={isExpanded}
+                    retryButton={
+                      <JobRetryButton
+                        type="emotion"
+                        onRetry={retryEmotion}
+                        isRetrying={isRetryingEmotion}
+                        disabled={jobStatus.emotion?.status === 'processing' || jobStatus.emotion?.status === 'pending'}
+                      />
+                    }
+                  />
+                )}
+              </CollapsibleSection>
             </div>
 
             {/* Linked Notes */}
@@ -447,44 +596,51 @@ export function JournalDetailPage() {
               isRetrying={isRetryingTranscription}
             />
 
-            {journal.transcript ? (
-              <div className="bg-white dark:bg-background-card-dark rounded-lg p-6 shadow-sm">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-text-default dark:text-text-dark-default">Transcript</h3>
-                  <JobRetryButton
-                    type="transcription"
-                    onRetry={retryTranscription}
-                    isRetrying={isRetryingTranscription}
-                    disabled={jobStatus.transcription?.status === 'processing' || jobStatus.transcription?.status === 'pending'}
-                  />
-                </div>
-                <TranscriptDisplay
-                  transcript={journal.transcript}
-                  onSegmentClick={handleSegmentClick}
-                  currentTime={currentTime}
-                />
-              </div>
-            ) : (
-              // Only show "not available" message if not processing
-              !jobStatus.transcription?.status && (
-                <div className="bg-white dark:bg-background-card-dark rounded-lg p-6 shadow-sm">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-text-default dark:text-text-dark-default">Transcript</h3>
-                    <JobRetryButton
-                      type="transcription"
-                      onRetry={retryTranscription}
-                      isRetrying={isRetryingTranscription}
-                    />
-                  </div>
-                  <div className="text-center py-8 text-text-secondary dark:text-text-dark-secondary">
-                    <p>Transcript not available yet</p>
-                    <p className="text-sm text-text-hint dark:text-text-dark-hint mt-2">
-                      Transcription is in progress or has not started.
-                    </p>
-                  </div>
-                </div>
-              )
-            )}
+            <div className="bg-white dark:bg-background-card-dark rounded-lg p-6 shadow-sm">
+              <CollapsibleSection title="Transcript" defaultExpanded={true}>
+                {({ isExpanded }) => (
+                  <>
+                    {journal.transcript ? (
+                      <>
+                        <TranscriptDisplay
+                          transcript={journal.transcript}
+                          onSegmentClick={handleSegmentClick}
+                          currentTime={currentTime}
+                          showHeading={false}
+                        />
+                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                          <JobRetryButton
+                            type="transcription"
+                            onRetry={retryTranscription}
+                            isRetrying={isRetryingTranscription}
+                            disabled={jobStatus.transcription?.status === 'processing' || jobStatus.transcription?.status === 'pending'}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      // Only show "not available" message if not processing
+                      !jobStatus.transcription?.status && (
+                        <>
+                          <div className="text-center py-8 text-text-secondary dark:text-text-dark-secondary">
+                            <p>Transcript not available yet</p>
+                            <p className="text-sm text-text-hint dark:text-text-dark-hint mt-2">
+                              Transcription is in progress or has not started.
+                            </p>
+                          </div>
+                          <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                            <JobRetryButton
+                              type="transcription"
+                              onRetry={retryTranscription}
+                              isRetrying={isRetryingTranscription}
+                            />
+                          </div>
+                        </>
+                      )
+                    )}
+                  </>
+                )}
+              </CollapsibleSection>
+            </div>
           </div>
 
           {/* Right column: Notes */}

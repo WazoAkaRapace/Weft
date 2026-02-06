@@ -115,6 +115,7 @@ export const journals = pgTable(
     duration: integer('duration').notNull(), // Duration in seconds
     location: text('location'), // Optional location metadata
     notes: text('notes'), // Optional user notes
+    manualMood: text('manual_mood'), // User-set manual mood (same values as dominantEmotion)
     dominantEmotion: text('dominant_emotion'), // Dominant emotion: happy, sad, angry, fear, surprise, disgust, neutral
     emotionTimeline: jsonb('emotion_timeline').$type<Array<{
       time: number;      // Timestamp in seconds

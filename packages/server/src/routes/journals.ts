@@ -624,6 +624,7 @@ export async function handleGetPaginatedJournals(request: Request): Promise<Resp
         duration: journals.duration,
         location: journals.location,
         notes: journals.notes,
+        manualMood: journals.manualMood,
         dominantEmotion: journals.dominantEmotion,
         emotionTimeline: journals.emotionTimeline,
         emotionScores: journals.emotionScores,
@@ -959,8 +960,9 @@ export async function handleUpdateJournal(
       title?: string;
       notes?: string;
       location?: string;
+      manualMood?: string | null;
     };
-    const { title, notes, location } = body;
+    const { title, notes, location, manualMood } = body;
 
     // Get journal to verify ownership
     const journalList = await db
@@ -1000,6 +1002,7 @@ export async function handleUpdateJournal(
     if (title !== undefined) updateData.title = title;
     if (notes !== undefined) updateData.notes = notes;
     if (location !== undefined) updateData.location = location;
+    if (manualMood !== undefined) updateData.manualMood = manualMood;
 
     // Update journal
     await db

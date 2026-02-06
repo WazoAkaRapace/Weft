@@ -101,6 +101,7 @@ export interface Journal {
   duration: number;
   location: string | null;
   notes: string | null;
+  manualMood: string | null;
   transcriptPreview: string | null;
   dominantEmotion: string | null;
   emotionTimeline: Array<{
@@ -196,6 +197,7 @@ export interface FeedEntry {
   thumbnailPath?: string | null;
   duration?: number;
   dominantEmotion?: string | null;
+  manualMood?: string | null;
 }
 
 /**

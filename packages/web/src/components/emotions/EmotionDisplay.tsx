@@ -1,6 +1,7 @@
 /**
  * EmotionDisplay Component
  * Main container that combines all emotion visualization components
+ * Supports manual mood override and collapsible content
  */
 
 import React from 'react';
@@ -13,10 +14,20 @@ import type { EmotionLabel } from './types';
 export interface EmotionDisplayProps {
   journalId: string;
   duration: number;
+  manualMood?: string | null;
+  isExpanded?: boolean;
+  retryButton?: React.ReactNode;
   className?: string;
 }
 
-export function EmotionDisplay({ journalId, duration, className = '' }: EmotionDisplayProps) {
+export function EmotionDisplay({
+  journalId,
+  duration,
+  manualMood,
+  isExpanded = true,
+  retryButton,
+  className = ''
+}: EmotionDisplayProps) {
   const { data, loading, error } = useEmotionData(journalId);
 
   // Show loading state
@@ -73,29 +84,59 @@ export function EmotionDisplay({ journalId, duration, className = '' }: EmotionD
     return null;
   }
 
+  // Mood priority logic: manual mood overrides detected emotion
+  const primaryMood = (manualMood ?? data.dominantEmotion) as EmotionLabel;
+  const hasManualMood = !!manualMood;
+  const secondaryMood = hasManualMood ? (data.dominantEmotion as EmotionLabel) : null;
+
   // Ensure emotionTimeline and emotionScores are valid arrays/objects before passing to children
   const emotionTimeline = Array.isArray(data.emotionTimeline) ? data.emotionTimeline : [];
   const emotionScores = data.emotionScores && typeof data.emotionScores === 'object' ? data.emotionScores : {};
 
   return (
     <div className={`p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg space-y-4 ${className}`}>
-      {/* Header with dominant emotion badge */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Emotion Analysis</h3>
-        <EmotionBadge emotion={data.dominantEmotion as EmotionLabel} />
+      {/* Header with mood badges */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Detected Mood</h3>
+        <div className="flex items-center gap-2">
+          {/* Secondary badge (detected mood) - shown only when manual mood is set */}
+          {hasManualMood && secondaryMood && (
+            <>
+              <EmotionBadge emotion={secondaryMood} className="px-2 py-0.5 text-[10px]" />
+              <span className="text-xs text-gray-500 dark:text-gray-400">(Detected)</span>
+            </>
+          )}
+          {/* Primary badge (manual mood if set, otherwise detected) */}
+          <EmotionBadge emotion={primaryMood} />
+          {hasManualMood && (
+            <span className="text-xs text-gray-500 dark:text-gray-400">(Your Mood)</span>
+          )}
+        </div>
       </div>
 
-      {/* Timeline visualization */}
-      {emotionTimeline.length > 0 && (
-        <div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Emotion Timeline</p>
-          <EmotionTimeline timeline={emotionTimeline} duration={duration} />
-        </div>
-      )}
+      {/* Collapsible content: timeline, chart, and retry button */}
+      {isExpanded && (
+        <>
+          {/* Timeline visualization */}
+          {emotionTimeline.length > 0 && (
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Emotion Timeline</p>
+              <EmotionTimeline timeline={emotionTimeline} duration={duration} />
+            </div>
+          )}
 
-      {/* Emotion distribution chart */}
-      {Object.keys(emotionScores).length > 0 && (
-        <EmotionChart scores={emotionScores} />
+          {/* Emotion distribution chart */}
+          {Object.keys(emotionScores).length > 0 && (
+            <EmotionChart scores={emotionScores} />
+          )}
+
+          {/* Retry button at the bottom of collapsible content */}
+          {retryButton && (
+            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+              {retryButton}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
