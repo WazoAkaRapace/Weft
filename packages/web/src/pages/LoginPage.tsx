@@ -1,14 +1,22 @@
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authClient, useSession } from '../lib/auth';
+import { useTheme } from '../contexts/ThemeContext';
 
 export function LoginPage() {
+  const { theme, effectiveTheme } = useTheme();
   const navigate = useNavigate();
   const { refetch } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const getLogoSrc = () => {
+    if (theme === 'dark') return '/logo-dark.svg';
+    if (theme === 'light') return '/logo-light.svg';
+    return effectiveTheme === 'dark' ? '/logo-dark.svg' : '/logo-light.svg';
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -44,6 +52,11 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background dark:bg-background-dark">
       <div className="bg-white dark:bg-background-card-dark rounded-lg p-8 w-full max-w-md shadow-lg">
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <img src={getLogoSrc()} alt="Weft Logo" className="w-20 h-20" />
+        </div>
+
         <h1 className="text-2xl text-text-default dark:text-text-dark-default text-center mb-2">
           Welcome to Weft
         </h1>

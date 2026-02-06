@@ -48,6 +48,7 @@ COPY turbo.json ./
 
 # Copy source code
 COPY packages/web/src ./packages/web/src
+COPY packages/web/public ./packages/web/public
 COPY packages/web/index.html ./packages/web/
 COPY packages/web/vite.config.ts ./packages/web/
 COPY packages/web/tailwind.config.js ./packages/web/

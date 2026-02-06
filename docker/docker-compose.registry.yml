@@ -1,7 +1,10 @@
 # =============================================================================
-# Weft Docker Compose Configuration
+# Weft Docker Compose Configuration - Registry Images
 # =============================================================================
-# Development environment with PostgreSQL, Frontend, and Backend services.
+# Production environment using pre-built images from GitHub Container Registry.
+#
+# This compose file pulls images from ghcr.io instead of building locally.
+# Use this for quick deployment without building Docker images.
 #
 # Services:
 #   - db: PostgreSQL 16 database
@@ -10,9 +13,9 @@
 #   - backend: Node.js backend service
 #
 # Usage:
-#   docker compose up -d     # Start all services
-#   docker compose down      # Stop all services
-#   docker compose logs -f   # View logs
+#   docker compose -f docker/docker-compose.registry.yml up -d
+#   docker compose -f docker/docker-compose.registry.yml down
+#   docker compose -f docker/docker-compose.registry.yml logs -f
 # =============================================================================
 
 services:
@@ -69,13 +72,10 @@ services:
       - "max_wal_size=4GB"
 
   # ---------------------------------------------------------------------------
-  # Frontend Service
+  # Frontend Service (from ghcr.io)
   # ---------------------------------------------------------------------------
   frontend:
-    build:
-      context: ..
-      dockerfile: packages/web/Dockerfile
-      target: production
+    image: ghcr.io/wazoakarapace/weft-frontend:latest
     container_name: weft-frontend
     restart: unless-stopped
     ports:
@@ -90,12 +90,10 @@ services:
       - weft-network
 
   # ---------------------------------------------------------------------------
-  # Voice Emotion Recognition Service
+  # Voice Emotion Recognition Service (from ghcr.io)
   # ---------------------------------------------------------------------------
   voice-emotion-recognition:
-    build:
-      context: ../services/voice-emotion-recognition
-      dockerfile: Dockerfile
+    image: ghcr.io/wazoakarapace/weft-voice-emotion:latest
     container_name: weft-voice-emotion
     restart: unless-stopped
     environment:
@@ -113,13 +111,10 @@ services:
       - weft-network
 
   # ---------------------------------------------------------------------------
-  # Backend Service
+  # Backend Service (from ghcr.io)
   # ---------------------------------------------------------------------------
   backend:
-    build:
-      context: ..
-      dockerfile: packages/server/Dockerfile
-      target: production
+    image: ghcr.io/wazoakarapace/weft-backend:latest
     container_name: weft-backend
     restart: unless-stopped
     depends_on:

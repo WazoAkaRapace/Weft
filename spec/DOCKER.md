@@ -1,39 +1,105 @@
 # Weft Docker Setup
 
-Complete Docker Compose configuration for local development environment with PostgreSQL, Redis, and backend service.
+Complete Docker Compose configuration for local development environment with PostgreSQL, Frontend, Backend, and Voice Emotion Recognition services.
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+- [Using Pre-built Images from Registry](#using-pre-built-images-from-registry)
 - [Prerequisites](#prerequisites)
 - [Services](#services)
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Development Workflow](#development-workflow)
 - [Troubleshooting](#troubleshooting)
-- [Production Considerations](#production-considerations)
 
 ## Quick Start
 
 ```bash
-# 1. Copy environment template
-cp docker/.env.example .env
-
-# 2. Start all services
+# Start all services
 docker compose -f docker/docker-compose.yml up -d
 
-# 3. View logs
+# View logs
 docker compose -f docker/docker-compose.yml logs -f
 
-# 4. Stop services
+# Stop services
 docker compose -f docker/docker-compose.yml down
 ```
+
+## Using Pre-built Images from Registry
+
+Weft publishes pre-built Docker images to the GitHub Container Registry (ghcr.io). These images are built automatically on every push to the `main` branch.
+
+### Available Images
+
+| Image | Registry | Tags |
+|-------|----------|------|
+| Frontend | `ghcr.io/wazoakarapace/weft-frontend` | `latest`, `main-<sha>` |
+| Backend | `ghcr.io/wazoakarapace/weft-backend` | `latest`, `main-<sha>` |
+| Voice Emotion | `ghcr.io/wazoakarapace/weft-voice-emotion` | `latest`, `main-<sha>` |
+
+### Quick Start with Registry Images
+
+```bash
+# Start all services using pre-built images
+docker compose -f docker/docker-compose.registry.yml up -d
+
+# View logs
+docker compose -f docker/docker-compose.registry.yml logs -f
+
+# Stop services
+docker compose -f docker/docker-compose.registry.yml down
+```
+
+### Pulling Specific Image Versions
+
+To use a specific version instead of `latest`, modify the `docker-compose.registry.yml` file:
+
+```yaml
+services:
+  frontend:
+    image: ghcr.io/wazoakarapace/weft-frontend:main-abc1234
+  backend:
+    image: ghcr.io/wazoakarapace/weft-backend:main-abc1234
+  voice-emotion-recognition:
+    image: ghcr.io/wazoakarapace/weft-voice-emotion:main-abc1234
+```
+
+### Manual Image Pull
+
+```bash
+# Pull latest images
+docker pull ghcr.io/wazoakarapace/weft-frontend:latest
+docker pull ghcr.io/wazoakarapace/weft-backend:latest
+docker pull ghcr.io/wazoakarapace/weft-voice-emotion:latest
+
+# Pull specific version
+docker pull ghcr.io/wazoakarapace/weft-frontend:main-abc1234
+```
+
+### Registry vs Local Build
+
+| Feature | Local Build (`docker-compose.yml`) | Registry (`docker-compose.registry.yml`) |
+|---------|-----------------------------------|------------------------------------------|
+| Build Time | ~10-20 minutes | None (pre-built) |
+| Use Case | Development with code changes | Quick deployment, testing |
+| Image Source | Built from source | ghcr.io |
+| Flexibility | Can test uncommitted changes | Only committed changes |
+
+### GitHub Actions CI/CD
+
+Images are automatically built and pushed by the GitHub Actions workflow (`.github/workflows/docker-build-push.yml`):
+
+- **Trigger:** Push to `main` branch
+- **Builds:** Frontend, Backend, Voice Emotion Recognition
+- **Tags:** `latest` + git SHA
+- **Visibility:** Public (no authentication required for pulling)
 
 ## Prerequisites
 
 - **Docker Engine** 24.0+
 - **Docker Compose** v2.0+
-- **Disk Space**: ~2GB for images and volumes
+- **Disk Space**: ~4GB for images and volumes
 
 ### Check Installation
 
@@ -43,6 +109,39 @@ docker compose version
 ```
 
 ## Services
+
+### Frontend (`frontend`)
+
+| Setting | Value |
+|---------|-------|
+| Image | Built from `packages/web/Dockerfile` |
+| Port | `3000` |
+| Health Check | HTTP `GET /` |
+
+**Features:**
+- Multi-stage build (production target)
+- Nginx serving static files
+- Health checks for service readiness
+
+### Backend (`backend`)
+
+| Setting | Value |
+|---------|-------|
+| Runtime | Node.js 20 |
+| Port | `3001` |
+| Health Check | HTTP `GET /` |
+| Memory Limit | 16GB / Reserve 2GB |
+
+**Features:**
+- Multi-stage build for optimization
+- Health checks
+- Voice emotion detection integration
+- Whisper transcription support
+- FFmpeg for video/audio processing
+
+**Dependencies:**
+- PostgreSQL (`db`)
+- Voice Emotion Recognition service
 
 ### PostgreSQL 16 (`db`)
 
@@ -55,84 +154,58 @@ docker compose version
 | Database | `weft` |
 | Volume | `weft_postgres_data` |
 
-**Features:**
-- Optimized settings for development
-- Health checks for service readiness
-- Persistent data storage
-- Connection pooling ready
+**Optimized Settings:**
+- Max connections: 200
+- Shared buffers: 256MB
+- Effective cache size: 1GB
+- Maintenance work mem: 64MB
 
-### Redis 7 (`redis`)
-
-| Setting | Value |
-|---------|-------|
-| Image | `redis:7-alpine` |
-| Port | `6379` |
-| Volume | `weft_redis_data` |
-
-**Features:**
-- AOF persistence
-- LRU eviction policy
-- Health checks
-- Max memory: 256MB
-
-### Backend (`backend`)
+### Voice Emotion Recognition (`voice-emotion-recognition`)
 
 | Setting | Value |
 |---------|-------|
-| Runtime | Bun |
-| Port | `4000` |
-| Health Check | HTTP `/` endpoint |
+| Image | Built from `services/voice-emotion-recognition/Dockerfile` |
+| Port | `8000` (internal) |
+| Health Check | HTTP `GET /health` |
+| Volume | `weft_voice_emotion_models` |
 
 **Features:**
-- Multi-stage build for optimization
-- Hot-reload in development
-- Health checks
-- Non-root user execution
-- **Emotion Detection Support:** Includes face-api.js models for facial emotion recognition
-
-**Dependencies:**
-- **FFmpeg** - Video frame extraction for emotion detection
-- **Canvas build libraries** - Cairo, Pango, JPEG, GIF, SVG support for image processing
-- **Python 3** - Required for some native dependencies
-- **Face-api.js models** - Auto-downloaded during build to `/app/uploads/models/face-api`
+- Python FastAPI service
+- SpeechBrain wav2vec2-IEMOCAP model
+- Automatic model download on first start (~300MB)
+- Startup time: 1-2 minutes on first run
 
 ## Configuration
 
 ### Environment Variables
 
-Create `.env` in project root (copy from `docker/.env.example`):
-
+**Backend:**
 ```bash
-# Application
-NODE_ENV=development
+PORT=3001
+DATABASE_URL=postgresql://weft:weft_dev_password@db:5432/weft
+BETTER_AUTH_URL=http://localhost:3001
+BETTER_AUTH_SECRET=your-secret-key
+FRONTEND_URL=http://localhost:3000
+VOICE_EMOTION_API_URL=http://voice-emotion-recognition:8000
+TRANSCRIPTION_WORKER_CONCURRENCY=1
+```
 
-# PostgreSQL
+**PostgreSQL:**
+```bash
 POSTGRES_USER=weft
 POSTGRES_PASSWORD=weft_dev_password
 POSTGRES_DB=weft
 POSTGRES_PORT=5432
-
-# Redis
-REDIS_PORT=6379
-
-# Backend
-BACKEND_PORT=4000
-
-# Emotion Detection (optional, uses defaults if not set)
-FACEAPI_MODELS_DIR=/app/uploads/models/face-api
-EMOTION_WORKER_CONCURRENCY=2
-EMOTION_MAX_RETRIES=3
-FRAME_SAMPLING_INTERVAL=5
 ```
 
 ### Custom Ports
 
-Change service ports in `.env`:
+To avoid port conflicts, create a `.env` file in the project root:
 
 ```bash
-POSTGRES_PORT=15432  # Avoid conflicts with local PostgreSQL
-REDIS_PORT=16379     # Avoid conflicts with local Redis
-BACKEND_PORT=4001    # Avoid conflicts with local backend
+POSTGRES_PORT=15432
+FRONTEND_PORT=3000
+BACKEND_PORT=3001
 ```
 
 ## Usage
@@ -179,28 +252,29 @@ docker compose -f docker/docker-compose.yml logs --tail=100 backend
 # Access PostgreSQL
 docker compose -f docker/docker-compose.yml exec db psql -U weft -d weft
 
-# Access Redis CLI
-docker compose -f docker/docker-compose.yml exec redis redis-cli
-
 # Access backend shell
 docker compose -f docker/docker-compose.yml exec backend sh
 
-# Run database migrations
-docker compose -f docker/docker-compose.yml exec backend bun db:migrate
+# Check voice emotion service health
+docker compose -f docker/docker-compose.yml exec voice-emotion-recognition curl http://localhost:8000/health
 ```
 
 ### Rebuilding Images
 
+**IMPORTANT:** After making code changes, always rebuild and restart:
+
 ```bash
-# Rebuild after code changes
-docker compose -f docker/docker-compose.yml build backend
+# Rebuild specific service
+docker compose -f docker/docker-compose.yml up -d --build backend
+
+# Rebuild all services
+docker compose -f docker/docker-compose.yml up -d --build
 
 # Rebuild without cache
 docker compose -f docker/docker-compose.yml build --no-cache backend
-
-# Rebuild and restart
-docker compose -f docker/docker-compose.yml up -d --build backend
 ```
+
+⚠️ **DO NOT use** `docker restart <container>` - This will NOT apply code changes.
 
 ## Development Workflow
 
@@ -208,20 +282,19 @@ docker compose -f docker/docker-compose.yml up -d --build backend
 
 ```bash
 # Generate migration
-docker compose -f docker/docker-compose.yml exec backend bun db:generate
+docker compose -f docker/docker-compose.yml exec backend node packages/server/dist/db.js generate
 
 # Apply migrations
-docker compose -f docker/docker-compose.yml exec backend bun db:migrate
+docker compose -f docker/docker-compose.yml exec backend node packages/server/dist/db.js migrate
 
 # Push schema (development only)
-docker compose -f docker/docker-compose.yml exec backend bun db:push
+docker compose -f docker/docker-compose.yml exec backend node packages/server/dist/db.js push
 
 # Seed database
-docker compose -f docker/docker-compose.yml exec backend bun db:seed
-
-# Open Drizzle Studio
-docker compose -f docker/docker-compose.yml exec backend bun db:studio
+docker compose -f docker/docker-compose.yml exec backend node packages/server/dist/db.js seed
 ```
+
+**Note:** For local development (outside Docker), use `pnpm --filter @weft/server db:generate` instead.
 
 ### Resetting Environment
 
@@ -229,42 +302,30 @@ docker compose -f docker/docker-compose.yml exec backend bun db:studio
 # Complete reset (⚠️ deletes all data)
 docker compose -f docker/docker-compose.yml down -v
 docker compose -f docker/docker-compose.yml up -d
-docker compose -f docker/docker-compose.yml exec backend bun db:migrate
-docker compose -f docker/docker-compose.yml exec backend bun db:seed
+docker compose -f docker/docker-compose.yml exec backend node packages/server/dist/db.js migrate
 ```
 
 ### Connecting from Host
 
-**PostgreSQL:**
+**Frontend:**
 ```bash
-# Using psql
-psql -h localhost -p 5432 -U weft -d weft
-
-# Using pgAdmin
-# Host: localhost
-# Port: 5432
-# User: weft
-# Password: weft_dev_password
-# Database: weft
-```
-
-**Redis:**
-```bash
-# Using redis-cli
-redis-cli -p 6379
-
-# Using Redis Insight
-# Host: localhost
-# Port: 6379
+# Access in browser
+open http://localhost:3000
 ```
 
 **Backend API:**
 ```bash
 # Test health endpoint
-curl http://localhost:4000/
+curl http://localhost:3001/
 
-# Example API call
-curl http://localhost:4000/api/journals
+# Example API call (requires auth)
+curl http://localhost:3001/api/journals
+```
+
+**PostgreSQL:**
+```bash
+# Using psql
+psql -h localhost -p 5432 -U weft -d weft
 ```
 
 ## Troubleshooting
@@ -276,13 +337,13 @@ curl http://localhost:4000/api/journals
 ```bash
 # Check what's using the ports
 lsof -i :5432  # PostgreSQL
-lsof -i :6379  # Redis
-lsof -i :4000  # Backend
+lsof -i :3000  # Frontend
+lsof -i :3001  # Backend
 
 # Solution: Change ports in .env
 POSTGRES_PORT=15432
-REDIS_PORT=16379
-BACKEND_PORT=4001
+FRONTEND_PORT=3001
+BACKEND_PORT=3002
 ```
 
 **Issue:** Container exits immediately
@@ -311,184 +372,102 @@ docker compose -f docker/docker-compose.yml exec backend sh
 # In container: wget -O- http://db:5432
 ```
 
-**Issue:** Connection refused
+### Voice Emotion Service Issues
+
+**Issue:** Voice emotion detection not working
 
 ```bash
-# Verify DATABASE_URL in backend
-docker compose -f docker/docker-compose.yml exec backend env | grep DATABASE_URL
+# Check service health
+docker compose -f docker/docker-compose.yml logs voice-emotion-recognition
 
-# Should show: postgresql://weft:weft_dev_password@db:5432/weft
+# Verify health check
+curl http://localhost:8000/health
+
+# Common issue: Model download takes 1-2 minutes on first start
+# Check logs for download progress
+docker compose -f docker/docker-compose.yml logs -f voice-emotion-recognition
 ```
 
-### Build Failures
+### Memory Issues
 
-**Issue:** Out of memory during build
+**Issue:** Backend out of memory
 
-```bash
-# Increase Docker memory limit
-# Docker Desktop > Settings > Resources > Memory > 4GB+
-```
-
-**Issue:** Module not found
+The backend has a 16GB memory limit for Whisper transcription:
 
 ```bash
-# Clean build
-docker compose -f docker/docker-compose.yml down
-docker system prune -f
-docker compose -f docker/docker-compose.yml build --no-cache
+# Check container memory usage
+docker stats weft-backend
+
+# If needed, increase limit in docker-compose.yml:
+deploy:
+  resources:
+    limits:
+      memory: 20G  # Increase from 16G
 ```
 
 ### Health Checks Failing
-
-**Issue:** Service marked as unhealthy
 
 ```bash
 # Check health status
 docker compose -f docker/docker-compose.yml ps
 
-# Inspect health check
-docker inspect weft-backend | jq '.[0].State.Health'
-
 # Manual health check
-docker compose -f docker/docker-compose.yml exec backend wget -O- http://localhost:4000/
+docker compose -f docker/docker-compose.yml exec backend wget -O- http://localhost:3001/
 ```
 
-### Volume Issues
+### Code Changes Not Applied
 
-**Issue:** Data persists after `down`
+**Issue:** Changes not showing up
 
 ```bash
-# Remove volumes (⚠️ deletes data)
-docker compose -f docker/docker-compose.yml down -v
+# ALWAYS rebuild after code changes
+docker compose -f docker/docker-compose.yml up -d --build backend
 
+# For frontend changes
+docker compose -f docker/docker-compose.yml up -d --build frontend
+```
+
+## Volumes
+
+| Volume | Purpose |
+|--------|---------|
+| `weft_postgres_data` | PostgreSQL data persistence |
+| `weft_uploads_data` | User uploads (videos, models) |
+| `weft_voice_emotion_models` | SpeechBrain model cache |
+
+### Managing Volumes
+
+```bash
 # List volumes
 docker volume ls | grep weft
 
-# Remove specific volume
+# Remove specific volume (⚠️ deletes data)
 docker volume rm weft_postgres_data
+
+# Backup postgres volume
+docker run --rm -v weft_postgres_data:/data -v $(pwd):/backup alpine tar czf /backup/postgres-backup.tar.gz /data
 ```
 
-### Hot Reload Not Working
+## Network
 
-**Issue:** Code changes not reflected
+All services communicate via `weft-network` bridge network.
 
 ```bash
-# Rebuild and restart
-docker compose -f docker/docker-compose.yml up -d --build backend
+# Inspect network
+docker network inspect weft-network
 
-# Check volume mounts
-docker inspect weft-backend | jq '.[0].Mounts'
-```
-
-### Emotion Detection Issues
-
-**Issue:** Emotion detection not working
-
-```bash
-# Check if models exist
-docker compose -f docker/docker-compose.yml exec backend ls -la /app/uploads/models/face-api
-
-# Should show:
-# tiny_face_detector_model-weights_manifest.json
-# tiny_face_detector_model-shard1
-# face_expression_model-weights_manifest.json
-# face_expression_model-shard1
-
-# Verify FFmpeg is available
-docker compose -f docker/docker-compose.yml exec backend ffmpeg -version
-
-# Check emotion detection logs
-docker compose -f docker/docker-compose.yml logs backend | grep -i emotion
-
-# Manual model download (if auto-download failed)
-docker compose -f docker/docker-compose.yml exec backend sh
-cd /app/uploads/models/face-api
-wget https://raw.githubusercontent.com/vladmandic/face-api/main/model/tiny_face_detector_model-weights_manifest.json
-wget https://raw.githubusercontent.com/vladmandic/face-api/main/model/tiny_face_detector_model-shard1
-wget https://raw.githubusercontent.com/vladmandic/face-api/main/model/face_expression_model-weights_manifest.json
-wget https://raw.githubusercontent.com/vladmandic/face-api/main/model/face_expression_model-shard1
-```
-
-**Issue:** Canvas module compilation errors
-
-```bash
-# Clean rebuild with no cache
-docker compose -f docker/docker-compose.yml down
-docker compose -f docker/docker-compose.yml build --no-cache backend
-
-# Check if build dependencies are installed
-docker compose -f docker/docker-compose.yml exec backend dpkg -l | grep -E "cairo|pango|libjpeg"
-```
-
-## Production Considerations
-
-This Docker setup is optimized for **local development**. For production:
-
-### Security
-
-- [ ] Change default passwords
-- [ ] Use secrets manager (AWS Secrets, Vault, etc.)
-- [ ] Enable SSL/TLS for database connections
-- [ ] Restrict network access (private networks)
-- [ ] Scan images for vulnerabilities (`docker scan`)
-
-### Performance
-
-- [ ] Adjust PostgreSQL settings based on resources
-- [ ] Enable connection pooling (PgBouncer)
-- [ ] Use read replicas for scaling
-- [ ] Configure Redis persistence for production workload
-- [ ] Set resource limits in docker-compose.yml
-
-### Monitoring
-
-- [ ] Add logging aggregation (ELK, CloudWatch, etc.)
-- [ ] Implement metrics collection (Prometheus)
-- [ ] Set up alerting (PagerDuty, etc.)
-- [ ] Configure health check endpoints for load balancers
-
-### Backup
-
-- [ ] Automated database backups
-- [ ] Backup strategy for Redis data
-- [ ] Documented restore procedures
-- [ ] Test backup/restore regularly
-
-### Example Production Overrides
-
-Create `docker/docker-compose.prod.yml`:
-
-```yaml
-services:
-  db:
-    environment:
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
-    secrets:
-      - db_password
-    resource:
-      limits:
-        cpus: '2'
-        memory: 2G
-  backend:
-    environment:
-      NODE_ENV: production
-    volumes:  # Remove dev mounts
-    resource:
-      limits:
-        cpus: '1'
-        memory: 512M
-
-secrets:
-  db_password:
-    file: ./secrets/db_password.txt
+# Services can reach each other by container name:
+# - db (PostgreSQL)
+# - backend (Node.js API)
+# - frontend (Nginx)
+# - voice-emotion-recognition (Python API)
 ```
 
 ## Additional Resources
 
 - [Docker Compose Documentation](https://docs.docker.com/compose/)
 - [PostgreSQL Docker Images](https://hub.docker.com/_/postgres)
-- [Redis Docker Images](https://hub.docker.com/_/redis)
-- [Bun Documentation](https://bun.sh/docs)
+- [Node.js Documentation](https://nodejs.org/docs)
 - [Project Architecture](./ARCHITECTURE.md)
 - [Database Documentation](./DATABASE.md)
 - [Emotion Detection Feature](./EMOTION_DETECTION.md)

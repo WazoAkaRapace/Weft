@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_BASE_URL = 'http://localhost:3001';
 
@@ -38,6 +39,7 @@ const TRANSCRIPTION_LANGUAGES = [
 ];
 
 export function OnboardingPage() {
+  const { theme, effectiveTheme } = useTheme();
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -47,6 +49,12 @@ export function OnboardingPage() {
   const [preferredLanguage, setPreferredLanguage] = useState('en');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const getLogoSrc = () => {
+    if (theme === 'dark') return '/logo-dark.svg';
+    if (theme === 'light') return '/logo-light.svg';
+    return effectiveTheme === 'dark' ? '/logo-dark.svg' : '/logo-light.svg';
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -103,6 +111,11 @@ export function OnboardingPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background dark:bg-background-dark">
       <div className="bg-white dark:bg-background-card-dark rounded-lg p-8 w-full max-w-lg shadow-lg">
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <img src={getLogoSrc()} alt="Weft Logo" className="w-20 h-20" />
+        </div>
+
         <div className="text-center mb-6">
           <h1 className="text-2xl text-text-default dark:text-text-dark-default mb-2">
             Welcome to Weft

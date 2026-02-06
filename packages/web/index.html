@@ -4,9 +4,62 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Weft</title>
+    <!-- Light mode favicon -->
+    <link rel="icon" type="image/svg+xml" href="/logo-light.svg" id="favicon-light">
+    <!-- Dark mode favicon -->
+    <link rel="icon" type="image/svg+xml" href="/logo-dark.svg" media="(prefers-color-scheme: dark)" id="favicon-dark">
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Dynamic favicon update based on theme
+      (function() {
+        const updateFavicon = (isDark) => {
+          const lightFavicon = document.getElementById('favicon-light');
+          const darkFavicon = document.getElementById('favicon-dark');
+
+          if (isDark) {
+            // Remove light mode favicon, show dark mode
+            if (lightFavicon) lightFavicon.remove();
+            // Ensure dark favicon exists without media query
+            if (darkFavicon) {
+              darkFavicon.removeAttribute('media');
+            } else {
+              const link = document.createElement('link');
+              link.rel = 'icon';
+              link.type = 'image/svg+xml';
+              link.href = '/logo-dark.svg';
+              link.id = 'favicon-dark';
+              document.head.appendChild(link);
+            }
+          } else {
+            // Remove dark mode favicon, show light mode
+            if (darkFavicon) darkFavicon.remove();
+            // Ensure light favicon exists
+            if (lightFavicon) {
+              // Already exists
+            } else {
+              const link = document.createElement('link');
+              link.rel = 'icon';
+              link.type = 'image/svg+xml';
+              link.href = '/logo-light.svg';
+              link.id = 'favicon-light';
+              document.head.appendChild(link);
+            }
+          }
+        };
+
+        // Check system preference on load
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          updateFavicon(true);
+        }
+
+        // Listen for theme changes from the app
+        window.addEventListener('theme-change', (e) => {
+          updateFavicon(e.detail === 'dark');
+        });
+      })();
+    </script>
   </body>
 </html>

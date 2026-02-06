@@ -14,7 +14,7 @@ interface LayoutContextValue {
 
 const LayoutContext = createContext<LayoutContextValue | undefined>(undefined);
 
-export function useLayoutContext() {
+function useLayoutContext() {
   const context = useContext(LayoutContext);
   if (!context) {
     throw new Error('useLayoutContext must be used within AppLayout');

@@ -38,6 +38,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
     // Save to localStorage
     localStorage.setItem('theme', theme);
+
+    // Dispatch event for favicon update
+    window.dispatchEvent(new CustomEvent('theme-change', { detail: effectiveTheme }));
   }, [theme, effectiveTheme]);
 
   // Listen for system theme changes

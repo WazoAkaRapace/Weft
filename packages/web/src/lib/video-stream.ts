@@ -50,7 +50,7 @@ export function detectSupportedCodec(): VideoCodec | null {
  *
  * @returns Array of supported codecs
  */
-export function getSupportedCodecs(): VideoCodec[] {
+function getSupportedCodecs(): VideoCodec[] {
   if (typeof MediaRecorder === 'undefined') {
     return [];
   }
@@ -76,7 +76,7 @@ export function getSupportedCodecs(): VideoCodec[] {
  *
  * @returns Object containing browser capabilities
  */
-export function detectBrowserCapabilities(): BrowserCapabilities {
+function detectBrowserCapabilities(): BrowserCapabilities {
   return {
     mediaRecorder: typeof MediaRecorder !== 'undefined',
     mediaStream: typeof MediaStream !== 'undefined',
@@ -91,7 +91,7 @@ export function detectBrowserCapabilities(): BrowserCapabilities {
  *
  * @returns Browser name or 'Unknown'
  */
-export function detectBrowser(): string {
+function detectBrowser(): string {
   const ua = navigator.userAgent;
 
   if (ua.includes('Firefox')) {
@@ -145,7 +145,7 @@ export function getPreferredCodecForBrowser(): VideoCodec | null {
  *
  * @returns Promise resolving to permission status
  */
-export async function checkCameraPermission(): Promise<PermissionState | null> {
+async function checkCameraPermission(): Promise<PermissionState | null> {
   if (!navigator.permissions) {
     return null;
   }
@@ -163,7 +163,7 @@ export async function checkCameraPermission(): Promise<PermissionState | null> {
  *
  * @returns Promise resolving to permission status
  */
-export async function checkMicrophonePermission(): Promise<PermissionState | null> {
+async function checkMicrophonePermission(): Promise<PermissionState | null> {
   if (!navigator.permissions) {
     return null;
   }
@@ -199,7 +199,7 @@ export function createVideoStreamerError(
 /**
  * Class for managing a queue of media chunks for streaming
  */
-export class MediaChunkQueue {
+class MediaChunkQueue {
   private chunks: Blob[] = [];
   private isStreaming = true;
   private pendingResolve: ((value: Blob | null) => void) | null = null;
@@ -321,7 +321,7 @@ export function formatBytes(bytes: number): string {
  *
  * @returns true if all features are supported, false otherwise
  */
-export function isVideoStreamingSupported(): boolean {
+function isVideoStreamingSupported(): boolean {
   const capabilities = detectBrowserCapabilities();
   return (
     capabilities.mediaRecorder &&
@@ -337,7 +337,7 @@ export function isVideoStreamingSupported(): boolean {
  *
  * @returns Object with support status and message
  */
-export function getSupportStatus(): { supported: boolean; message: string } {
+function getSupportStatus(): { supported: boolean; message: string } {
   const capabilities = detectBrowserCapabilities();
 
   if (!capabilities.mediaRecorder) {

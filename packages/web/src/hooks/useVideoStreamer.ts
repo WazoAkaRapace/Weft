@@ -662,4 +662,3 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
   };
 }
 
-export default useVideoStreamer;

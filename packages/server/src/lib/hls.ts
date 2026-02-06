@@ -6,7 +6,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdir, readdir, rm } from 'node:fs/promises';
+import { mkdir, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
@@ -38,7 +38,7 @@ const DEFAULT_OPTIONS: HLSTranscodeOptions = {
  * Get HLS output directory for a video
  * e.g., /uploads/abc123.mp4 -> /uploads/abc123-hls/
  */
-export function getHLSOutputDir(videoPath: string): string {
+function getHLSOutputDir(videoPath: string): string {
   const dir = path.dirname(videoPath);
   const ext = path.extname(videoPath);
   const basename = path.basename(videoPath, ext);
@@ -49,17 +49,9 @@ export function getHLSOutputDir(videoPath: string): string {
  * Get master playlist path
  * e.g., /uploads/abc123-hls/master.m3u8
  */
-export function getMasterPlaylistPath(videoPath: string): string {
+function getMasterPlaylistPath(videoPath: string): string {
   const outputDir = getHLSOutputDir(videoPath);
   return path.join(outputDir, 'master.m3u8');
-}
-
-/**
- * Check if HLS transcoding is complete for a video
- */
-export function isHLSTranscoded(videoPath: string): boolean {
-  const masterPlaylistPath = getMasterPlaylistPath(videoPath);
-  return existsSync(masterPlaylistPath);
 }
 
 /**
@@ -244,33 +236,3 @@ export async function getHLSStatus(videoPath: string): Promise<{
   };
 }
 
-/**
- * Get size of HLS output directory in bytes
- *
- * @param videoPath - Path to the original video file
- * @returns Size in bytes
- */
-export async function getHLSSize(videoPath: string): Promise<number> {
-  const outputDir = getHLSOutputDir(videoPath);
-
-  if (!existsSync(outputDir)) {
-    return 0;
-  }
-
-  const files = await readdir(outputDir);
-  let totalSize = 0;
-
-  for (const file of files) {
-    const filePath = path.join(outputDir, file);
-    try {
-      const stats = await import('node:fs/promises').then(({ stat }) => stat(filePath));
-      if (stats.isFile()) {
-        totalSize += stats.size;
-      }
-    } catch {
-      // Ignore errors
-    }
-  }
-
-  return totalSize;
-}

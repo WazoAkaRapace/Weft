@@ -26,7 +26,7 @@ export function formatRelativeTime(date: Date | string): string {
 /**
  * Format a date as short date (e.g., "Jan 28", "Dec 15, 2024")
  */
-export function formatShortDate(date: Date | string): string {
+function formatShortDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   const now = new Date();
   const isCurrentYear = d.getFullYear() === now.getFullYear();
@@ -74,7 +74,7 @@ export function formatDate(dateStr: string): string {
  * Format a date as time (e.g., "2:30 PM")
  * (extracted from TimelineView for reuse)
  */
-export function formatTime(date: Date | string): string {
+function formatTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleTimeString('en-US', {
     hour: 'numeric',

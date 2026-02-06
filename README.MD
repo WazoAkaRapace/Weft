@@ -1,90 +1,86 @@
 # Weft
 
-A modern video journaling application built as a monorepo with Turborepo and pnpm.
+<p align="center">
+  <img src="assets/logo-light.svg" alt="Weft Logo" width="128" height="128">
+</p>
 
-## Overview
+> [!WARNING]
+> **This project is under heavy development.** APIs, architecture, and features are subject to change without notice. Not recommended for production use.
 
-Weft is a video journaling platform that allows users to create, manage, and search through video journal entries with automatic transcription and tagging capabilities. The application features real-time video streaming, browser-based recording, and comprehensive search functionality.
+<div align="center">
+  <h3>Enhanced video journaling</h3>
+  <p>Record, transcribe, and analyze your video journals with automatic emotion detection</p>
+</div>
+
+## Screenshots
+
+![Dashboard](screenshots/01-dashboard.png)
+![Notes](screenshots/02-notes.png)
+![Recording](screenshots/03-recording.png)
+![Journal Detail](screenshots/05-journal-detail.png)
 
 ## Features
 
-- **Video Recording**: Record video journals directly in the browser with real-time streaming to the server
-- **Automatic Transcription**: AI-powered transcription with timestamped segments
-- **Tag-Based Organization**: Organize journals with custom tags for easy retrieval
-- **Full-Text Search**: Search across journal titles and transcript content
-- **User Authentication**: Secure authentication with session management
-- **Responsive UI**: Modern React-based interface with Vite
+- **Video Recording** - Browser-based with real-time streaming, pause/resume, multi-codec support (VP9/H.264)
+- **AI Transcription** - OpenAI Whisper, 99 languages, timestamped segments, full-text search
+- **Emotion Detection** - Multimodal (facial + vocal) analysis with real-time timeline visualization
+- **Notes System** - Hierarchical organization, templates, slash commands, markdown editing
+- **HLS Video Playback** - With transcript sync and emotion analysis per entry
+- **Authentication** - BetterAuth with database session management
 
 ## Tech Stack
 
-### Frontend
-- **React 19** - UI framework
-- **TypeScript 5** - Type safety
-- **Vite 6** - Build tool and dev server
-- **Bun Runtime** - Optimize performance
-
-### Backend
-- **Bun Runtime** - High-performance JavaScript runtime
-- **TypeScript 5** - Type safety
-- **Drizzle ORM** - Database ORM
-- **PostgreSQL** - Primary database
-- **Redis** - Caching and session storage
-
-### Infrastructure
-- **Turborepo** - Monorepo build orchestration
-- **pnpm** - Fast, disk space efficient package manager
-- **Docker** - Containerized development environment
-
-## Project Structure
-
-```
-Weft/
-├── packages/
-│   ├── web/          # Frontend application (React + Vite)
-│   ├── server/       # Backend API (Bun runtime)
-│   └── shared/       # Shared types and utilities
-├── spec/             # Detailed project documentation
-├── docker/           # Docker configuration
-├── package.json      # Root package.json
-├── turbo.json        # Turborepo configuration
-└── pnpm-workspace.yaml
-```
+| Frontend | Backend | AI/ML | Infrastructure |
+|----------|---------|-------|----------------|
+| React 19 | Node.js 20 | OpenAI Whisper | Turborepo |
+| TypeScript 5.7 | Drizzle ORM | face-api.js | pnpm |
+| Vite 6 | PostgreSQL 16 | SpeechBrain | Docker |
+| HLS.js | BetterAuth | FFmpeg | |
 
 ## Quick Start
 
-### Prerequisites
+### Option 1: Docker Compose (Recommended)
 
-- **Node.js** >= 22.0.0
-- **pnpm** >= 9.0.0
-- **PostgreSQL** (for local development)
-- **Redis** (for local development)
-
-### Installation
-
+**Using pre-built images from GitHub Container Registry:**
 ```bash
-# Install pnpm globally (if not already installed)
-npm install -g pnpm@latest
-
-# Install dependencies
-pnpm install
+docker compose -f docker/docker-compose.registry.yml up -d
 ```
 
-### Development
+**Building locally:**
+```bash
+docker compose -f docker/docker-compose.yml up -d --build
+```
+
+Visit http://localhost:3000
+
+### Option 2: Local Development
+
+**Prerequisites:**
+- Node.js 20+
+- pnpm
+- PostgreSQL 16
+- FFmpeg
+- Python 3.11 (for voice emotion service)
 
 ```bash
-# Start all development servers
+# Install dependencies
+pnpm install
+
+# Start development servers
 pnpm dev
 ```
 
-This starts:
-- **Web**: http://localhost:3000
-- **Server**: http://localhost:3001
+Visit http://localhost:3000
 
-### Docker Development
+## Commands
 
+### Docker Commands
 ```bash
-# Start all services with Docker Compose
+# Start all services
 docker compose -f docker/docker-compose.yml up -d
+
+# Rebuild and restart specific service(s)
+docker compose -f docker/docker-compose.yml up -d --build backend
 
 # View logs
 docker compose -f docker/docker-compose.yml logs -f
@@ -93,10 +89,7 @@ docker compose -f docker/docker-compose.yml logs -f
 docker compose -f docker/docker-compose.yml down
 ```
 
-## Available Commands
-
-### Root Commands
-
+### Local Development Commands
 ```bash
 # Build all packages
 pnpm build
@@ -104,98 +97,32 @@ pnpm build
 # Start development servers
 pnpm dev
 
-# Lint all packages
+# Generate database migrations
+pnpm --filter @weft/server db:generate
+
+# Run linting
 pnpm lint
 
 # Run tests
 pnpm test
-
-# Clean build artifacts
-pnpm clean
-
-# Format code
-pnpm format
 ```
-
-### Database Commands
-
-```bash
-# Generate migration files
-pnpm --filter @weft/server db:generate
-
-# Apply migrations
-pnpm --filter @weft/server db:migrate
-
-# Push schema (development only)
-pnpm --filter @weft/server db:push
-
-# Open Drizzle Studio
-pnpm --filter @weft/server db:studio
-
-# Seed database
-pnpm --filter @weft/server db:seed
-```
-
-### Package-Specific Commands
-
-```bash
-# Server commands
-pnpm --filter @weft/server <command>
-
-# Web commands
-pnpm --filter @weft/web <command>
-
-# Shared commands
-pnpm --filter @weft/shared <command>
-```
-
-## Documentation
-
-For detailed project documentation, see the [spec/](./spec/) directory:
-
-- **[Architecture](./spec/ARCHITECTURE.md)** - Monorepo structure and design decisions
-- **[Setup Guide](./spec/SETUP.md)** - Detailed setup and development instructions
-- **[Database](./spec/DATABASE.md)** - Database schema and operations
-- **[Docker](./spec/DOCKER.md)** - Docker configuration and usage
-- **[Recording Feature](./spec/RECORDING.md)** - Video recording implementation details
-- **[Contributing](./spec/CONTRIBUTING.md)** - Contribution guidelines
-
-## Development Workflow
-
-1. Make changes to any package
-2. Run `pnpm dev` to start dev servers with hot reload
-3. Type checking is enforced across package boundaries
-4. Build compiles TypeScript and bundles outputs
-5. Run tests and linting before committing
 
 ## Environment Variables
 
-Create a `.env.local` file in the appropriate package directory:
-
-**Server (`packages/server/.env.local`):**
+**Server (`.env.local`)**
 ```bash
 DATABASE_URL=postgresql://user:password@host:5432/weft
+BETTER_AUTH_SECRET=your-secret-key
+BETTER_AUTH_URL=http://localhost:3001
+FRONTEND_URL=http://localhost:3000
 ```
 
-See [spec/DATABASE.md](./spec/DATABASE.md) for complete environment variable reference.
+For Docker deployments, see [spec/DOCKER.md](./spec/DOCKER.md) for the full list of environment variables.
 
-## Browser Support
+## Documentation
 
-| Browser | Minimum Version | Notes |
-|---------|----------------|-------|
-| Chrome | 90+ | VP9 codec recommended |
-| Firefox | 88+ | VP9 codec recommended |
-| Safari | 14.1+ | H.264 codec required |
-| Edge | 90+ | VP9 codec recommended |
-
-## Contributing
-
-We welcome contributions! Please see [spec/CONTRIBUTING.md](./spec/CONTRIBUTING.md) for guidelines.
-
-## License
-
-This project is licensed under the MIT License.
-
-## Support
-
-For questions, issues, or feature requests, please open an issue on the project repository.
+- [Architecture](./spec/ARCHITECTURE.md) - Monorepo structure
+- [Docker](./spec/DOCKER.md) - Docker configuration and deployment
+- [Recording Feature](./spec/RECORDING.md) - Video recording implementation
+- [Transcription](./spec/TRANSCRIPTION.md) - AI transcription details
+- [Emotion Detection](./spec/EMOTION_DETECTION.md) - Multimodal emotion analysis

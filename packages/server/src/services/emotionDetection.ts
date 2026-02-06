@@ -26,9 +26,8 @@ async function ensureTempDir() {
   }
 }
 
-// Emotion labels
-export const EMOTIONS = ['neutral', 'happy', 'sad', 'angry', 'fear', 'disgust', 'surprise'] as const;
-export type EmotionLabel = typeof EMOTIONS[number];
+// Emotion labels (not exported - used internally only)
+const EMOTIONS = ['neutral', 'happy', 'sad', 'angry', 'fear', 'disgust', 'surprise'] as const;
 
 export interface EmotionJob {
   journalId: string;

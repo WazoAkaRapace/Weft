@@ -24,6 +24,14 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
   const { navigateWithWarning } = useNavigationContext();
   const { theme, setTheme, effectiveTheme } = useTheme();
 
+  // Determine which logo to use based on theme
+  const getLogoSrc = () => {
+    if (theme === 'dark') return '/logo-dark.svg';
+    if (theme === 'light') return '/logo-light.svg';
+    // System theme - check effective theme
+    return effectiveTheme === 'dark' ? '/logo-dark.svg' : '/logo-light.svg';
+  };
+
   const isActive = (path: string) => {
     return location.pathname === path || (path !== '/dashboard' && location.pathname.startsWith(path));
   };
@@ -65,14 +73,18 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
       {/* Logo/Brand */}
       <div className="p-4 border-b border-neutral-200 dark:border-dark-600 flex items-center justify-between">
         {!isCollapsed && (
-          <h1 className="text-lg font-bold text-neutral-900 dark:text-dark-50">
-            Weft
-          </h1>
+          <img
+            src={getLogoSrc()}
+            alt="Weft"
+            className="h-8 w-auto"
+          />
         )}
         {isCollapsed && (
-          <span className="text-xl font-bold text-neutral-900 dark:text-dark-50">
-            W
-          </span>
+          <img
+            src={getLogoSrc()}
+            alt="W"
+            className="h-8 w-auto"
+          />
         )}
       </div>
 

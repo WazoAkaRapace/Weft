@@ -17,15 +17,15 @@ export const authClient = createAuthClient({
  * Auth hooks and utilities
  */
 export const {
-  signIn,
-  signUp,
+  
+  
   signOut,
   useSession,
-  useUser,
+  
 } = authClient;
 
 /**
  * Type exports for use in components
  */
-export type Session = typeof authClient.$Infer.Session;
-export type User = typeof authClient.$Infer.User;
+type Session = typeof authClient.$Infer.Session;
+type User = typeof authClient.$Infer.User;

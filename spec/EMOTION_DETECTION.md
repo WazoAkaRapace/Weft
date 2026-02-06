@@ -21,7 +21,7 @@ Both modalities are processed in parallel and merged to provide a more accurate 
 
 - **Library:** @vladmandic/face-api (a maintained fork of face-api.js)
 - **Model:** TinyFaceDetector + FaceExpressionNet
-- **Runtime:** Bun.js with Node.js canvas support
+- **Runtime:** Node.js with canvas support
 - **Frame Sampling:** Every 5 seconds
 - **Emotion Labels:** 7 emotions (neutral, happy, sad, angry, fear, disgust, surprise)
 

@@ -7,7 +7,7 @@ This is a monorepo built with **Turborepo** and **pnpm** for a video journaling 
 ```
 Weft/
 ├── packages/
-│   ├── server/      # Backend API (Bun runtime)
+│   ├── server/      # Backend API (Node.js runtime)
 │   ├── web/         # Frontend (React + Vite)
 │   └── shared/      # Shared types and utilities
 ├── package.json     # Root package.json
@@ -207,7 +207,7 @@ DATABASE_URL=postgresql://user:password@host:5432/weft
 
 ## Tech Stack
 
-- **Runtime:** Bun (server), Node.js (web)
+- **Runtime:** Node.js 20 (server and web)
 - **Build Tool:** Turborepo
 - **Package Manager:** pnpm
 - **Database:** PostgreSQL

@@ -1,6 +1,7 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { authClient } from '../lib/auth';
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_BASE_URL = 'http://localhost:3001';
 
@@ -9,6 +10,7 @@ interface CheckUsersResponse {
 }
 
 export function RegisterPage() {
+  const { theme, effectiveTheme } = useTheme();
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -18,6 +20,12 @@ export function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasUsers, setHasUsers] = useState<boolean | null>(null);
   const [isCheckingUsers, setIsCheckingUsers] = useState(true);
+
+  const getLogoSrc = () => {
+    if (theme === 'dark') return '/logo-dark.svg';
+    if (theme === 'light') return '/logo-light.svg';
+    return effectiveTheme === 'dark' ? '/logo-dark.svg' : '/logo-light.svg';
+  };
 
   useEffect(() => {
     const checkUsers = async () => {
@@ -49,6 +57,9 @@ export function RegisterPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background dark:bg-background-dark">
         <div className="bg-white dark:bg-background-card-dark rounded-lg p-8 w-full max-w-md shadow-lg text-center">
+          <div className="flex justify-center mb-6">
+            <img src={getLogoSrc()} alt="Weft Logo" className="w-20 h-20" />
+          </div>
           <p className="text-text-secondary dark:text-text-dark-secondary">Loading...</p>
         </div>
       </div>
@@ -102,6 +113,11 @@ export function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background dark:bg-background-dark">
       <div className="bg-white dark:bg-background-card-dark rounded-lg p-8 w-full max-w-md shadow-lg">
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <img src={getLogoSrc()} alt="Weft Logo" className="w-20 h-20" />
+        </div>
+
         <h1 className="text-2xl text-text-default dark:text-text-dark-default text-center mb-2">
           Join Weft
         </h1>

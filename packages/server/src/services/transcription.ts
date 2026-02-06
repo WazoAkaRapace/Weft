@@ -104,7 +104,7 @@ export interface TranscriptionResult {
 /**
  * Check if FFmpeg is available
  */
-export async function checkFFmpegAvailable(): Promise<boolean> {
+async function checkFFmpegAvailable(): Promise<boolean> {
   const ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
   return new Promise((resolve) => {
     const ffmpeg = spawn(ffmpegPath, ['-version']);

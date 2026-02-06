@@ -16,9 +16,8 @@ const VOICE_EMOTION_API_URL = process.env.VOICE_EMOTION_API_URL || 'http://voice
 const AUDIO_SEGMENT_DURATION = 5; // Sample every 5 seconds (same as face)
 const MIN_CONFIDENCE = 0.3; // Lower threshold for voice (less accurate than face)
 
-// Voice emotion labels (SpeechBrain IEMOCAP)
-export const VOICE_EMOTIONS = ['angry', 'happy', 'neutral', 'sad'] as const;
-export type VoiceEmotionLabel = typeof VOICE_EMOTIONS[number];
+// Voice emotion labels (not exported - used internally only)
+const VOICE_EMOTIONS = ['angry', 'happy', 'neutral', 'sad'] as const;
 
 export interface VoiceEmotionJob {
   journalId: string;
