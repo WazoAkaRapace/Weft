@@ -39,7 +39,7 @@ jobs:
   # Backend Test Job
   # =============================================================================
   test:
-    name: Backend Tests (Node.js 20)
+    name: Backend Tests
     runs-on: ubuntu-latest
 
     services:
@@ -56,13 +56,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
-    strategy:
-      fail-fast: false
-      matrix:
-        # Run tests in parallel when possible
-        shard: [1, 2]
-        total-shards: [2]
 
     env:
       NODE_ENV: test
@@ -115,5 +108,5 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
 
-      - name: Run backend tests (sharded)
-        run: pnpm --filter @weft/server test --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
+      - name: Run backend tests
+        run: pnpm --filter @weft/server test
