@@ -49,11 +49,25 @@ export function getTestUploadDir() {
  * Setup test database
  */
 beforeAll(async () => {
-  // Use TEST_DATABASE_URL or fall back to DATABASE_URL with test suffix
-  const dbUrl = process.env.TEST_DATABASE_URL ||
-                process.env.DATABASE_URL?.replace('/weft', '/weft_test') ||
-                'postgres://localhost:5432/weft_test';
+  // Use TEST_DATABASE_URL or fall back to DATABASE_URL
+  // If DATABASE_URL doesn't contain 'weft_test', use test database
+  const getTestDbUrl = () => {
+    if (process.env.TEST_DATABASE_URL) {
+      return process.env.TEST_DATABASE_URL;
+    }
+    if (process.env.DATABASE_URL) {
+      const url = process.env.DATABASE_URL;
+      // If it already uses weft_test database, use it as-is
+      if (url.includes('/weft_test') || url.includes('%2Fweft_test')) {
+        return url;
+      }
+      // Otherwise, replace the database name
+      return url.replace(/\/weft\b/, '/weft_test');
+    }
+    return 'postgres://localhost:5432/weft_test';
+  };
 
+  const dbUrl = getTestDbUrl();
   console.log(`[Test Setup] Connecting to test database: ${dbUrl}`);
 
   testDb = postgres(dbUrl, {

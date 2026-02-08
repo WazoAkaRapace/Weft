@@ -475,3 +475,106 @@ const results = await db
 - [Drizzle ORM Documentation](https://orm.drizzle.team/)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 - [BetterAuth Documentation](https://www.better-auth.com)
+
+## Local Testing
+
+### Running Tests with Database
+
+Weft provides a test database setup that matches the CI environment, allowing you to run backend tests locally before pushing changes.
+
+#### Quick Start
+
+Run all tests (backend + frontend) with automatic database setup:
+
+```bash
+# Run all tests locally
+pnpm test:local
+
+# Run with coverage
+pnpm test:local:ci
+
+# Run only backend tests
+pnpm test:local:backend
+
+# Run only frontend tests
+pnpm test:local:frontend
+```
+
+#### Backend-Only Testing
+
+For backend development, use the server-specific test script:
+
+```bash
+# From packages/server directory
+cd packages/server
+
+# Run backend tests with database
+pnpm test:local
+
+# Run with coverage
+pnpm test:local:ci
+
+# Keep database running after tests
+pnpm test:local:keep
+```
+
+#### Manual Database Management
+
+Start the test database manually:
+
+```bash
+# Start test database
+docker compose -f docker/docker-compose.test.yml up -d
+
+# Stop test database
+docker compose -f docker/docker-compose.test.yml down
+
+# View database logs
+docker logs weft-test-postgres
+```
+
+#### Test Database Configuration
+
+The test database uses the following credentials (matching CI):
+
+| Setting | Value |
+|---------|-------|
+| Database | `weft_test` |
+| User | `weft_test` |
+| Password | `weft_test_password` |
+| Port | `5432` |
+
+Connection string:
+```
+postgresql://weft_test:weft_test_password@localhost:5432/weft_test
+```
+
+#### Troubleshooting
+
+**Port already in use:**
+```bash
+# Check what's using port 5432
+lsof -i :5432
+
+# Stop existing PostgreSQL service
+brew services stop postgresql  # macOS
+sudo systemctl stop postgresql # Linux
+```
+
+**Database connection errors:**
+```bash
+# Verify database is running
+docker ps | grep weft-test-postgres
+
+# Check database health
+docker exec weft-test-postgres pg_isready -U weft_test -d weft_test
+```
+
+**Reset test database:**
+```bash
+# Stop and remove volumes
+docker compose -f docker/docker-compose.test.yml down -v
+
+# Start fresh
+docker compose -f docker/docker-compose.test.yml up -d
+```

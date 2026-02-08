@@ -68,13 +68,57 @@ pnpm --filter @weft/shared build
 
 ## Testing
 
-```bash
-# Run all tests
-pnpm test
+### Quick Tests (No Database)
 
-# Run tests for specific package
-pnpm --filter @weft/shared test
+Run frontend tests that don't require a database:
+
+```bash
+# Run web tests (unit tests only)
+pnpm --filter @weft/web test
+
+# Run with coverage
+pnpm --filter @weft/web test:coverage
 ```
+
+### Full Test Suite (With Database)
+
+For complete testing including backend tests that require PostgreSQL:
+
+```bash
+# Run all tests with automatic database setup
+pnpm test:local
+
+# Run with coverage
+pnpm test:local:ci
+
+# Run only backend tests
+pnpm test:local:backend
+
+# Run only frontend tests
+pnpm test:local:frontend
+```
+
+The test database is automatically started in Docker and stopped after tests complete.
+
+### Backend Tests Only
+
+For backend development, use server-specific test commands:
+
+```bash
+# From packages/server directory
+cd packages/server
+
+# Run backend tests with database
+pnpm test:local
+
+# Run with coverage
+pnpm test:local:ci
+
+# Keep database running after tests
+pnpm test:local:keep
+```
+
+See [DATABASE.md](DATABASE.md#local-testing) for more database testing options.
 
 ## Linting
 

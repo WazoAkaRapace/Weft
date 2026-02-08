@@ -11,7 +11,7 @@ import * as schema from './schema.js';
  * - connect_timeout: Maximum time in seconds to wait for connection
  */
 
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://localhost:5432/weft';
+const DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://localhost:5432/weft';
 
 // Connection pool configuration
 const poolConfig = {

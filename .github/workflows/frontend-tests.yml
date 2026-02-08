@@ -78,9 +78,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install coverage provider
-        run: pnpm --filter @weft/web add -D @vitest/coverage-v8
-
       - name: Build shared package
         run: pnpm --filter @weft/shared build
 

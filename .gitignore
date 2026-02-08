@@ -49,3 +49,7 @@ Thumbs.db
 .cache
 .temp
 *.tsbuildinfo
+
+# Database backups
+docker/backups/
+*.sql

@@ -3,12 +3,11 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist/', 'node_modules/', 'coverage/', 'drizzle/'],
+    ignores: ['dist/', 'node_modules/', 'coverage/', 'drizzle/', 'tests/', '**/*.test.ts', '**/*.spec.ts'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -33,9 +32,12 @@ export default tseslint.config(
       '@typescript-eslint/no-non-null-assertion': 'warn',
     },
   },
-  {
+  // Separate config for test files
+  ...tseslint.configs.recommended.map(config => ({
+    ...config,
     files: ['tests/**/*.ts', '**/*.test.ts', '**/*.spec.ts'],
     rules: {
+      ...(config.rules || {}),
       '@typescript-eslint/no-unused-vars': [
         'warn',
         {
@@ -47,5 +49,5 @@ export default tseslint.config(
       '@typescript-eslint/no-non-null-assertion': 'off',
       'prefer-const': 'off',
     },
-  }
+  }))
 );

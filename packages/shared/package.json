@@ -9,7 +9,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "lint": "eslint .",
-    "test": "vitest",
+    "test": "vitest --run",
     "clean": "rm -rf dist .turbo node_modules"
   },
   "devDependencies": {

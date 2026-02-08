@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "clean": "rm -rf dist .turbo node_modules",
-    "test": "vitest",
+    "test": "vitest --run",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest --coverage",
