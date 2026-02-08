@@ -137,6 +137,9 @@ jobs:
       - name: Install coverage provider
         run: pnpm add -D @vitest/coverage-v8
 
+      - name: Install coverage provider
+        run: pnpm --filter @weft/server add -D @vitest/coverage-v8
+
       - name: Build shared package
         run: pnpm --filter @weft/server db:generate
         continue-on-error: true
@@ -210,7 +213,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install coverage provider
-        run: pnpm add -D @vitest/coverage-v8
+        run: pnpm --filter @weft/web add -D @vitest/coverage-v8
 
       - name: Build shared package
         run: pnpm --filter @weft/shared build
