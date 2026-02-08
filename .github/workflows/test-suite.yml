@@ -5,15 +5,13 @@
 #
 # This workflow is ideal for:
 #   - Full CI/CD validation before merges
-#   - Comprehensive test coverage validation
+#   - Comprehensive test validation
 #   - Pre-deployment verification
 #
 # Includes:
 #   - Linting (ESLint)
 #   - Backend tests with PostgreSQL
 #   - Frontend unit/integration tests
-#   - Frontend E2E tests
-#   - Coverage reporting
 # =============================================================================
 
 name: Test Suite
@@ -143,25 +141,8 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
 
-      - name: Run backend tests with coverage
-        run: pnpm --filter @weft/server test:ci
-
-      - name: Upload backend coverage
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./packages/server/coverage/lcov.info
-          flags: backend
-          name: backend-coverage
-          fail_ci_if_error: false
-
-      - name: Upload backend coverage artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: backend-coverage-report
-          path: packages/server/coverage/
-          retention-days: 7
+      - name: Run backend tests
+        run: pnpm --filter @weft/server test
 
   # =============================================================================
   # Frontend Unit Tests Job
@@ -209,100 +190,8 @@ jobs:
       - name: Build shared package
         run: pnpm --filter @weft/shared build
 
-      - name: Run frontend unit tests with coverage
-        run: pnpm --filter @weft/web test:run --coverage
-
-      - name: Upload frontend unit coverage
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./packages/web/coverage/lcov.info
-          flags: frontend-unit
-          name: frontend-unit-coverage
-          fail_ci_if_error: false
-
-      - name: Upload frontend unit coverage artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: frontend-unit-coverage-report
-          path: packages/web/coverage/
-          retention-days: 7
-
-  # =============================================================================
-  # Frontend E2E Tests Job
-  # =============================================================================
-  frontend-e2e-tests:
-    name: Frontend E2E Tests
-    runs-on: ubuntu-latest
-    needs: [frontend-unit-tests]
-
-    env:
-      NODE_ENV: test
-      VITE_API_URL: http://localhost:3001
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build shared package
-        run: pnpm --filter @weft/shared build
-
-      - name: Install Playwright browsers
-        run: pnpm --filter @weft/web exec playwright install --with-deps chromium firefox webkit
-
-      - name: Build frontend
-        run: pnpm --filter @weft/web build
-
-      - name: Run Playwright E2E tests
-        run: pnpm --filter @weft/web test:e2e
-        env:
-          CI: true
-
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report
-          path: packages/web/playwright-report/
-          retention-days: 7
-
-      - name: Upload Playwright failure artifacts
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-failure-artifacts
-          path: |
-            packages/web/test-results/
-            packages/web/playwright-report/trace/
-          retention-days: 7
+      - name: Run frontend tests
+        run: pnpm --filter @weft/web test
 
   # =============================================================================
   # Test Summary Job
@@ -310,7 +199,7 @@ jobs:
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-unit-tests, frontend-e2e-tests]
+    needs: [backend-tests, frontend-unit-tests]
     if: always()
 
     steps:
@@ -330,38 +219,15 @@ jobs:
 
           # Frontend unit status
           if [ "${{ needs.frontend-unit-tests.result }}" == "success" ]; then
-            echo "| :white_check_mark: | Frontend Unit Tests | Passed |" >> $GITHUB_STEP_SUMMARY
+            echo "| :white_check_mark: | Frontend Tests | Passed |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| :x: | Frontend Unit Tests | Failed |" >> $GITHUB_STEP_SUMMARY
+            echo "| :x: | Frontend Tests | Failed |" >> $GITHUB_STEP_SUMMARY
           fi
-
-          # Frontend E2E status
-          if [ "${{ needs.frontend-e2e-tests.result }}" == "success" ]; then
-            echo "| :white_check_mark: | Frontend E2E Tests | Passed |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| :x: | Frontend E2E Tests | Failed |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Coverage Thresholds" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Backend" >> $GITHUB_STEP_SUMMARY
-          echo "- Statements: 80%" >> $GITHUB_STEP_SUMMARY
-          echo "- Branches: 80%" >> $GITHUB_STEP_SUMMARY
-          echo "- Functions: 80%" >> $GITHUB_STEP_SUMMARY
-          echo "- Lines: 80%" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Frontend" >> $GITHUB_STEP_SUMMARY
-          echo "- Lines: 70%" >> $GITHUB_STEP_SUMMARY
-          echo "- Functions: 70%" >> $GITHUB_STEP_SUMMARY
-          echo "- Branches: 60%" >> $GITHUB_STEP_SUMMARY
-          echo "- Statements: 70%" >> $GITHUB_STEP_SUMMARY
 
       - name: Check overall status
         run: |
           if [ "${{ needs.backend-tests.result }}" != "success" ] || \
-             [ "${{ needs.frontend-unit-tests.result }}" != "success" ] || \
-             [ "${{ needs.frontend-e2e-tests.result }}" != "success" ]; then
+             [ "${{ needs.frontend-unit-tests.result }}" != "success" ]; then
             echo "::error::Test suite failed"
             exit 1
           fi

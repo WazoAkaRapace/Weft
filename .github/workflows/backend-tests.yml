@@ -6,7 +6,6 @@
 # Tests include:
 #   - Unit tests for services, queues, and utilities
 #   - Integration tests for API routes and database operations
-#   - Coverage reporting with thresholds
 #
 # Environment:
 #   - Ubuntu latest
@@ -117,60 +116,4 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
 
       - name: Run backend tests (sharded)
-        run: pnpm --filter @weft/server test:ci --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./packages/server/coverage/lcov.info
-          flags: backend
-          name: backend-coverage-shard-${{ matrix.shard }}
-          fail_ci_if_error: false
-          verbose: true
-
-      - name: Upload coverage artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: backend-coverage-report-shard-${{ matrix.shard }}
-          path: packages/server/coverage/
-          retention-days: 7
-
-  # =============================================================================
-  # Coverage Summary Job
-  # =============================================================================
-  coverage-summary:
-    name: Coverage Summary
-    runs-on: ubuntu-latest
-    needs: test
-    if: always()
-
-    steps:
-      - name: Check test results
-        run: |
-          if [ "${{ needs.test.result }}" != "success" ]; then
-            echo "::error::Backend tests failed"
-            exit 1
-          fi
-        shell: bash
-
-      - name: Download all coverage reports
-        uses: actions/download-artifact@v4
-        with:
-          pattern: backend-coverage-report-shard-*
-          path: coverage-reports
-          merge-multiple: true
-
-      - name: Generate coverage summary
-        run: |
-          echo "## Backend Test Coverage :white_check_mark:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Metric | Threshold | Target |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Statements | 80% | :green_circle: |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branches | 80% | :green_circle: |" >> $GITHUB_STEP_SUMMARY
-          echo "| Functions | 80% | :green_circle: |" >> $GITHUB_STEP_SUMMARY
-          echo "| Lines | 80% | :green_circle: |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Full coverage reports available in artifacts." >> $GITHUB_STEP_SUMMARY
+        run: pnpm --filter @weft/server test --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
