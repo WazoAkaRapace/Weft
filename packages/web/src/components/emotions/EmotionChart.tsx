@@ -26,14 +26,17 @@ export function EmotionChart({ scores, className = '' }: EmotionChartProps) {
     return null;
   }
 
-  // Calculate cumulative percentages for pie slices
-  let cumulativePercent = 0;
-  const slices = data.map(([emotion, score]) => {
-    const percent = score * 100;
-    const startPercent = cumulativePercent;
-    cumulativePercent += percent;
-    return { emotion, score, percent, startPercent };
-  });
+  // Calculate cumulative percentages for pie slices using reduce
+  const slices = data.reduce<{ items: Array<{ emotion: EmotionLabel; score: number; percent: number; startPercent: number }>; cumulativePercent: number }>(
+    (acc, [emotion, score]) => {
+      const percent = score * 100;
+      const startPercent = acc.cumulativePercent;
+      acc.items.push({ emotion, score, percent, startPercent });
+      acc.cumulativePercent += percent;
+      return acc;
+    },
+    { items: [], cumulativePercent: 0 }
+  ).items;
 
   return (
     <div className={`space-y-3 ${className}`}>

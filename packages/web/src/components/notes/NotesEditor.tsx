@@ -246,7 +246,9 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
   );
 
   // Store the markJustSelected function for use in handleSlashCommandSelect
-  markJustSelectedRef.current = markJustSelected;
+  useEffect(() => {
+    markJustSelectedRef.current = markJustSelected;
+  }, [markJustSelected]);
 
   return (
     <div className={`flex flex-col gap-1.5 sm:gap-4 h-full ${className}`}>
