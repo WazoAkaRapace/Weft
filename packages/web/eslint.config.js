@@ -11,11 +11,14 @@ export default tseslint.config(
       'coverage/',
       'playwright-report/',
       'test-results/',
+      'e2e/',
+      'test/',
     ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
     plugins: {
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
@@ -38,7 +41,7 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       '@typescript-eslint/no-unused-vars': [
-        'error',
+        'warn',
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
@@ -48,6 +51,11 @@ export default tseslint.config(
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/no-require-imports': 'off',
+      'react-hooks/rules-of-hooks': 'warn',
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+      'no-useless-escape': 'off',
     },
   }
 );

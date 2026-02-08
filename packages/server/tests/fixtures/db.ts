@@ -171,7 +171,6 @@ export async function createTestJournalWithTranscript(userId: string, overrides:
  * Create a set of test notes with hierarchy
  */
 export async function createTestNoteHierarchy(userId: string, depth = 2, childrenPerNode = 2) {
-  const db = getTestDb();
   const createdNotes: string[] = [];
 
   async function createNode(parentId: string | null, currentDepth: number): Promise<void> {

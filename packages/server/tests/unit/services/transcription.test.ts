@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { getTestDb } from '../../setup.js';
 import * as schema from '../../../src/db/schema.js';
-import { createTestUser, createTestSession, getAuthHeaders } from '../../fixtures/auth.js';
+import { createTestUser, createTestSession } from '../../fixtures/auth.js';
 import { createTestJournal } from '../../fixtures/db.js';
 import { TranscriptionService } from '../../../src/services/transcription.js';
 
@@ -20,15 +20,15 @@ vi.mock('nodejs-whisper', () => ({
 // Mock FFmpeg spawn
 vi.mock('node:child_process', () => ({
   spawn: vi.fn(() => ({
-    on: vi.fn(function(this: any, event: string, callback: () => void) {
-      if (event === 'close') {
+    on: vi.fn(function(this: unknown, _event: string, callback: () => void) {
+      if (_event === 'close') {
         // Simulate successful FFmpeg execution
         setTimeout(() => callback(0), 10);
       }
       return this;
     }),
     stderr: {
-      on: vi.fn(function(this: any, event: string, callback: (data: any) => void) {
+      on: vi.fn(function(this: unknown, _event: string, _callback: (data: unknown) => void) {
         return this;
       }),
     },
@@ -40,7 +40,7 @@ import { nodewhisper } from 'nodejs-whisper';
 describe('TranscriptionService', () => {
   let db: ReturnType<typeof getTestDb>;
   let testUser: Awaited<ReturnType<typeof createTestUser>>;
-  let testSession: Awaited<ReturnType<typeof createTestSession>>;
+  let _testSession: Awaited<ReturnType<typeof createTestSession>>;
   let service: TranscriptionService;
 
   beforeEach(async () => {
@@ -54,7 +54,7 @@ describe('TranscriptionService', () => {
       transcriptionModel: 'Xenova/whisper-small',
     });
 
-    testSession = await createTestSession(testUser.id);
+    _testSession = await createTestSession(testUser.id);
 
     service = new TranscriptionService();
 
@@ -451,7 +451,7 @@ describe('TranscriptionService', () => {
           userId: testUser.id,
           videoPath: journal.videoPath,
         });
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 

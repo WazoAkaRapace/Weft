@@ -23,7 +23,7 @@ async function resetMigrationTracking() {
     // Drop the failed migration tracking
     await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
     console.log('Reset migration tracking - migrations will be re-run');
-  } catch (error) {
+  } catch {
     // If dropping fails, the schema might not exist yet, which is fine
     console.log('Note: Could not reset migration tracking (may not exist yet)');
   }
@@ -72,7 +72,7 @@ export async function runMigrations() {
           await resetMigrationTracking();
         }
       }
-    } catch (checkError) {
+    } catch {
       // If we can't check, continue with normal migration
       console.log('Could not check migration status, proceeding normally...');
     }

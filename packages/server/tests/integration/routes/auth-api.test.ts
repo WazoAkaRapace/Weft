@@ -121,7 +121,7 @@ describe('Authentication API - Application Layer', () => {
       });
 
       const response = await auth.handler(request);
-      const data = await response.json();
+      const _data = await response.json();
 
       // Better Auth should reject short passwords
       expect([400, 422, 200]).toContain(response.status);
@@ -258,7 +258,7 @@ describe('Authentication API - Application Layer', () => {
       });
 
       const response = await auth.handler(request);
-      const data = await response.json();
+      const _data = await response.json();
 
       expect(response.status).toBe(401);
     });

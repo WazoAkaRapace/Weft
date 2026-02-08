@@ -11,11 +11,11 @@ import { eq } from 'drizzle-orm';
 
 describe('Database Schema', () => {
   let db: ReturnType<typeof getTestDb>;
-  let rawDb: ReturnType<typeof getTestDbRaw>;
+  let _rawDb: ReturnType<typeof getTestDbRaw>;
 
   beforeEach(() => {
     db = getTestDb();
-    rawDb = getTestDbRaw();
+    _rawDb = getTestDbRaw();
   });
 
   describe('Users Table', () => {

@@ -143,7 +143,7 @@ export const journals = pgTable(
  * Notes table
  * Stores hierarchical notes with optional journal linking
  */
-// @ts-ignore - Self-referencing type issue with Drizzle ORM
+// @ts-expect-error - Self-referencing type issue with Drizzle ORM
 export const notes = pgTable(
   'notes',
   {
@@ -155,7 +155,7 @@ export const notes = pgTable(
     content: text('content'), // Markdown content, optional
     icon: text('icon').default('📝'), // Emoji or icon for visual identification
     color: text('color'), // Hex color code (e.g., "#3b82f6") for organization
-    // @ts-ignore - Self-referencing for tree structure
+    // @ts-expect-error - Self-referencing for tree structure
     parentId: uuid('parent_id').references(() => notes.id, { onDelete: 'set null' }), // Self-referencing for tree structure
     position: integer('position').notNull().default(0), // For ordering within parent
     deletedAt: timestamp('deleted_at'), // Soft delete timestamp (NULL if not deleted)

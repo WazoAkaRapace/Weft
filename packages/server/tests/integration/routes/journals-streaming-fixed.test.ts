@@ -446,7 +446,7 @@ describe('Journal Streaming API - Fixed Tests', () => {
 
       // Add stream to active streams manually (bypassing init for test control)
       const { activeStreams } = await import('../../../src/routes/journals.js');
-      // @ts-ignore - accessing private module state for testing
+      // @ts-expect-error - accessing private module state for testing
       activeStreams.set(streamId, {
         userId: testUser.id,
         streamId,
@@ -487,7 +487,7 @@ describe('Journal Streaming API - Fixed Tests', () => {
 
       // Add stream to active streams
       const { activeStreams } = await import('../../../src/routes/journals.js');
-      // @ts-ignore
+      // @ts-expect-error - Testing private activeStreams map
       activeStreams.set(streamId, {
         userId: testUser.id,
         streamId,
@@ -518,7 +518,7 @@ describe('Journal Streaming API - Fixed Tests', () => {
       const streamId = randomUUID();
 
       const { activeStreams } = await import('../../../src/routes/journals.js');
-      // @ts-ignore
+      // @ts-expect-error - Testing private activeStreams map
       activeStreams.set(streamId, {
         userId: testUser.id,
         streamId,
@@ -549,7 +549,7 @@ describe('Journal Streaming API - Fixed Tests', () => {
       const streamId = randomUUID();
 
       const { activeStreams } = await import('../../../src/routes/journals.js');
-      // @ts-ignore
+      // @ts-expect-error - Testing private activeStreams map
       activeStreams.set(streamId, {
         userId: testUser.id,
         streamId,

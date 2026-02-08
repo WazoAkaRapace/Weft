@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { eq, sql, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { getTestDb, getTestDbRaw } from '../../setup.js';
 import * as schema from '../../../src/db/schema.js';
 import { createTestUser } from '../../fixtures/auth.js';
