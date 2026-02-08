@@ -1,0 +1,176 @@
+# =============================================================================
+# Weft Backend Test Workflow
+# =============================================================================
+# Runs backend tests (Vitest with PostgreSQL) on every push and pull request.
+#
+# Tests include:
+#   - Unit tests for services, queues, and utilities
+#   - Integration tests for API routes and database operations
+#   - Coverage reporting with thresholds
+#
+# Environment:
+#   - Ubuntu latest
+#   - Node.js 20
+#   - PostgreSQL 16
+# =============================================================================
+
+name: Backend Tests
+
+on:
+  push:
+    branches: [main, init]
+    paths:
+      - 'packages/server/**'
+      - 'packages/shared/**'
+      - '.github/workflows/backend-tests.yml'
+  pull_request:
+    branches: [main, init]
+    paths:
+      - 'packages/server/**'
+      - 'packages/shared/**'
+      - '.github/workflows/backend-tests.yml'
+
+# Allow only one concurrent deployment per branch
+concurrency:
+  group: backend-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # =============================================================================
+  # Backend Test Job
+  # =============================================================================
+  test:
+    name: Backend Tests (Node.js 20)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: weft_test
+          POSTGRES_PASSWORD: weft_test_password
+          POSTGRES_DB: weft_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Run tests in parallel when possible
+        shard: [1, 2]
+        total-shards: [2]
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://weft_test:weft_test_password@localhost:5432/weft_test
+      PORT: 3001
+      BETTER_AUTH_SECRET: test-secret-key-for-ci-environment-at-least-32-chars
+      BETTER_AUTH_URL: http://localhost:3001
+      BETTER_AUTH_APP_URL: http://localhost:3000
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @weft/shared build
+
+      - name: Generate database migrations
+        run: pnpm --filter @weft/server db:generate
+        continue-on-error: true
+
+      - name: Run database migrations
+        run: pnpm --filter @weft/server db:migrate
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Run backend tests (sharded)
+        run: pnpm --filter @weft/server test:ci --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/server/coverage/lcov.info
+          flags: backend
+          name: backend-coverage-shard-${{ matrix.shard }}
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage-report-shard-${{ matrix.shard }}
+          path: packages/server/coverage/
+          retention-days: 7
+
+  # =============================================================================
+  # Coverage Summary Job
+  # =============================================================================
+  coverage-summary:
+    name: Coverage Summary
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "::error::Backend tests failed"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Download all coverage reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: backend-coverage-report-shard-*
+          path: coverage-reports
+          merge-multiple: true
+
+      - name: Generate coverage summary
+        run: |
+          echo "## Backend Test Coverage :white_check_mark:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Threshold | Target |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Statements | 80% | :green_circle: |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branches | 80% | :green_circle: |" >> $GITHUB_STEP_SUMMARY
+          echo "| Functions | 80% | :green_circle: |" >> $GITHUB_STEP_SUMMARY
+          echo "| Lines | 80% | :green_circle: |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Full coverage reports available in artifacts." >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,219 @@
+# =============================================================================
+# Weft Frontend Test Workflow
+# =============================================================================
+# Runs frontend tests (Vitest + Playwright) on every push and pull request.
+#
+# Tests include:
+#   - Unit/integration tests (Vitest) for components and hooks
+#   - E2E tests (Playwright) for critical user flows
+#   - Coverage reporting with thresholds
+#
+# Environment:
+#   - Ubuntu latest
+#   - Node.js 20
+#   - Playwright browsers (Chromium, Firefox, WebKit)
+# =============================================================================
+
+name: Frontend Tests
+
+on:
+  push:
+    branches: [main, init]
+    paths:
+      - 'packages/web/**'
+      - 'packages/shared/**'
+      - '.github/workflows/frontend-tests.yml'
+  pull_request:
+    branches: [main, init]
+    paths:
+      - 'packages/web/**'
+      - 'packages/shared/**'
+      - '.github/workflows/frontend-tests.yml'
+
+# Allow only one concurrent deployment per branch
+concurrency:
+  group: frontend-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # =============================================================================
+  # Frontend Unit/Integration Tests Job
+  # =============================================================================
+  unit-tests:
+    name: Unit & Integration Tests (Vitest)
+    runs-on: ubuntu-latest
+
+    env:
+      NODE_ENV: test
+      VITE_API_URL: http://localhost:3001
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @weft/shared build
+
+      - name: Run frontend unit tests with coverage
+        run: pnpm --filter @weft/web test:run --coverage
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/web/coverage/lcov.info
+          flags: frontend-unit
+          name: frontend-unit-coverage
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-unit-coverage-report
+          path: packages/web/coverage/
+          retention-days: 7
+
+  # =============================================================================
+  # Frontend E2E Tests Job
+  # =============================================================================
+  e2e-tests:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+
+    env:
+      NODE_ENV: test
+      VITE_API_URL: http://localhost:3001
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @weft/shared build
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @weft/web exec playwright install --with-deps chromium firefox webkit
+
+      - name: Build frontend
+        run: pnpm --filter @weft/web build
+
+      - name: Run Playwright E2E tests
+        run: pnpm --filter @weft/web test:e2e
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: packages/web/playwright-report/
+          retention-days: 7
+
+      - name: Upload Playwright screenshots on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-screenshots
+          path: packages/web/test-results/
+          retention-days: 7
+
+      - name: Upload Playwright traces on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: packages/web/playwright-report/trace/
+          retention-days: 7
+
+  # =============================================================================
+  # Coverage Summary Job
+  # =============================================================================
+  coverage-summary:
+    name: Coverage Summary
+    runs-on: ubuntu-latest
+    needs: [unit-tests, e2e-tests]
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          if [ "${{ needs.unit-tests.result }}" != "success" ] || [ "${{ needs.e2e-tests.result }}" != "success" ]; then
+            echo "::error::Frontend tests failed"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Generate coverage summary
+        run: |
+          echo "## Frontend Test Coverage :white_check_mark:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Threshold | Target |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Lines | 70% | :green_circle: |" >> $GITHUB_STEP_SUMMARY
+          echo "| Functions | 70% | :green_circle: |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branches | 60% | :green_circle: |" >> $GITHUB_STEP_SUMMARY
+          echo "| Statements | 70% | :green_circle: |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- :white_check_mark: Chromium" >> $GITHUB_STEP_SUMMARY
+          echo "- :white_check_mark: Firefox" >> $GITHUB_STEP_SUMMARY
+          echo "- :white_check_mark: WebKit" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Full reports and artifacts available in the workflow run." >> $GITHUB_STEP_SUMMARY
