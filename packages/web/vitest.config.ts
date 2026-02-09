@@ -9,5 +9,9 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{ts,tsx}', 'test/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['node_modules', 'dist'],
     setupFiles: ['./vitest.setup.ts'],
+    // Run tests sequentially to avoid filling RAM with multiple jsdom instances
+    threads: 1,
+    maxThreads: 1,
+    fileParallelism: false,
   },
 });
