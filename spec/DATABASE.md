@@ -21,6 +21,7 @@ Weft uses **PostgreSQL** as the primary database, managed through **Drizzle ORM*
 - Video journal entries with metadata
 - Automatic transcription with timestamped segments
 - Emotion detection (facial + vocal)
+- Daily mood tracking with morning/afternoon logging
 - Hierarchical note system with templates
 - Tag-based organization and search
 - HLS video streaming
@@ -48,11 +49,11 @@ Weft uses **PostgreSQL** as the primary database, managed through **Drizzle ORM*
 │  │ updatedAt    │                                                            │
 │  └──────┬───────┘                                                            │
 │         │                                                                     │
-│         ├─── 1:N ───┐  1:N ──┐  1:N ──┐  1:N ──┐  1:N ──┐                   │
+│         ├─── 1:N ───┐  1:N ──┐  1:N ──┐  1:N ──┐  1:N ──┐  1:N ──┐              │
 │         │           │        │        │        │        │                    │
-│         ▼           ▼        ▼        ▼        ▼        ▼                    │
-│  ┌──────────┐ ┌──────────┐ ┌────────┐ ┌───────┐ ┌──────────┐              │
-│  │JOURNALS   │ │NOTES     │ │SESSIONS│ │TAGS   │ │TRANSCRIPTS│              │
+│         ▼           ▼        ▼        ▼        ▼        ▼        ▼                   │
+│  ┌──────────┐ ┌──────────┐ ┌────────┐ ┌───────┐ ┌──────────┐ ┌──────────┐          │
+│  │JOURNALS   │ │NOTES     │ │SESSIONS│ │TAGS   │ │TRANSCRIPTS│ │DAILY_MOODS│          │
 │  ├──────────┤ ├──────────┤ ├────────┤ ├───────┤ ├──────────┤              │
 │  │ id (PK)   │ │ id (PK)  │ │ id(PK) │ │ id(PK)│ │ id (PK)   │              │
 │  │ userId(FK)│ │ userId(FK)│ │userId  │ │journal│ │ journalId │              │
@@ -332,6 +333,31 @@ Stores tags for organizing journal entries.
 
 ---
 
+### Daily Moods Table
+
+Stores manual mood tracking entries with twice-daily logging capability.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | TEXT | PK, DEFAULT gen_random_uuid() | Mood entry identifier |
+| `userId` | TEXT | FK(users.id), NOT NULL | User who logged the mood |
+| `date` | TEXT | NOT NULL, Format: 'YYYY-MM-DD' | Date of mood entry |
+| `mood` | TEXT | NOT NULL | One of: happy, sad, angry, neutral, sick, anxious, tired, excited, fear, disgust, surprise |
+| `timeOfDay` | TEXT | NOT NULL, 'morning' \| 'afternoon' | Time period for the mood |
+| `notes` | TEXT | | Optional notes about the mood |
+| `createdAt` | TEXT | NOT NULL | Creation timestamp |
+| `updatedAt` | TEXT | NOT NULL | Last update timestamp |
+
+**Constraints:**
+- Unique on `(userId, date, timeOfDay)` - One mood per time period per day
+- `userId` foreign key references `users(id)` with CASCADE delete
+
+**Indices:**
+- `daily_moods_user_date_idx` on `(userId, date)`
+- `daily_moods_date_idx` on `date`
+
+---
+
 ## Indices and Performance
 
 ### Index Strategy
@@ -346,6 +372,8 @@ Stores tags for organizing journal entries.
 | `notes_user_deleted_idx` | Composite | Non-deleted notes query |
 | `notes_parent_position_idx` | Composite | Tree ordering |
 | `transcripts_journal_id_idx` | B-tree | Transcript retrieval |
+| `daily_moods_user_date_idx` | Composite | User mood calendar queries |
+| `daily_moods_date_idx` | B-tree | Date-based mood retrieval |
 
 ---
 

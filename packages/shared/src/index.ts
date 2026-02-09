@@ -201,6 +201,93 @@ export interface FeedEntry {
 }
 
 /**
+ * Mood tracking types
+ */
+
+/**
+ * Valid mood values
+ */
+export type MoodValue = 'happy' | 'sad' | 'angry' | 'neutral' | 'sick' | 'anxious' | 'tired' | 'excited' | 'fear' | 'disgust' | 'surprise';
+
+/**
+ * Time of day for mood tracking
+ */
+export type TimeOfDay = 'morning' | 'afternoon';
+
+/**
+ * Daily mood entry
+ */
+export interface DailyMood {
+  id: string;
+  userId: string;
+  date: string; // ISO date string (YYYY-MM-DD)
+  mood: MoodValue;
+  timeOfDay: TimeOfDay;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Create/update daily mood request
+ */
+export interface UpsertDailyMoodRequest {
+  date: string; // ISO date string (YYYY-MM-DD)
+  mood: MoodValue;
+  timeOfDay: TimeOfDay;
+  notes?: string;
+}
+
+/**
+ * Daily mood response
+ */
+export interface DailyMoodResponse {
+  data: DailyMood | null;
+  error: string | null;
+  code: string;
+}
+
+/**
+ * Get moods for date range request
+ */
+export interface GetMoodsRequest {
+  startDate: string; // ISO date string (YYYY-MM-DD)
+  endDate: string; // ISO date string (YYYY-MM-DD)
+}
+
+/**
+ * Mood entry with journal data for calendar view
+ */
+export interface CalendarMoodEntry {
+  date: string; // ISO date string (YYYY-MM-DD)
+  morningMood: MoodValue | null; // User-set morning mood
+  afternoonMood: MoodValue | null; // User-set afternoon mood
+  morningNotes: string | null; // Morning mood notes
+  afternoonNotes: string | null; // Afternoon mood notes
+  journalEmotions: MoodValue[]; // Emotions from journals that day
+  hasJournals: boolean; // Whether there are journal entries
+}
+
+/**
+ * Calendar moods response
+ */
+export interface CalendarMoodsResponse {
+  data: CalendarMoodEntry[];
+  error: string | null;
+  code: string;
+}
+
+/**
+ * Delete mood request/response
+ */
+export interface DeleteMoodResponse {
+  success: boolean;
+  message: string;
+  error: string | null;
+  code: string;
+}
+
+/**
  * Video streaming types
  */
 export * from './video.js';

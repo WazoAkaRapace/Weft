@@ -46,6 +46,13 @@ import {
   handleUpdateUserSettings,
 } from './routes/users.js';
 import { getEmotions, retryEmotionAnalysis } from './routes/emotions.js';
+import {
+  handleUpsertMood,
+  handleGetMoods,
+  handleGetMoodByDate,
+  handleDeleteMood,
+  handleGetCalendarMoods,
+} from './routes/moods.js';
 import { getTranscriptionQueue } from './queue/TranscriptionQueue.js';
 import { getEmotionQueue } from './queue/EmotionQueue.js';
 import { getHLSQueue } from './queue/HLSQueue.js';
@@ -516,6 +523,35 @@ const server = createHttpServer(async (req, res) => {
     if (url.pathname.startsWith('/api/templates/') && req.method === 'DELETE') {
       const templateId = url.pathname.split('/').pop() || '';
       sendResponse(res, addCorsHeaders(await handleDeleteTemplate(request, templateId), request));
+      return;
+    }
+
+    // Mood tracking endpoints
+    // Calendar endpoint (must be before general /api/moods check)
+    if (url.pathname === '/api/moods/calendar' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetCalendarMoods(request), request));
+      return;
+    }
+
+    if (url.pathname === '/api/moods' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleUpsertMood(request), request));
+      return;
+    }
+
+    if (url.pathname === '/api/moods' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetMoods(request), request));
+      return;
+    }
+
+    if (url.pathname.startsWith('/api/moods/') && req.method === 'GET') {
+      const date = url.pathname.split('/').pop() || '';
+      sendResponse(res, addCorsHeaders(await handleGetMoodByDate(request, date), request));
+      return;
+    }
+
+    if (url.pathname.startsWith('/api/moods/') && req.method === 'DELETE') {
+      const date = url.pathname.split('/').pop() || '';
+      sendResponse(res, addCorsHeaders(await handleDeleteMood(request, date), request));
       return;
     }
 

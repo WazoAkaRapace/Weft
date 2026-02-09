@@ -17,6 +17,7 @@
 ![Dashboard](screenshots/01-dashboard.png)
 ![Notes](screenshots/02-notes.png)
 ![Recording](screenshots/03-recording.png)
+![Mood Calendar](screenshots/06-mood-calendar.png)
 ![Journal Detail](screenshots/05-journal-detail.png)
 
 ## Features
@@ -24,6 +25,7 @@
 - **Video Recording** - Browser-based with real-time streaming, pause/resume, multi-codec support (VP9/H.264)
 - **AI Transcription** - OpenAI Whisper, 99 languages, timestamped segments, full-text search
 - **Emotion Detection** - Multimodal (facial + vocal) analysis with real-time timeline visualization
+- **Mood Tracking** - Daily mood calendar with morning/afternoon tracking, 11 emotion options, notes, and statistics
 - **Notes System** - Hierarchical organization, templates, slash commands, markdown editing
 - **HLS Video Playback** - With transcript sync and emotion analysis per entry
 - **Authentication** - BetterAuth with database session management

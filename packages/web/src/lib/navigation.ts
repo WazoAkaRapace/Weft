@@ -21,6 +21,7 @@ export const navigationStructure: (NavItem | NavGroup)[] = [
     items: [
       { path: '/record', label: 'New Recording', icon: '🎥', description: 'Create a new journal entry' },
       { path: '/history', label: 'History', icon: '📚', description: 'View past entries' },
+      { path: '/mood-calendar', label: 'Mood Calendar', icon: '📅', description: 'Track your mood over time' },
     ],
   },
 ];

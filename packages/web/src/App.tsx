@@ -10,6 +10,7 @@ import { JournalDetailPage } from './pages/JournalDetailPage';
 import { NotesPage } from './pages/NotesPage';
 import { TemplatesPage } from './pages/TemplatesPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { MoodCalendarPage } from './pages/MoodCalendarPage';
 import { MainAppLayout } from './components/layout/MainAppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { OnboardingGuard } from './components/OnboardingGuard';
@@ -73,6 +74,9 @@ export function App() {
 
           {/* History */}
           <Route path="history" element={<HistoryPage />} />
+
+          {/* Mood Calendar */}
+          <Route path="mood-calendar" element={<MoodCalendarPage />} />
 
           {/* Journal Detail */}
           <Route path="journal/:id" element={<JournalDetailPage />} />

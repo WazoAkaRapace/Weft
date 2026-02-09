@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, integer, jsonb, index, boolean, unique } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, integer, jsonb, index, boolean, unique, date } from 'drizzle-orm/pg-core';
 
 /**
  * Users table
@@ -136,6 +136,37 @@ export const journals = pgTable(
     createdAtIdx: index('journals_created_at_idx').on(table.createdAt),
     titleIdx: index('journals_title_idx').on(table.title),
     dominantEmotionIdx: index('journals_dominant_emotion_idx').on(table.dominantEmotion),
+  })
+);
+
+/**
+ * Daily Moods table
+ * Stores manual mood logs independent of journal entries
+ * Two mood entries per user per day (morning and afternoon)
+ */
+export const dailyMoods = pgTable(
+  'daily_moods',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    date: date('date').notNull(),
+    mood: text('mood').notNull(), // 'happy' | 'sad' | 'angry' | 'neutral'
+    timeOfDay: text('time_of_day').notNull(), // 'morning' | 'afternoon'
+    notes: text('notes'), // Optional user notes
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    // Unique constraint now includes timeOfDay to allow two moods per day
+    userIdDateTimeUnique: unique('daily_moods_user_date_time_unique').on(table.userId, table.date, table.timeOfDay),
+    userIdIdx: index('daily_moods_user_id_idx').on(table.userId),
+    dateIdx: index('daily_moods_date_idx').on(table.date),
+    // Composite index for calendar range queries
+    userIdDateIdx: index('daily_moods_user_date_idx').on(table.userId, table.date),
+    // Index for querying by user, date, and time of day
+    userIdDateTimeIdx: index('daily_moods_user_date_time_idx').on(table.userId, table.date, table.timeOfDay),
   })
 );
 
@@ -288,3 +319,5 @@ export type Transcript = typeof transcripts.$inferSelect;
 export type NewTranscript = typeof transcripts.$inferInsert;
 export type Tag = typeof tags.$inferSelect;
 export type NewTag = typeof tags.$inferInsert;
+export type DailyMood = typeof dailyMoods.$inferSelect;
+export type NewDailyMood = typeof dailyMoods.$inferInsert;
