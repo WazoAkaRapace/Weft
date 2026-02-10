@@ -39,6 +39,8 @@ jobs:
   unit-tests:
     name: Unit & Integration Tests (Vitest)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     env:
       NODE_ENV: test
@@ -79,4 +81,15 @@ jobs:
         run: pnpm --filter @weft/shared build
 
       - name: Run frontend tests
+        id: test
         run: pnpm --filter @weft/web test
+
+      - name: Report test results
+        if: always()
+        run: |
+          if [ "${{ steps.test.outcome }}" == "success" ]; then
+            echo "✅ Frontend tests passed!"
+          else
+            echo "❌ Frontend tests failed!"
+            exit 1
+          fi

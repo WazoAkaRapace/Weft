@@ -108,6 +108,22 @@ export async function handleUpsertMood(request: Request): Promise<Response> {
       );
     }
 
+    // Validate date is a real calendar date
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime()) ||
+        dateObj.getFullYear() !== parseInt(date.substring(0, 4)) ||
+        dateObj.getMonth() + 1 !== parseInt(date.substring(5, 7)) ||
+        dateObj.getDate() !== parseInt(date.substring(8, 10))) {
+      return new Response(
+        JSON.stringify({
+          data: null,
+          error: 'Invalid date. Use a valid YYYY-MM-DD date',
+          code: 'VALIDATION_ERROR',
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Check if mood already exists for this date and time of day
     const existingMoods = await db
       .select()
@@ -133,7 +149,7 @@ export async function handleUpsertMood(request: Request): Promise<Response> {
       };
 
       if (notes !== undefined) {
-        updateData.notes = notes;
+        updateData.notes = notes === '' ? null : notes;
       }
 
       await db

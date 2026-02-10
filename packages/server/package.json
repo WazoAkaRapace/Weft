@@ -12,9 +12,6 @@
     "test:run": "vitest run",
     "test:ci": "vitest run --coverage",
     "test:watch": "vitest --watch",
-    "test:local": "./scripts/test-with-db.sh",
-    "test:local:ci": "./scripts/test-with-db.sh --ci",
-    "test:local:keep": "./scripts/test-with-db.sh --keep",
     "clean": "rm -rf dist .turbo node_modules",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -33,6 +30,7 @@
     "postgres": "^3.4.8"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.3.15",
     "@eslint/js": "^9.39.2",
     "@types/node": "^22.10.5",
     "@types/pg": "^8.16.0",

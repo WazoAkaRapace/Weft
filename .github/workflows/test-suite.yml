@@ -10,7 +10,7 @@
 #
 # Includes:
 #   - Linting (ESLint)
-#   - Backend tests with PostgreSQL
+#   - Backend tests with PGLite (in-memory PostgreSQL - no Docker required)
 #   - Frontend unit/integration tests
 # =============================================================================
 
@@ -35,6 +35,8 @@ jobs:
   lint:
     name: Lint Code
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -71,31 +73,17 @@ jobs:
         run: pnpm lint
 
   # =============================================================================
-  # Backend Test Job
+  # Backend Test Job (with PGLite in-memory PostgreSQL)
   # =============================================================================
   backend-tests:
     name: Backend Tests
     runs-on: ubuntu-latest
     needs: lint
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: weft_test
-          POSTGRES_PASSWORD: weft_test_password
-          POSTGRES_DB: weft_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    permissions:
+      contents: read
 
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://weft_test:weft_test_password@localhost:5432/weft_test
       PORT: 3001
       BETTER_AUTH_SECRET: test-secret-key-for-ci-environment-at-least-32-chars
       BETTER_AUTH_URL: http://localhost:3001
@@ -133,15 +121,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build shared package
-        run: pnpm --filter @weft/server db:generate
-        continue-on-error: true
-
-      - name: Run database migrations
-        run: pnpm --filter @weft/server db:migrate
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: pnpm --filter @weft/shared build
 
       - name: Run backend tests
+        id: test
         run: pnpm --filter @weft/server test
 
   # =============================================================================
@@ -151,6 +134,8 @@ jobs:
     name: Frontend Unit Tests
     runs-on: ubuntu-latest
     needs: lint
+    permissions:
+      contents: read
 
     env:
       NODE_ENV: test
@@ -191,6 +176,7 @@ jobs:
         run: pnpm --filter @weft/shared build
 
       - name: Run frontend tests
+        id: test
         run: pnpm --filter @weft/web test
 
   # =============================================================================
@@ -201,6 +187,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-tests, frontend-unit-tests]
     if: always()
+    permissions:
+      contents: read
 
     steps:
       - name: Generate test summary

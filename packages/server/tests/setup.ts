@@ -1,18 +1,20 @@
 /**
  * Test setup configuration
- * Configures Vitest with test database and global fixtures
+ * Configures Vitest with PGLite in-memory PostgreSQL database
+ *
+ * Uses PGLite - an in-memory PostgreSQL implementation using WASM.
+ * This eliminates Docker dependency while using a real PostgreSQL-compatible database.
  */
 
 import { beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/pglite';
+import { PGlite } from '@electric-sql/pglite';
 import * as schema from '../src/db/schema.js';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
 // Test database connection
-let testDb: postgres.Sql<Record<string, never>> | null = null;
+let testDb: PGlite | null = null;
 let testDbClient: ReturnType<typeof drizzle> | null = null;
 
 // Test upload directory
@@ -49,49 +51,22 @@ export function getTestUploadDir() {
  * Setup test database
  */
 beforeAll(async () => {
-  // Use TEST_DATABASE_URL or fall back to DATABASE_URL
-  // If DATABASE_URL doesn't contain 'weft_test', use test database
-  const getTestDbUrl = () => {
-    if (process.env.TEST_DATABASE_URL) {
-      return process.env.TEST_DATABASE_URL;
-    }
-    if (process.env.DATABASE_URL) {
-      const url = process.env.DATABASE_URL;
-      // If it already uses weft_test database, use it as-is
-      if (url.includes('/weft_test') || url.includes('%2Fweft_test')) {
-        return url;
-      }
-      // Otherwise, replace the database name
-      return url.replace(/\/weft\b/, '/weft_test');
-    }
-    return 'postgres://localhost:5432/weft_test';
-  };
+  console.log('[Test Setup] Initializing PGLite in-memory database...');
 
-  const dbUrl = getTestDbUrl();
-  console.log(`[Test Setup] Connecting to test database: ${dbUrl}`);
-
-  testDb = postgres(dbUrl, {
-    max: 1,
-    idle_timeout: 20,
-    connect_timeout: 10,
-  });
-
+  // Create PGLite client (in-memory PostgreSQL)
+  testDb = new PGlite();
   testDbClient = drizzle(testDb, { schema });
 
-  try {
-    // Run migrations if not already applied
-    const migrationsDir = path.join(process.cwd(), 'drizzle');
-    if (existsSync(migrationsDir)) {
-      console.log('[Test Setup] Running database migrations...');
-      await migrate(testDbClient, { migrationsFolder: migrationsDir });
-      console.log('[Test Setup] Migrations completed');
-    } else {
-      console.log('[Test Setup] No migrations directory found, skipping migrations');
-    }
-  } catch (error) {
-    console.error('[Test Setup] Migration error:', error);
-    // Continue even if migrations fail - schema may already exist
-  }
+  // Push schema to the in-memory database using drizzle-kit/api
+  // This uses require() because drizzle-kit/api doesn't support ESM
+  const { createRequire } = await import('node:module');
+  const require = createRequire(import.meta.url);
+  const { pushSchema } = require('drizzle-kit/api');
+
+  console.log('[Test Setup] Pushing schema to in-memory database...');
+  const { apply } = await pushSchema(schema, testDbClient as any);
+  await apply();
+  console.log('[Test Setup] Schema pushed successfully');
 
   // Create test upload directory
   if (!existsSync(testUploadDir)) {
@@ -109,7 +84,7 @@ beforeEach(async () => {
   }
 
   // Start transaction for test isolation
-  await testDb.unsafe('BEGIN');
+  await testDb.exec('BEGIN');
 
   // Clear all test data in correct order (respecting foreign keys)
   await testDbClient.delete(schema.journalNotes);
@@ -132,7 +107,7 @@ afterEach(async () => {
   }
 
   // Rollback transaction to undo any changes
-  await testDb.unsafe('ROLLBACK');
+  await testDb.exec('ROLLBACK');
 });
 
 /**
@@ -141,10 +116,10 @@ afterEach(async () => {
 afterAll(async () => {
   // Close database connection
   if (testDb) {
-    await testDb.end();
+    await testDb.close();
     testDb = null;
     testDbClient = null;
-    console.log('[Test Setup] Database connection closed');
+    console.log('[Test Setup] PGLite database connection closed');
   }
 
   // Clean up test upload directory

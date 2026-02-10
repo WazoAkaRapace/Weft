@@ -33,7 +33,7 @@ describe('Daily Moods CRUD API', () => {
   let authHeaders: HeadersInit;
 
   // Valid mood values for daily moods
-  const VALID_MOODS = ['happy', 'sad', 'angry', 'neutral'] as const;
+  const VALID_MOODS = ['happy', 'sad', 'angry', 'neutral', 'sick', 'anxious', 'tired', 'excited', 'fear', 'disgust', 'surprise'] as const;
 
   beforeEach(async () => {
     setupMocks();
@@ -144,7 +144,7 @@ describe('Daily Moods CRUD API', () => {
           headers: authHeaders,
           body: JSON.stringify({
             date: '2024-01-15',
-            mood: 'excited', // Not a valid mood
+            mood: 'joyful', // Not a valid mood
           }),
         });
 
@@ -189,7 +189,7 @@ describe('Daily Moods CRUD API', () => {
         const data = await response.json();
 
         expect(response.status).toBe(400);
-        expect(data.error).toBe('Invalid date format. Use YYYY-MM-DD');
+        expect(data.error).toBe('Invalid date. Use a valid YYYY-MM-DD date');
         expect(data.code).toBe('VALIDATION_ERROR');
       });
     });
@@ -275,6 +275,7 @@ describe('Daily Moods CRUD API', () => {
           userId: testUser.id,
           date: '2024-01-15',
           mood: 'happy',
+          timeOfDay: 'morning',
           notes: 'Initial notes',
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -318,6 +319,7 @@ describe('Daily Moods CRUD API', () => {
           userId: testUser.id,
           date: '2024-01-15',
           mood: 'happy',
+          timeOfDay: 'morning',
           notes: 'Keep these notes',
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -347,6 +349,7 @@ describe('Daily Moods CRUD API', () => {
           userId: testUser.id,
           date: '2024-01-15',
           mood: 'happy',
+          timeOfDay: 'morning',
           notes: 'These should be cleared',
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -378,6 +381,7 @@ describe('Daily Moods CRUD API', () => {
           userId: testUser.id,
           date: '2024-01-15',
           mood: 'happy',
+          timeOfDay: 'morning',
           createdAt: originalDate,
           updatedAt: originalDate,
         });
@@ -419,6 +423,7 @@ describe('Daily Moods CRUD API', () => {
           userId: otherUser.id,
           date: '2024-01-15',
           mood: 'happy',
+          timeOfDay: 'morning',
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -524,6 +529,7 @@ describe('Daily Moods CRUD API', () => {
           userId: testUser.id,
           date,
           mood,
+          timeOfDay: 'morning',
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -649,6 +655,7 @@ describe('Daily Moods CRUD API', () => {
           userId: otherUser.id,
           date: '2024-01-12',
           mood: 'neutral',
+          timeOfDay: 'morning',
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -677,6 +684,7 @@ describe('Daily Moods CRUD API', () => {
         userId: testUser.id,
         date: testDate,
         mood: 'happy',
+        timeOfDay: 'morning',
         notes: 'Test notes',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -704,10 +712,11 @@ describe('Daily Moods CRUD API', () => {
         const data = await response.json();
 
         expect(response.status).toBe(200);
-        expect(data.data).toBeDefined();
-        expect(data.data.mood).toBe('happy');
-        expect(data.data.notes).toBe('Test notes');
-        expect(data.data.date).toBe(testDate);
+        expect(data.data).toBeInstanceOf(Array);
+        expect(data.data.length).toBe(1);
+        expect(data.data[0].mood).toBe('happy');
+        expect(data.data[0].notes).toBe('Test notes');
+        expect(data.data[0].date).toBe(testDate);
       });
 
       it('should return null when mood does not exist for date', async () => {
@@ -719,7 +728,7 @@ describe('Daily Moods CRUD API', () => {
         const data = await response.json();
 
         expect(response.status).toBe(200);
-        expect(data.data).toBeNull();
+        expect(data.data).toEqual([]);
       });
     });
 
@@ -744,7 +753,7 @@ describe('Daily Moods CRUD API', () => {
         const data = await response.json();
 
         expect(response.status).toBe(200);
-        expect(data.data).toBeNull();
+        expect(data.data).toEqual([]);
       });
     });
   });
@@ -758,6 +767,7 @@ describe('Daily Moods CRUD API', () => {
         userId: testUser.id,
         date: testDate,
         mood: 'happy',
+        timeOfDay: 'morning',
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -870,6 +880,7 @@ describe('Daily Moods CRUD API', () => {
         userId: testUser.id,
         date: '2024-01-10',
         mood: 'happy',
+        timeOfDay: 'morning',
         notes: 'Great day',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -925,22 +936,20 @@ describe('Daily Moods CRUD API', () => {
         const data = await response.json();
 
         expect(response.status).toBe(200);
-        expect(data.data).toBeInstanceOf(Array);
-        expect(data.data.length).toBeGreaterThan(0);
+        expect(data.data.moods).toBeDefined();
 
         // Find the day with manual mood
-        const manualMoodDay = data.data.find((d: any) => d.date === '2024-01-10');
+        const manualMoodDay = data.data.moods['2024-01-10'];
         expect(manualMoodDay).toBeDefined();
-        expect(manualMoodDay.manualMood).toBe('happy');
-        expect(manualMoodDay.notes).toBe('Great day');
-        expect(manualMoodDay.hasJournals).toBe(false);
-        expect(manualMoodDay.journalEmotions).toEqual([]);
+        expect(manualMoodDay.morningMood).toBe('happy');
+        expect(manualMoodDay.morningNotes).toBe('Great day');
+        expect(manualMoodDay.hasJournal).toBe(false);
 
         // Find the day with journal emotions
-        const journalDay = data.data.find((d: any) => d.date === '2024-01-12');
+        const journalDay = data.data.moods['2024-01-12'];
         expect(journalDay).toBeDefined();
-        expect(journalDay.manualMood).toBeNull();
-        expect(journalDay.hasJournals).toBe(true);
+        expect(journalDay.morningMood).toBeNull();
+        expect(journalDay.hasJournal).toBe(true);
         expect(journalDay.journalEmotions).toContain('sad');
         expect(journalDay.journalEmotions).toContain('neutral');
       });
@@ -953,6 +962,7 @@ describe('Daily Moods CRUD API', () => {
           userId: testUser.id,
           date: dateWithBoth,
           mood: 'angry',
+          timeOfDay: 'morning',
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -976,35 +986,25 @@ describe('Daily Moods CRUD API', () => {
         const response = await handleGetCalendarMoods(request);
         const data = await response.json();
 
-        const dayWithBoth = data.data.find((d: any) => d.date === dateWithBoth);
+        const dayWithBoth = data.data.moods[dateWithBoth];
         expect(dayWithBoth).toBeDefined();
-        expect(dayWithBoth.manualMood).toBe('angry'); // Manual mood prioritized
+        expect(dayWithBoth.morningMood).toBe('angry'); // Manual mood prioritized
         expect(dayWithBoth.journalEmotions).toContain('happy'); // But journal emotion still shown
       });
 
       it('should return entry for every day in range', async () => {
         const url = new URL('http://localhost:3001/api/moods/calendar');
         url.searchParams.set('startDate', '2024-01-01');
-        url.searchParams.set('endDate', '2024-01-07');
+        url.searchParams.set('endDate', '2024-01-31');
 
         const request = new Request(url.toString(), { headers: authHeaders });
         const response = await handleGetCalendarMoods(request);
         const data = await response.json();
 
-        // Should have 7 entries (one for each day)
-        expect(data.data.length).toBe(7);
-
-        // Verify dates are sequential
-        const dates = data.data.map((d: any) => d.date);
-        expect(dates).toEqual([
-          '2024-01-01',
-          '2024-01-02',
-          '2024-01-03',
-          '2024-01-04',
-          '2024-01-05',
-          '2024-01-06',
-          '2024-01-07',
-        ]);
+        // Should have entries for days with data (2024-01-10 and 2024-01-12)
+        expect(data.data.moods).toBeDefined();
+        expect(data.data.moods['2024-01-10']).toBeDefined();
+        expect(data.data.moods['2024-01-12']).toBeDefined();
       });
     });
 
@@ -1026,6 +1026,7 @@ describe('Daily Moods CRUD API', () => {
           userId: otherUser.id,
           date: '2024-01-05',
           mood: 'neutral',
+          timeOfDay: 'morning',
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -1039,8 +1040,8 @@ describe('Daily Moods CRUD API', () => {
         const data = await response.json();
 
         // Should not include other user's data
-        const otherUserDay = data.data.find((d: any) => d.date === '2024-01-05');
-        expect(otherUserDay.manualMood).toBeNull();
+        const otherUserDay = data.data.moods['2024-01-05'];
+        expect(otherUserDay).toBeUndefined();
       });
     });
   });

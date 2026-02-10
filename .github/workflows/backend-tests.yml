@@ -1,7 +1,7 @@
 # =============================================================================
 # Weft Backend Test Workflow
 # =============================================================================
-# Runs backend tests (Vitest with PostgreSQL) on every push and pull request.
+# Runs backend tests (Vitest with PGLite in-memory PostgreSQL) on every push and pull request.
 #
 # Tests include:
 #   - Unit tests for services, queues, and utilities
@@ -10,7 +10,7 @@
 # Environment:
 #   - Ubuntu latest
 #   - Node.js 20
-#   - PostgreSQL 16
+#   - PGLite (in-memory PostgreSQL - no Docker required)
 # =============================================================================
 
 name: Backend Tests
@@ -41,25 +41,11 @@ jobs:
   test:
     name: Backend Tests
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: weft_test
-          POSTGRES_PASSWORD: weft_test_password
-          POSTGRES_DB: weft_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    permissions:
+      contents: read
 
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://weft_test:weft_test_password@localhost:5432/weft_test
       PORT: 3001
       BETTER_AUTH_SECRET: test-secret-key-for-ci-environment-at-least-32-chars
       BETTER_AUTH_URL: http://localhost:3001
@@ -99,14 +85,16 @@ jobs:
       - name: Build shared package
         run: pnpm --filter @weft/shared build
 
-      - name: Generate database migrations
-        run: pnpm --filter @weft/server db:generate
-        continue-on-error: true
-
-      - name: Run database migrations
-        run: pnpm --filter @weft/server db:migrate
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-
       - name: Run backend tests
+        id: test
         run: pnpm --filter @weft/server test
+
+      - name: Report test results
+        if: always()
+        run: |
+          if [ "${{ steps.test.outcome }}" == "success" ]; then
+            echo "✅ Backend tests passed!"
+          else
+            echo "❌ Backend tests failed!"
+            exit 1
+          fi
