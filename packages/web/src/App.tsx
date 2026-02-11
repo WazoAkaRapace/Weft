@@ -16,14 +16,19 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { OnboardingGuard } from './components/OnboardingGuard';
 import { OnboardingRouteGuard } from './components/OnboardingRouteGuard';
 import { NavigationProvider } from './contexts/NavigationContext';
+import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import './index.css';
 
 export function App() {
   return (
-    <BrowserRouter>
-      <VibeKanbanWebCompanion />
-      <NavigationProvider>
-        <Routes>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <VibeKanbanWebCompanion />
+        <NavigationProvider>
+          {/* PWA Install Prompt */}
+          <PWAInstallPrompt position="bottom" />
+          <Routes>
         {/* Onboarding route - only accessible when no users exist */}
         <Route
           path="/onboarding"
@@ -99,7 +104,8 @@ export function App() {
           }
         />
       </Routes>
-      </NavigationProvider>
-    </BrowserRouter>
+        </NavigationProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

@@ -17,6 +17,7 @@ import { db } from '../db/index.js';
 import { notes, journalNotes, journals } from '../db/schema.js';
 import { randomUUID } from 'node:crypto';
 import { eq, and, isNull, or, ilike, desc } from 'drizzle-orm';
+import { withTransaction } from '../lib/db-utils.js';
 
 /**
  * Get all notes for the current user
@@ -722,6 +723,9 @@ export async function handleLinkNoteToJournal(
  *
  * POST /api/notes/reorder
  *
+ * Uses a transaction to ensure all updates are applied atomically.
+ * If any update fails, all changes are rolled back.
+ *
  * Body:
  * - notes: Array of { id: string, position: number, parentId?: string | null }
  *
@@ -809,23 +813,25 @@ export async function handleReorderNotes(request: Request): Promise<Response> {
       }
     }
 
-    // Update positions and parentIds
-    for (const item of notesToReorder) {
-      const updateData: { position: number; parentId?: string | null; updatedAt: Date } = {
-        position: item.position,
-        updatedAt: new Date(),
-      };
+    // Update positions and parentIds in a transaction
+    await withTransaction(async (tx) => {
+      for (const item of notesToReorder) {
+        const updateData: { position: number; parentId?: string | null; updatedAt: Date } = {
+          position: item.position,
+          updatedAt: new Date(),
+        };
 
-      // Only update parentId if it's explicitly provided
-      if (item.parentId !== undefined) {
-        updateData.parentId = item.parentId;
+        // Only update parentId if it's explicitly provided
+        if (item.parentId !== undefined) {
+          updateData.parentId = item.parentId;
+        }
+
+        await tx
+          .update(notes)
+          .set(updateData)
+          .where(eq(notes.id, item.id));
       }
-
-      await db
-        .update(notes)
-        .set(updateData)
-        .where(eq(notes.id, item.id));
-    }
+    });
 
     return new Response(
       JSON.stringify({

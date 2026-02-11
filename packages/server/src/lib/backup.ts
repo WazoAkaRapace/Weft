@@ -35,19 +35,25 @@ import {
 import archiver from 'archiver';
 import { createHash } from 'crypto';
 import { readdir, readFile, stat, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { join, relative } from 'path';
 import { finished } from 'node:stream/promises';
+import {
+  safeResolveDatabasePath,
+  getValidatedUploadDir,
+  getValidatedBackupDir,
+} from './path-security.js';
 
 /**
  * Directory where uploaded files are stored
- * Defaults to /app/uploads in production
+ * Uses validated path from environment variable
  */
-const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
+const UPLOAD_DIR = getValidatedUploadDir();
 
 /**
  * Directory where backup archives are stored
+ * Uses validated path from environment variable
  */
-const BACKUP_DIR = process.env.BACKUP_DIR || join(UPLOAD_DIR, 'backups');
+const BACKUP_DIR = getValidatedBackupDir();
 
 /**
  * Progress callback for backup operations
@@ -204,6 +210,8 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
 /**
  * Scans database records to build a list of all files that need to be backed up
  *
+ * Uses safe path resolution to prevent path traversal attacks.
+ *
  * @param userId - The user ID to collect files for
  * @returns Promise containing array of file references
  */
@@ -224,43 +232,49 @@ export async function collectFiles(userId: string): Promise<FileReference[]> {
     .where(eq(journals.userId, userId));
 
   for (const journal of journalsResult) {
-    // Add video file
+    // Add video file with safe path resolution
     if (journal.videoPath) {
-      // Handle both relative and absolute paths
-      const fullPath = journal.videoPath.startsWith('/')
-        ? journal.videoPath
-        : join(UPLOAD_DIR, journal.videoPath);
-      try {
-        const fileStat = await stat(fullPath);
-        files.push({
-          type: 'video',
-          path: fullPath,
-          archivePath: join('files', 'videos', journal.videoPath),
-          size: fileStat.size,
-        });
-      } catch {
-        // File may not exist, skip it
-        console.warn(`[Backup] Video file not found: ${fullPath}`);
+      const pathResult = safeResolveDatabasePath(journal.videoPath, UPLOAD_DIR);
+      if (pathResult.safe && pathResult.path) {
+        try {
+          const fileStat = await stat(pathResult.path);
+          // Calculate relative path for archive
+          const relativePath = relative(UPLOAD_DIR, pathResult.path);
+          files.push({
+            type: 'video',
+            path: pathResult.path,
+            archivePath: join('files', 'videos', relativePath),
+            size: fileStat.size,
+          });
+        } catch {
+          // File may not exist, skip it
+          console.warn(`[Backup] Video file not found: ${pathResult.path}`);
+        }
+      } else if (!pathResult.safe) {
+        console.warn(`[Backup] Unsafe video path blocked: ${pathResult.error}`);
       }
     }
 
-    // Add thumbnail file
+    // Add thumbnail file with safe path resolution
     if (journal.thumbnailPath) {
-      // Handle both relative and absolute paths
-      const fullPath = journal.thumbnailPath.startsWith('/')
-        ? journal.thumbnailPath
-        : join(UPLOAD_DIR, journal.thumbnailPath);
-      try {
-        const fileStat = await stat(fullPath);
-        files.push({
-          type: 'thumbnail',
-          path: fullPath,
-          archivePath: join('files', 'thumbnails', journal.thumbnailPath),
-          size: fileStat.size,
-        });
-      } catch {
-        // File may not exist, skip it
-        console.warn(`[Backup] Thumbnail file not found: ${fullPath}`);
+      const pathResult = safeResolveDatabasePath(journal.thumbnailPath, UPLOAD_DIR);
+      if (pathResult.safe && pathResult.path) {
+        try {
+          const fileStat = await stat(pathResult.path);
+          // Calculate relative path for archive
+          const relativePath = relative(UPLOAD_DIR, pathResult.path);
+          files.push({
+            type: 'thumbnail',
+            path: pathResult.path,
+            archivePath: join('files', 'thumbnails', relativePath),
+            size: fileStat.size,
+          });
+        } catch {
+          // File may not exist, skip it
+          console.warn(`[Backup] Thumbnail file not found: ${pathResult.path}`);
+        }
+      } else if (!pathResult.safe) {
+        console.warn(`[Backup] Unsafe thumbnail path blocked: ${pathResult.error}`);
       }
     }
 
@@ -269,32 +283,44 @@ export async function collectFiles(userId: string): Promise<FileReference[]> {
       journal.hlsManifestPath &&
       journal.hlsStatus === 'completed'
     ) {
-      // Handle both relative and absolute paths
+      // Get the directory path from manifest path
       const manifestPathForDir = journal.hlsManifestPath.replace('/master.m3u8', '');
-      const hlsDir = manifestPathForDir.startsWith('/')
-        ? manifestPathForDir
-        : join(UPLOAD_DIR, manifestPathForDir);
-      try {
-        const hlsFiles = await readdir(hlsDir);
-        for (const hlsFile of hlsFiles) {
-          const fullPath = join(hlsDir, hlsFile);
-          try {
-            const fileStat = await stat(fullPath);
-            if (fileStat.isFile()) {
-              files.push({
-                type: 'hls',
-                path: fullPath,
-                archivePath: join('files', 'hls', journal.hlsManifestPath.replace('/master.m3u8', ''), hlsFile),
-                size: fileStat.size,
-              });
+      const pathResult = safeResolveDatabasePath(manifestPathForDir, UPLOAD_DIR);
+
+      if (pathResult.safe && pathResult.path) {
+        const hlsDir = pathResult.path;
+        try {
+          const hlsFiles = await readdir(hlsDir);
+          for (const hlsFile of hlsFiles) {
+            // Validate each HLS file path
+            const hlsFilePathResult = safeResolveDatabasePath(
+              join(manifestPathForDir, hlsFile),
+              UPLOAD_DIR
+            );
+
+            if (hlsFilePathResult.safe && hlsFilePathResult.path) {
+              try {
+                const fileStat = await stat(hlsFilePathResult.path);
+                if (fileStat.isFile()) {
+                  const relativeHlsPath = relative(UPLOAD_DIR, hlsFilePathResult.path);
+                  files.push({
+                    type: 'hls',
+                    path: hlsFilePathResult.path,
+                    archivePath: join('files', 'hls', relativeHlsPath),
+                    size: fileStat.size,
+                  });
+                }
+              } catch {
+                // Skip files that can't be accessed
+              }
             }
-          } catch {
-            // Skip files that can't be accessed
           }
+        } catch (err) {
+          // HLS directory may not exist, skip it
+          console.warn(`[Backup] HLS directory not found or error: ${hlsDir}`, err);
         }
-      } catch (err) {
-        // HLS directory may not exist, skip it
-        console.warn(`[Backup] HLS directory not found or error: ${hlsDir}`, err);
+      } else if (!pathResult.safe) {
+        console.warn(`[Backup] Unsafe HLS path blocked: ${pathResult.error}`);
       }
     }
   }
