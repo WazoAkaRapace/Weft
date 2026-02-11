@@ -345,99 +345,96 @@ export async function createArchive(
   userId: string,
   writable: NodeJS.WritableStream
 ): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    // Export user data
-    const userData = await exportUserData(userId);
-    const files = await collectFiles(userId);
-
-    // Calculate checksums for all files
-    const checksumPromises = files.map(async (file) => {
-      const checksum = await calculateChecksum(file.path);
-      return { [file.archivePath]: checksum };
-    });
-
-    const checksumResults = await Promise.all(checksumPromises);
-    const checksums = Object.assign({}, ...checksumResults);
-
-    // Generate manifest
-    const manifest = generateManifest({
-      userId,
-      userEmail: userData.user.email,
-      username: userData.user.username,
-      checksums,
-    });
-
-    // Create archiver with tar and gzip (level 6)
-    const archive = archiver('tar', {
-      gzip: true,
-    });
-
-    // Handle errors
-    archive.on('error', (err: Error) => {
-      reject(err);
-    });
-
-    writable.on('error', (err: Error) => {
-      reject(err);
-    });
-
-    // Use stream.finished() on the ARCHIVER stream to wait for gzip compression to complete
-    // The archiver is a Transform stream with BOTH readable and writable sides
-    const archiveFinished = finished(archive, { readable: true, writable: true });
-
-    // Pipe archive to writable stream
-    archive.pipe(writable);
-
-    // Add manifest.json to archive
-    archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });
-
-    // Add database exports
-    archive.append(JSON.stringify(userData.journals, null, 2), {
-      name: 'database/journals.json',
-    });
-    archive.append(JSON.stringify(userData.notes, null, 2), {
-      name: 'database/notes.json',
-    });
-    archive.append(JSON.stringify(userData.journalNotes, null, 2), {
-      name: 'database/journalNotes.json',
-    });
-    archive.append(JSON.stringify(userData.templates, null, 2), {
-      name: 'database/templates.json',
-    });
-    archive.append(JSON.stringify(userData.dailyMoods, null, 2), {
-      name: 'database/dailyMoods.json',
-    });
-    archive.append(JSON.stringify(userData.transcripts, null, 2), {
-      name: 'database/transcripts.json',
-    });
-    archive.append(JSON.stringify(userData.tags, null, 2), {
-      name: 'database/tags.json',
-    });
-
-    // Add files to archive
-    for (const file of files) {
+  return new Promise((resolve, reject) => {
+    (async () => {
       try {
-        archive.file(file.path, { name: file.archivePath });
-      } catch {
-        // Skip files that can't be added
+        // Export user data
+        const userData = await exportUserData(userId);
+        const files = await collectFiles(userId);
+
+        // Calculate checksums for all files
+        const checksumPromises = files.map(async (file) => {
+          const checksum = await calculateChecksum(file.path);
+          return { [file.archivePath]: checksum };
+        });
+
+        const checksumResults = await Promise.all(checksumPromises);
+        const checksums = Object.assign({}, ...checksumResults);
+
+        // Generate manifest
+        const manifest = generateManifest({
+          userId,
+          userEmail: userData.user.email,
+          username: userData.user.username,
+          checksums,
+        });
+
+        // Create archiver with tar and gzip (level 6)
+        const archive = archiver('tar', {
+          gzip: true,
+        });
+
+        // Handle errors
+        archive.on('error', (err: Error) => {
+          reject(err);
+        });
+
+        writable.on('error', (err: Error) => {
+          reject(err);
+        });
+
+        // Use stream.finished() on the ARCHIVER stream to wait for gzip compression to complete
+        // The archiver is a Transform stream with BOTH readable and writable sides
+        const archiveFinished = finished(archive, { readable: true, writable: true });
+
+        // Pipe archive to writable stream
+        archive.pipe(writable);
+
+        // Add manifest.json to archive
+        archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });
+
+        // Add database exports
+        archive.append(JSON.stringify(userData.journals, null, 2), {
+          name: 'database/journals.json',
+        });
+        archive.append(JSON.stringify(userData.notes, null, 2), {
+          name: 'database/notes.json',
+        });
+        archive.append(JSON.stringify(userData.journalNotes, null, 2), {
+          name: 'database/journalNotes.json',
+        });
+        archive.append(JSON.stringify(userData.templates, null, 2), {
+          name: 'database/templates.json',
+        });
+        archive.append(JSON.stringify(userData.dailyMoods, null, 2), {
+          name: 'database/dailyMoods.json',
+        });
+        archive.append(JSON.stringify(userData.transcripts, null, 2), {
+          name: 'database/transcripts.json',
+        });
+        archive.append(JSON.stringify(userData.tags, null, 2), {
+          name: 'database/tags.json',
+        });
+
+        // Add files to archive
+        for (const file of files) {
+          try {
+            archive.file(file.path, { name: file.archivePath });
+          } catch {
+            // Skip files that can't be added
+          }
+        }
+
+        // Finalize the archive
+        await archive.finalize();
+
+        // Wait for archive transform stream to finish
+        await archiveFinished;
+        resolve();
+      } catch (err) {
+        reject(err);
       }
-    }
-
-    // Finalize the archive
-    try {
-      await archive.finalize();
-    } catch (err) {
-      reject(err);
-      return;
-    }
-
-    // Wait for archive transform stream to finish
-    try {
-      await archiveFinished;
-      resolve();
-    } catch (err) {
-      reject(err);
-    }
+    })();
   });
 }
 
