@@ -4,6 +4,7 @@
     "lib": ["ES2022"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "composite": true,
     "resolveJsonModule": true,
     "allowJs": true,
     "checkJs": false,

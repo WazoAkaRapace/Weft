@@ -291,3 +291,33 @@ export interface DeleteMoodResponse {
  * Video streaming types
  */
 export * from './video.js';
+
+/**
+ * Backup and restore types
+ */
+export interface BackupProgress {
+  currentStep: string;
+  currentStepIndex: number;
+  totalSteps: number;
+  percentage: number;
+  filesProcessed: number;
+  totalFiles: number;
+}
+
+export interface RestoreSummary {
+  journalsRestored: number;
+  notesRestored: number;
+  filesRestored: number;
+  conflictsResolved: number;
+}
+
+export type RestoreStrategy = 'merge' | 'replace' | 'skip';
+
+export interface BackupJobStatus {
+  id: string;
+  type: 'backup' | 'restore';
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  progress: BackupProgress;
+  error?: string;
+  result?: RestoreSummary;
+}

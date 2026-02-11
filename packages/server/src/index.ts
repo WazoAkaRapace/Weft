@@ -56,6 +56,9 @@ import {
 import { getTranscriptionQueue } from './queue/TranscriptionQueue.js';
 import { getEmotionQueue } from './queue/EmotionQueue.js';
 import { getHLSQueue } from './queue/HLSQueue.js';
+import { handleCreateBackup, handleGetBackupStatus, handleDownloadBackup } from './routes/backup.js';
+import { handleRestore, handleGetRestoreStatus } from './routes/restore.js';
+import { BackupRestoreQueue } from './queue/BackupRestoreQueue.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -288,6 +291,11 @@ try {
 const hlsQueue = getHLSQueue();
 await hlsQueue.start();
 console.log('HLS transcoding queue started');
+
+// Start backup/restore queue
+const backupRestoreQueue = new BackupRestoreQueue();
+await backupRestoreQueue.start();
+console.log('Backup/restore queue started');
 
 // Main HTTP server using Node.js (compatible with Transformers.js)
 const server = createHttpServer(async (req, res) => {
@@ -555,6 +563,35 @@ const server = createHttpServer(async (req, res) => {
       return;
     }
 
+    // Backup endpoints
+    if (url.pathname === '/api/backup/create' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleCreateBackup(request, backupRestoreQueue), request));
+      return;
+    }
+
+    if (url.pathname.match(/\/api\/backup\/status\/[^/]+$/) && req.method === 'GET') {
+      const jobId = url.pathname.split('/').slice(-1)[0];
+      sendResponse(res, addCorsHeaders(await handleGetBackupStatus(request, jobId, backupRestoreQueue), request));
+      return;
+    }
+
+    if (url.pathname.match(/\/api\/backup\/download\/[^/]+$/) && req.method === 'GET') {
+      const jobId = url.pathname.split('/').slice(-1)[0];
+      sendResponse(res, addCorsHeaders(await handleDownloadBackup(request, jobId, backupRestoreQueue), request));
+      return;
+    }
+
+    // Restore endpoints
+    if (url.pathname === '/api/restore' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleRestore(request, backupRestoreQueue), request));
+      return;
+    }
+
+    if (url.pathname.match(/\/api\/restore\/status\/[^/]+$/) && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetRestoreStatus(request, backupRestoreQueue), request));
+      return;
+    }
+
     // Health check endpoint
     if (url.pathname === '/health') {
       sendResponse(res, addCorsHeaders(
@@ -740,6 +777,8 @@ process.on('SIGINT', async () => {
   console.log('\nShutting down gracefully...');
   await transcriptionQueue.stop();
   if (emotionQueue) await emotionQueue.stop();
+  await hlsQueue.stop();
+  await backupRestoreQueue.stop();
   await closeDatabase();
   process.exit(0);
 });
@@ -748,6 +787,8 @@ process.on('SIGTERM', async () => {
   console.log('\nShutting down gracefully...');
   await transcriptionQueue.stop();
   if (emotionQueue) await emotionQueue.stop();
+  await hlsQueue.stop();
+  await backupRestoreQueue.stop();
   await closeDatabase();
   process.exit(0);
 });

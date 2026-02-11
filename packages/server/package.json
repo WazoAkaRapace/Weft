@@ -23,17 +23,21 @@
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
     "@vladmandic/face-api": "^1.7.15",
+    "archiver": "^7.0.1",
     "better-auth": "^1.4.17",
     "canvas": "^3.2.1",
     "drizzle-orm": "^0.45.1",
     "nodejs-whisper": "^0.2.9",
-    "postgres": "^3.4.8"
+    "postgres": "^3.4.8",
+    "tar-fs": "^3.1.1"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.3.15",
     "@eslint/js": "^9.39.2",
+    "@types/archiver": "^7.0.0",
     "@types/node": "^22.10.5",
     "@types/pg": "^8.16.0",
+    "@types/tar-fs": "^2.0.4",
     "@vitest/coverage-v8": "^2.0.5",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9.17.0",

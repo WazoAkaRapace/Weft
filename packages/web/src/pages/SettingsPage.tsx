@@ -1,4 +1,10 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useRef } from 'react';
+import type {
+  RestoreSummary,
+  RestoreStrategy,
+  BackupJobStatus,
+} from '@weft/shared';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -134,6 +140,23 @@ export function SettingsPage() {
   const [passwordError, setPasswordError] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  // Backup states
+  const [backupStatus, setBackupStatus] = useState<'idle' | 'creating' | 'ready' | 'error'>('idle');
+  const [backupProgress, setBackupProgress] = useState({ currentStep: '', percentage: 0 });
+  const [backupJobId, setBackupJobId] = useState<string | null>(null);
+  const [backupError, setBackupError] = useState<string | null>(null);
+  const backupPollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Restore states
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [restoreStrategy, setRestoreStrategy] = useState<RestoreStrategy>('merge');
+  const [restoreStatus, setRestoreStatus] = useState<'idle' | 'restoring' | 'success' | 'error'>('idle');
+  const [restoreProgress, setRestoreProgress] = useState({ currentStep: '', percentage: 0 });
+  const [restoreResult, setRestoreResult] = useState<RestoreSummary | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [showReplaceWarning, setShowReplaceWarning] = useState(false);
+  const restorePollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // Fetch current settings on mount
   useEffect(() => {
     const fetchSettings = async () => {
@@ -153,7 +176,7 @@ export function SettingsPage() {
           email: data.email || '',
           name: data.name || '',
         });
-      } catch (err) {
+      } catch {
         setError('Failed to load settings');
       } finally {
         setIsLoading(false);
@@ -245,6 +268,214 @@ export function SettingsPage() {
       setIsChangingPassword(false);
     }
   };
+
+  // Backup creation handler
+  const handleCreateBackup = async () => {
+    setBackupStatus('creating');
+    setBackupProgress({ currentStep: 'Initializing...', percentage: 0 });
+    setBackupError(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/backup/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to create backup');
+      }
+
+      const data = await response.json();
+      setBackupJobId(data.jobId);
+      startBackupPolling(data.jobId);
+    } catch (err) {
+      setBackupError(err instanceof Error ? err.message : 'Failed to create backup');
+      setBackupStatus('error');
+    }
+  };
+
+  // Poll backup job status
+  const startBackupPolling = (jobId: string) => {
+    if (backupPollIntervalRef.current) {
+      clearInterval(backupPollIntervalRef.current);
+    }
+
+    backupPollIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/backup/status/${jobId}`, {
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to check backup status');
+        }
+
+        const data: BackupJobStatus = await response.json();
+
+        if (data.progress) {
+          setBackupProgress({
+            currentStep: data.progress.currentStep,
+            percentage: data.progress.percentage,
+          });
+        }
+
+        if (data.status === 'completed') {
+          setBackupStatus('ready');
+          stopBackupPolling();
+        } else if (data.status === 'failed') {
+          setBackupError(data.error || 'Backup failed');
+          setBackupStatus('error');
+          stopBackupPolling();
+        }
+      } catch (err) {
+        setBackupError(err instanceof Error ? err.message : 'Failed to check backup status');
+        setBackupStatus('error');
+        stopBackupPolling();
+      }
+    }, 1000);
+  };
+
+  const stopBackupPolling = () => {
+    if (backupPollIntervalRef.current) {
+      clearInterval(backupPollIntervalRef.current);
+      backupPollIntervalRef.current = null;
+    }
+  };
+
+  // Download backup handler
+  const handleDownloadBackup = async () => {
+    if (!backupJobId) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/backup/download/${backupJobId}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download backup');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `weft-backup-${new Date().toISOString().split('T')[0]}.tar.gz`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      // Reset backup state after successful download
+      setBackupStatus('idle');
+      setBackupJobId(null);
+      setBackupProgress({ currentStep: '', percentage: 0 });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to download backup');
+    }
+  };
+
+  // Restore handler
+  const handleRestore = async () => {
+    if (!restoreFile) return;
+
+    // Show warning for replace strategy
+    if (restoreStrategy === 'replace' && !showReplaceWarning) {
+      setShowReplaceWarning(true);
+      return;
+    }
+
+    setShowReplaceWarning(false);
+    setRestoreStatus('restoring');
+    setRestoreProgress({ currentStep: 'Initializing...', percentage: 0 });
+    setRestoreError(null);
+    setRestoreResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', restoreFile);
+      formData.append('strategy', restoreStrategy);
+
+      const response = await fetch(`${API_BASE}/api/restore`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to restore backup');
+      }
+
+      const data = await response.json();
+      startRestorePolling(data.jobId);
+    } catch (err) {
+      setRestoreError(err instanceof Error ? err.message : 'Failed to restore backup');
+      setRestoreStatus('error');
+    }
+  };
+
+  // Poll restore job status
+  const startRestorePolling = (jobId: string) => {
+    if (restorePollIntervalRef.current) {
+      clearInterval(restorePollIntervalRef.current);
+    }
+
+    restorePollIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/restore/status/${jobId}`, {
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to check restore status');
+        }
+
+        const data: BackupJobStatus = await response.json();
+
+        if (data.progress) {
+          setRestoreProgress({
+            currentStep: data.progress.currentStep,
+            percentage: data.progress.percentage,
+          });
+        }
+
+        if (data.status === 'completed') {
+          setRestoreStatus('success');
+          setRestoreResult(data.result || null);
+          stopRestorePolling();
+          // Reset file after successful restore
+          setRestoreFile(null);
+        } else if (data.status === 'failed') {
+          setRestoreError(data.error || 'Restore failed');
+          setRestoreStatus('error');
+          stopRestorePolling();
+        }
+      } catch (err) {
+        setRestoreError(err instanceof Error ? err.message : 'Failed to check restore status');
+        setRestoreStatus('error');
+        stopRestorePolling();
+      }
+    }, 1000);
+  };
+
+  const stopRestorePolling = () => {
+    if (restorePollIntervalRef.current) {
+      clearInterval(restorePollIntervalRef.current);
+      restorePollIntervalRef.current = null;
+    }
+  };
+
+  // Cleanup polling intervals on unmount
+  useEffect(() => {
+    return () => {
+      stopBackupPolling();
+      stopRestorePolling();
+    };
+  }, []);
 
   if (isLoading) {
     return (
@@ -466,6 +697,259 @@ export function SettingsPage() {
             </div>
           </div>
         </section>
+
+        {/* Data Management Section */}
+        <section className="bg-white dark:bg-dark-800 rounded-lg p-6 border border-neutral-200 dark:border-dark-600">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-dark-50 mb-4">
+            Data Management
+          </h2>
+          <p className="text-sm text-neutral-600 dark:text-dark-400 mb-6">
+            Create backups of your journal entries and notes, or restore from a previous backup.
+          </p>
+
+          <div className="space-y-8">
+            {/* Backup Subsection */}
+            <div>
+              <h3 className="text-md font-medium text-neutral-900 dark:text-dark-50 mb-3">
+                Create Backup
+              </h3>
+              <p className="text-sm text-neutral-600 dark:text-dark-400 mb-4">
+                Download a complete backup of all your journals, notes, and media files.
+              </p>
+
+              {backupStatus === 'idle' && (
+                <button
+                  onClick={handleCreateBackup}
+                  className="px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium transition-colors"
+                >
+                  Create Backup
+                </button>
+              )}
+
+              {backupStatus === 'creating' && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary-500 border-t-transparent"></div>
+                    <span className="text-sm text-neutral-600 dark:text-dark-400">
+                      Creating backup...
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-neutral-600 dark:text-dark-400">{backupProgress.currentStep}</span>
+                      <span className="text-neutral-900 dark:text-dark-50 font-medium">{backupProgress.percentage}%</span>
+                    </div>
+                    <div className="w-full bg-neutral-200 dark:bg-dark-600 rounded-full h-2">
+                      <div
+                        className="bg-primary-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${backupProgress.percentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {backupStatus === 'ready' && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-success text-sm">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Backup ready for download
+                  </div>
+                  <button
+                    onClick={handleDownloadBackup}
+                    className="px-6 py-2 bg-success hover:bg-success/90 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Download Backup
+                  </button>
+                </div>
+              )}
+
+              {backupStatus === 'error' && (
+                <div className="space-y-3">
+                  <div className="text-error text-sm">
+                    {backupError}
+                  </div>
+                  <button
+                    onClick={handleCreateBackup}
+                    className="px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-neutral-200 dark:border-dark-600"></div>
+
+            {/* Restore Subsection */}
+            <div>
+              <h3 className="text-md font-medium text-neutral-900 dark:text-dark-50 mb-3">
+                Restore from Backup
+              </h3>
+              <p className="text-sm text-neutral-600 dark:text-dark-400 mb-4">
+                Upload a backup file to restore your journals and notes.
+              </p>
+
+              <div className="space-y-4">
+                {/* File Input */}
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="restoreFile" className="text-sm font-medium text-neutral-700 dark:text-dark-200">
+                    Select Backup File
+                  </label>
+                  <input
+                    id="restoreFile"
+                    type="file"
+                    accept=".tar.gz"
+                    onChange={(e) => setRestoreFile(e.target.files?.[0] || null)}
+                    disabled={restoreStatus === 'restoring'}
+                    className="px-4 py-3 border border-neutral-300 dark:border-dark-600 rounded-lg text-base bg-white dark:bg-dark-700 text-neutral-900 dark:text-dark-50 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60 disabled:cursor-not-allowed file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                  />
+                </div>
+
+                {/* Restore Strategy Selection */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-neutral-700 dark:text-dark-200">
+                    Restore Strategy
+                  </label>
+                  <div className="space-y-3">
+                    <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-neutral-200 dark:border-dark-600 hover:border-neutral-300 dark:hover:border-dark-500 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="restoreStrategy"
+                        value="merge"
+                        checked={restoreStrategy === 'merge'}
+                        onChange={(e) => setRestoreStrategy(e.target.value as RestoreStrategy)}
+                        disabled={restoreStatus === 'restoring'}
+                        className="mt-1"
+                      />
+                      <div>
+                        <span className="font-medium text-neutral-900 dark:text-dark-50">Merge</span>
+                        <p className="text-sm text-neutral-600 dark:text-dark-400 mt-1">
+                          Keep existing data, add imported data. Conflicts will be resolved by keeping the most recent version.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-neutral-200 dark:border-dark-600 hover:border-neutral-300 dark:hover:border-dark-500 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="restoreStrategy"
+                        value="skip"
+                        checked={restoreStrategy === 'skip'}
+                        onChange={(e) => setRestoreStrategy(e.target.value as RestoreStrategy)}
+                        disabled={restoreStatus === 'restoring'}
+                        className="mt-1"
+                      />
+                      <div>
+                        <span className="font-medium text-neutral-900 dark:text-dark-50">Skip Conflicts</span>
+                        <p className="text-sm text-neutral-600 dark:text-dark-400 mt-1">
+                          Only import data that doesn't conflict with existing entries.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-neutral-200 dark:border-dark-600 hover:border-neutral-300 dark:hover:border-dark-500 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="restoreStrategy"
+                        value="replace"
+                        checked={restoreStrategy === 'replace'}
+                        onChange={(e) => setRestoreStrategy(e.target.value as RestoreStrategy)}
+                        disabled={restoreStatus === 'restoring'}
+                        className="mt-1"
+                      />
+                      <div>
+                        <span className="font-medium text-neutral-900 dark:text-dark-50">Replace</span>
+                        <p className="text-sm text-neutral-600 dark:text-dark-400 mt-1">
+                          Delete all current data before restoring. This action cannot be undone.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Restore Progress */}
+                {restoreStatus === 'restoring' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary-500 border-t-transparent"></div>
+                      <span className="text-sm text-neutral-600 dark:text-dark-400">
+                        Restoring backup...
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-neutral-600 dark:text-dark-400">{restoreProgress.currentStep}</span>
+                        <span className="text-neutral-900 dark:text-dark-50 font-medium">{restoreProgress.percentage}%</span>
+                      </div>
+                      <div className="w-full bg-neutral-200 dark:bg-dark-600 rounded-full h-2">
+                        <div
+                          className="bg-primary-500 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${restoreProgress.percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Restore Success */}
+                {restoreStatus === 'success' && restoreResult && (
+                  <div className="bg-success-light dark:bg-success/20 border border-success dark:border-success/50 rounded-lg p-4 space-y-2">
+                    <div className="flex items-center gap-2 text-success-dark text-sm font-medium">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Backup restored successfully!
+                    </div>
+                    <div className="text-sm text-neutral-700 dark:text-dark-200 space-y-1">
+                      <div>Journals restored: {restoreResult.journalsRestored}</div>
+                      <div>Notes restored: {restoreResult.notesRestored}</div>
+                      <div>Files restored: {restoreResult.filesRestored}</div>
+                      {restoreResult.conflictsResolved > 0 && (
+                        <div>Conflicts resolved: {restoreResult.conflictsResolved}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Restore Error */}
+                {restoreStatus === 'error' && (
+                  <div className="text-error text-sm">
+                    {restoreError}
+                  </div>
+                )}
+
+                {/* Restore Button */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleRestore}
+                    disabled={!restoreFile || restoreStatus === 'restoring'}
+                    className="px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {restoreStatus === 'restoring' ? 'Restoring...' : 'Restore Backup'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Replace Warning Dialog */}
+        <ConfirmDialog
+          isOpen={showReplaceWarning}
+          title="Replace All Data?"
+          message="This will delete all your current journals, notes, and media files before restoring from the backup. This action cannot be undone. Are you sure you want to continue?"
+          confirmLabel="Yes, Replace All"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            setShowReplaceWarning(false);
+            handleRestore();
+          }}
+          onCancel={() => setShowReplaceWarning(false)}
+          isDestructive={true}
+        />
       </div>
     </div>
   );
