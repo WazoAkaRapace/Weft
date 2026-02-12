@@ -2,12 +2,12 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "workspaces": {
     "packages/server": {
-      "entry": ["src/index.ts"],
       "project": ["src/**/*.ts!"]
     },
     "packages/web": {
       "entry": ["src/main.tsx"],
-      "project": ["src/**/*.{ts,tsx}!"]
+      "project": ["src/**/*.{ts,tsx}!"],
+      "ignoreDependencies": ["@testing-library/user-event"]
     },
     "packages/shared": {
       "project": ["src/**/*.ts!"]
@@ -28,6 +28,10 @@
   },
   "ignoreIssues": {
     "packages/server/src/db/index.ts": ["exports"],
-    "packages/server/src/lib/thumbnail.ts": ["exports"]
+    "packages/server/src/lib/thumbnail.ts": ["exports"],
+    "packages/web/src/components/ErrorBoundary.tsx": ["exports"],
+    "packages/web/src/components/PWAInstallPrompt.tsx": ["exports"],
+    "packages/web/src/hooks/usePWA.ts": ["exports"],
+    "packages/web/src/lib/moodApi.ts": ["exports", "types"]
   }
 }

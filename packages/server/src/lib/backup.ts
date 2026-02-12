@@ -118,7 +118,7 @@ export interface FileReference {
  * @param userId - The user ID to export data for
  * @returns Promise containing all user data as JSON objects
  */
-export async function exportUserData(userId: string): Promise<UserDataExport> {
+async function exportUserData(userId: string): Promise<UserDataExport> {
   // Get user information
   const userResult = await db
     .select({
@@ -215,7 +215,7 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
  * @param userId - The user ID to collect files for
  * @returns Promise containing array of file references
  */
-export async function collectFiles(userId: string): Promise<FileReference[]> {
+async function collectFiles(userId: string): Promise<FileReference[]> {
   const files: FileReference[] = [];
 
   console.log(`[Backup] Collecting files for user ${userId} from UPLOAD_DIR=${UPLOAD_DIR}`);
@@ -335,7 +335,7 @@ export async function collectFiles(userId: string): Promise<FileReference[]> {
  * @param metadata - Metadata object containing backup information
  * @returns The manifest object as a plain JavaScript object
  */
-export function generateManifest(metadata: Omit<BackupMetadata, 'version' | 'timestamp'>): BackupMetadata {
+function generateManifest(metadata: Omit<BackupMetadata, 'version' | 'timestamp'>): BackupMetadata {
   return {
     version: '1.0.0',
     timestamp: new Date().toISOString(),
@@ -356,112 +356,6 @@ async function calculateChecksum(filePath: string): Promise<string> {
   } catch {
     return '';
   }
-}
-
-/**
- * Creates a tar.gz archive containing all user data and files
- *
- * Streams the archive to the provided writable stream
- *
- * @param userId - The user ID to create backup for
- * @param writable - Writable stream to write the archive to
- * @returns Promise that resolves when archive is complete
- */
-export async function createArchive(
-  userId: string,
-  writable: NodeJS.WritableStream
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    (async () => {
-      try {
-        // Export user data
-        const userData = await exportUserData(userId);
-        const files = await collectFiles(userId);
-
-        // Calculate checksums for all files
-        const checksumPromises = files.map(async (file) => {
-          const checksum = await calculateChecksum(file.path);
-          return { [file.archivePath]: checksum };
-        });
-
-        const checksumResults = await Promise.all(checksumPromises);
-        const checksums = Object.assign({}, ...checksumResults);
-
-        // Generate manifest
-        const manifest = generateManifest({
-          userId,
-          userEmail: userData.user.email,
-          username: userData.user.username,
-          checksums,
-        });
-
-        // Create archiver with tar and gzip (level 6)
-        const archive = archiver('tar', {
-          gzip: true,
-        });
-
-        // Handle errors
-        archive.on('error', (err: Error) => {
-          reject(err);
-        });
-
-        writable.on('error', (err: Error) => {
-          reject(err);
-        });
-
-        // Use stream.finished() on the ARCHIVER stream to wait for gzip compression to complete
-        // The archiver is a Transform stream with BOTH readable and writable sides
-        const archiveFinished = finished(archive, { readable: true, writable: true });
-
-        // Pipe archive to writable stream
-        archive.pipe(writable);
-
-        // Add manifest.json to archive
-        archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });
-
-        // Add database exports
-        archive.append(JSON.stringify(userData.journals, null, 2), {
-          name: 'database/journals.json',
-        });
-        archive.append(JSON.stringify(userData.notes, null, 2), {
-          name: 'database/notes.json',
-        });
-        archive.append(JSON.stringify(userData.journalNotes, null, 2), {
-          name: 'database/journalNotes.json',
-        });
-        archive.append(JSON.stringify(userData.templates, null, 2), {
-          name: 'database/templates.json',
-        });
-        archive.append(JSON.stringify(userData.dailyMoods, null, 2), {
-          name: 'database/dailyMoods.json',
-        });
-        archive.append(JSON.stringify(userData.transcripts, null, 2), {
-          name: 'database/transcripts.json',
-        });
-        archive.append(JSON.stringify(userData.tags, null, 2), {
-          name: 'database/tags.json',
-        });
-
-        // Add files to archive
-        for (const file of files) {
-          try {
-            archive.file(file.path, { name: file.archivePath });
-          } catch {
-            // Skip files that can't be added
-          }
-        }
-
-        // Finalize the archive
-        await archive.finalize();
-
-        // Wait for archive transform stream to finish
-        await archiveFinished;
-        resolve();
-      } catch (err) {
-        reject(err);
-      }
-    })();
-  });
 }
 
 /**

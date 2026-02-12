@@ -6,12 +6,11 @@
  */
 
 import path from 'node:path';
-import fs from 'node:fs/promises';
 
 /**
  * Error thrown when a path fails security validation
  */
-export class PathSecurityError extends Error {
+class PathSecurityError extends Error {
   constructor(
     message: string,
     public readonly unsafePath: string,
@@ -68,34 +67,6 @@ export function validatePathWithinDir(
 }
 
 /**
- * Validates a file path from database storage and returns a safe absolute path
- *
- * This is specifically designed for paths stored in the database (like videoPath,
- * thumbnailPath, etc.) which could potentially be manipulated.
- *
- * @param dbPath - Path from database (could be relative or absolute)
- * @param allowedDir - The base directory that files must be within
- * @returns The validated absolute path
- * @throws PathSecurityError if the path is outside the allowed directory
- */
-export function validateDatabaseFilePath(
-  dbPath: string | null | undefined,
-  allowedDir: string
-): string | null {
-  if (!dbPath) {
-    return null;
-  }
-
-  // If the path is already absolute, we still need to verify it's within allowed dir
-  if (path.isAbsolute(dbPath)) {
-    return validatePathWithinDir(dbPath, path.dirname(dbPath));
-  }
-
-  // For relative paths, validate against the allowed directory
-  return validatePathWithinDir(dbPath, allowedDir);
-}
-
-/**
  * Safely resolves a path from database storage
  *
  * This function handles the common pattern where paths in the database might be:
@@ -133,36 +104,6 @@ export function safeResolveDatabasePath(
 
     console.warn(`[PathSecurity] Blocked unsafe path: ${errorMessage}`);
     return { safe: false, path: null, error: errorMessage };
-  }
-}
-
-/**
- * Validates that a path exists and is a file (not a directory or symlink to directory)
- *
- * @param filePath - The path to check
- * @returns True if the path is a valid file
- */
-export async function isValidFilePath(filePath: string): Promise<boolean> {
-  try {
-    const stats = await fs.lstat(filePath);
-    return stats.isFile();
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Validates that a path exists and is a directory
- *
- * @param dirPath - The path to check
- * @returns True if the path is a valid directory
- */
-export async function isValidDirectoryPath(dirPath: string): Promise<boolean> {
-  try {
-    const stats = await fs.lstat(dirPath);
-    return stats.isDirectory();
-  } catch {
-    return false;
   }
 }
 

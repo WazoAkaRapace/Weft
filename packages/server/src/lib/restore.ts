@@ -39,7 +39,7 @@ export interface IdMapping {
 /**
  * Create a new ID mapping
  */
-export function createIdMapping(): IdMapping {
+function createIdMapping(): IdMapping {
   return {
     journals: new Map(),
     notes: new Map(),
@@ -127,7 +127,7 @@ export interface RestoreSummary {
  * @param targetDir - Directory to extract files to
  * @throws Error if extraction fails
  */
-export async function extractArchive(archivePath: string, targetDir: string): Promise<void> {
+async function extractArchive(archivePath: string, targetDir: string): Promise<void> {
   try {
     // Ensure target directory exists
     await fs.mkdir(targetDir, { recursive: true });
@@ -152,7 +152,7 @@ export async function extractArchive(archivePath: string, targetDir: string): Pr
  * @param manifest - Parsed manifest object
  * @returns Validation result with error message if invalid
  */
-export function validateManifest(manifest: any): { valid: boolean; error?: string } {
+function validateManifest(manifest: any): { valid: boolean; error?: string } {
   // Check if manifest exists
   if (!manifest || typeof manifest !== 'object') {
     return { valid: false, error: 'Manifest is missing or invalid' };
@@ -208,7 +208,7 @@ export function validateManifest(manifest: any): { valid: boolean; error?: strin
  * @param records - Database records to import
  * @returns Summary of restore operation
  */
-export async function importDatabaseRecords(
+async function importDatabaseRecords(
   userId: string,
   strategy: RestoreStrategy,
   records: DatabaseRecords
@@ -341,39 +341,6 @@ export async function importDatabaseRecords(
 }
 
 /**
- * Resolve ID conflicts based on restore strategy
- *
- * @param strategy - Restore strategy
- * @param existingRecords - Records already in database
- * @param newRecords - Records to import
- * @returns Records to import after conflict resolution
- */
-export function resolveIdConflicts<T extends { id: string }>(
-  strategy: RestoreStrategy,
-  existingRecords: T[],
-  newRecords: T[]
-): T[] {
-  const existingIds = new Set(existingRecords.map((r) => r.id));
-
-  switch (strategy) {
-    case 'merge':
-      // Keep existing records, only add new ones
-      return newRecords.filter((record) => !existingIds.has(record.id));
-
-    case 'replace':
-      // Return all new records (existing should have been deleted)
-      return newRecords;
-
-    case 'skip':
-      // Only import non-conflicting records
-      return newRecords.filter((record) => !existingIds.has(record.id));
-
-    default:
-      return newRecords;
-  }
-}
-
-/**
  * Restore files from backup directory to UPLOAD_DIR
  *
  * Uses safe path resolution to prevent path traversal attacks.
@@ -382,7 +349,7 @@ export function resolveIdConflicts<T extends { id: string }>(
  * @param targetDir - Target upload directory (UPLOAD_DIR)
  * @returns Number of files successfully restored
  */
-export async function restoreFiles(fileList: string[], targetDir: string): Promise<number> {
+async function restoreFiles(fileList: string[], targetDir: string): Promise<number> {
   let restoredCount = 0;
   const errors: string[] = [];
 
@@ -559,348 +526,6 @@ async function importJournalsWithTx(
   } catch (error) {
     result.errors.push({
       table: 'journals',
-      record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-
-  return result;
-}
-
-/**
- * Import journal records with new ID generation
- * @deprecated Use importJournalsWithTx instead
- * @internal Kept for backwards compatibility
- */
-export async function importJournals(
-  userId: string,
-  _strategy: RestoreStrategy,
-  journals: schema.Journal[],
-  idMapping: IdMapping
-): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
-  const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
-
-  try {
-    // Always import all journals with new IDs (ignore ID conflicts in backup)
-    for (const journal of journals) {
-      try {
-        const newId = randomUUID();
-        idMapping.journals.set(journal.id, newId);
-
-        await db.insert(schema.journals).values({
-          ...journal,
-          id: newId,        // Generate new ID
-          userId,           // Always use current user's ID
-          createdAt: journal.createdAt || new Date(),
-          updatedAt: journal.updatedAt || new Date(),
-        });
-        result.restored++;
-      } catch (error) {
-        result.errors.push({
-          table: 'journals',
-          record: journal.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-  } catch (error) {
-    result.errors.push({
-      table: 'journals',
-      record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-
-  return result;
-}
-
-/**
- * Import note records with new ID generation
- * @deprecated Use importNotesWithTx instead
- */
-export async function importNotes(
-  userId: string,
-  _strategy: RestoreStrategy,
-  notes: schema.Note[],
-  idMapping: IdMapping
-): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
-  const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
-
-  try {
-    // Always import all notes with new IDs
-    for (const note of notes) {
-      try {
-        const newId = randomUUID();
-        idMapping.notes.set(note.id, newId);
-
-        await db.insert(schema.notes).values({
-          ...note,
-          id: newId,        // Generate new ID
-          userId,           // Always use current user's ID
-          createdAt: note.createdAt || new Date(),
-          updatedAt: note.updatedAt || new Date(),
-        });
-        result.restored++;
-      } catch (error) {
-        result.errors.push({
-          table: 'notes',
-          record: note.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-  } catch (error) {
-    result.errors.push({
-      table: 'notes',
-      record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-
-  return result;
-}
-
-/**
- * Import journal-note link records using ID mapping
- * @deprecated Use importJournalNotesWithTx instead
- */
-export async function importJournalNotes(
-  _userId: string,
-  _strategy: RestoreStrategy,
-  journalNotes: schema.JournalNote[],
-  idMapping: IdMapping
-): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
-  const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
-
-  try {
-    for (const link of journalNotes) {
-      try {
-        // Get the new journal ID and note ID from the mapping
-        const newJournalId = idMapping.journals.get(link.journalId);
-        const newNoteId = idMapping.notes.get(link.noteId);
-
-        // Skip if either the journal or note wasn't imported
-        if (!newJournalId || !newNoteId) {
-          result.skipped++;
-          continue;
-        }
-
-        const newId = randomUUID();
-
-        await db.insert(schema.journalNotes).values({
-          id: newId,
-          journalId: newJournalId,  // Use new journal ID
-          noteId: newNoteId,         // Use new note ID
-          createdAt: link.createdAt || new Date(),
-        });
-        result.restored++;
-      } catch (error) {
-        result.errors.push({
-          table: 'journal_notes',
-          record: link.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-  } catch (error) {
-    result.errors.push({
-      table: 'journal_notes',
-      record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-
-  return result;
-}
-
-/**
- * Import template records with new ID generation
- * @deprecated Use importTemplatesWithTx instead
- */
-export async function importTemplates(
-  userId: string,
-  _strategy: RestoreStrategy,
-  templates: schema.Template[],
-  _idMapping: IdMapping
-): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
-  const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
-
-  try {
-    // Always import all templates with new IDs
-    for (const template of templates) {
-      try {
-        const newId = randomUUID();
-
-        await db.insert(schema.templates).values({
-          ...template,
-          id: newId,        // Generate new ID
-          userId,           // Always use current user's ID
-          createdAt: template.createdAt || new Date(),
-          updatedAt: template.updatedAt || new Date(),
-        });
-        result.restored++;
-      } catch (error) {
-        result.errors.push({
-          table: 'templates',
-          record: template.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-  } catch (error) {
-    result.errors.push({
-      table: 'templates',
-      record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-
-  return result;
-}
-
-/**
- * Import daily mood records with new ID generation
- * @deprecated Use importDailyMoodsWithTx instead
- */
-export async function importDailyMoods(
-  userId: string,
-  _strategy: RestoreStrategy,
-  dailyMoods: schema.DailyMood[],
-  _idMapping: IdMapping
-): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
-  const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
-
-  try {
-    // Always import all daily moods with new IDs
-    for (const mood of dailyMoods) {
-      try {
-        const newId = randomUUID();
-
-        await db.insert(schema.dailyMoods).values({
-          ...mood,
-          id: newId,        // Generate new ID
-          userId,           // Always use current user's ID
-          createdAt: mood.createdAt || new Date(),
-          updatedAt: mood.updatedAt || new Date(),
-        });
-        result.restored++;
-      } catch (error) {
-        result.errors.push({
-          table: 'daily_moods',
-          record: mood.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-  } catch (error) {
-    result.errors.push({
-      table: 'daily_moods',
-      record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-
-  return result;
-}
-
-/**
- * Import transcript records using ID mapping
- * @deprecated Use importTranscriptsWithTx instead
- */
-export async function importTranscripts(
-  _userId: string,
-  _strategy: RestoreStrategy,
-  transcripts: schema.Transcript[],
-  idMapping: IdMapping
-): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
-  const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
-
-  try {
-    for (const transcript of transcripts) {
-      try {
-        // Get the new journal ID from the mapping
-        const newJournalId = idMapping.journals.get(transcript.journalId);
-
-        // Skip if the journal wasn't imported
-        if (!newJournalId) {
-          result.skipped++;
-          continue;
-        }
-
-        const newId = randomUUID();
-        idMapping.transcripts.set(transcript.id, newId);
-
-        await db.insert(schema.transcripts).values({
-          ...transcript,
-          id: newId,
-          journalId: newJournalId,  // Use new journal ID
-          createdAt: transcript.createdAt || new Date(),
-        });
-        result.restored++;
-      } catch (error) {
-        result.errors.push({
-          table: 'transcripts',
-          record: transcript.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-  } catch (error) {
-    result.errors.push({
-      table: 'transcripts',
-      record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-
-  return result;
-}
-
-/**
- * Import tag records using ID mapping
- * @deprecated Use importTagsWithTx instead
- */
-export async function importTags(
-  _userId: string,
-  _strategy: RestoreStrategy,
-  tags: schema.Tag[],
-  idMapping: IdMapping
-): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
-  const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
-
-  try {
-    for (const tag of tags) {
-      try {
-        // Get the new journal ID from the mapping
-        const newJournalId = idMapping.journals.get(tag.journalId);
-
-        // Skip if the journal wasn't imported
-        if (!newJournalId) {
-          result.skipped++;
-          continue;
-        }
-
-        const newId = randomUUID();
-        idMapping.tags.set(tag.id, newId);
-
-        await db.insert(schema.tags).values({
-          ...tag,
-          id: newId,
-          journalId: newJournalId,  // Use new journal ID
-          createdAt: tag.createdAt || new Date(),
-        });
-        result.restored++;
-      } catch (error) {
-        result.errors.push({
-          table: 'tags',
-          record: tag.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-  } catch (error) {
-    result.errors.push({
-      table: 'tags',
       record: 'N/A',
       error: error instanceof Error ? error.message : String(error),
     });

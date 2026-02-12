@@ -140,13 +140,6 @@ export function getNotificationTypesByCategory(): Record<NotificationCategory, N
 }
 
 /**
- * Get all notification types as an array
- */
-export function getAllNotificationTypes(): NotificationTypeConfig[] {
-  return Object.values(NOTIFICATION_TYPES);
-}
-
-/**
  * Check if a notification type is valid
  */
 export function isValidNotificationType(type: string): type is NotificationTypeId {
@@ -154,30 +147,8 @@ export function isValidNotificationType(type: string): type is NotificationTypeI
 }
 
 /**
- * Get a specific notification type configuration
- */
-export function getNotificationType(id: NotificationTypeId): NotificationTypeConfig {
-  return NOTIFICATION_TYPES[id];
-}
-
-/**
  * Get all time-based notification types (those that support scheduling)
  */
 export function getTimeBasedNotificationTypes(): NotificationTypeConfig[] {
   return Object.values(NOTIFICATION_TYPES).filter((type) => type.supportsTime);
-}
-
-/**
- * Get default notification preferences for a new user
- */
-export function getDefaultPreferences(): Array<{
-  notificationType: NotificationTypeId;
-  enabled: boolean;
-  preferredTime?: string;
-}> {
-  return Object.values(NOTIFICATION_TYPES).map((type) => ({
-    notificationType: type.id,
-    enabled: type.defaultEnabled,
-    preferredTime: type.defaultTime,
-  }));
 }

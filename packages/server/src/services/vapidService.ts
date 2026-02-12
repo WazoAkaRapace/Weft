@@ -108,13 +108,6 @@ async function getStoredKeys(): Promise<VapidKeys | null> {
 }
 
 /**
- * Check if VAPID is configured
- */
-export function isVapidConfigured(): boolean {
-  return isInitialized;
-}
-
-/**
  * Get the webpush instance (for sending notifications)
  */
 export function getWebPush(): typeof webpush {

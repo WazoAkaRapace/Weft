@@ -396,13 +396,3 @@ export class BackupRestoreQueue {
     };
   }
 }
-
-// Singleton instance
-let queueInstance: BackupRestoreQueue | null = null;
-
-export function getBackupRestoreQueue(): BackupRestoreQueue {
-  if (!queueInstance) {
-    queueInstance = new BackupRestoreQueue();
-  }
-  return queueInstance;
-}

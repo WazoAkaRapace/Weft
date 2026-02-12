@@ -93,7 +93,7 @@ export async function initializeScheduler(): Promise<void> {
 /**
  * Schedule a notification for a user
  */
-export async function scheduleNotificationForUser(
+async function scheduleNotificationForUser(
   userId: string,
   notificationType: NotificationTypeId,
   preference?: {
@@ -304,18 +304,6 @@ export async function rescheduleUserNotifications(userId: string): Promise<void>
 }
 
 /**
- * Cancel all notifications for a user
- */
-export function cancelUserNotifications(userId: string): void {
-  for (const [key, timeout] of scheduledJobs) {
-    if (key.startsWith(`${userId}:`)) {
-      clearTimeout(timeout);
-      scheduledJobs.delete(key);
-    }
-  }
-}
-
-/**
  * Stop scheduler (for graceful shutdown)
  */
 export function stopScheduler(): void {
@@ -325,14 +313,4 @@ export function stopScheduler(): void {
   }
   scheduledJobs.clear();
   console.log('[Scheduler] Stopped');
-}
-
-/**
- * Get scheduler stats
- */
-export function getSchedulerStats(): { totalJobs: number; jobs: string[] } {
-  return {
-    totalJobs: scheduledJobs.size,
-    jobs: Array.from(scheduledJobs.keys()),
-  };
 }

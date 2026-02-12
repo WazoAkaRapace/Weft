@@ -86,7 +86,7 @@ export async function getUserSubscriptions(userId: string) {
 /**
  * Send notification to a specific subscription
  */
-export async function sendNotification(
+async function sendNotification(
   subscription: { endpoint: string; p256dhKey: string; authKey: string },
   payload: NotificationPayload
 ): Promise<boolean> {
@@ -173,27 +173,6 @@ export async function isNotificationEnabled(
     .limit(1);
 
   return pref.length > 0 ? pref[0].enabled : true; // Default to enabled
-}
-
-/**
- * Get notification preference for a type
- */
-export async function getNotificationPreference(
-  userId: string,
-  notificationType: NotificationTypeId
-) {
-  const pref = await db
-    .select()
-    .from(notificationPreferences)
-    .where(
-      and(
-        eq(notificationPreferences.userId, userId),
-        eq(notificationPreferences.notificationType, notificationType)
-      )
-    )
-    .limit(1);
-
-  return pref.length > 0 ? pref[0] : null;
 }
 
 /**
