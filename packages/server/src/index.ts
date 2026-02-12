@@ -59,6 +59,19 @@ import { getHLSQueue } from './queue/HLSQueue.js';
 import { handleCreateBackup, handleGetBackupStatus, handleDownloadBackup } from './routes/backup.js';
 import { handleRestore, handleGetRestoreStatus } from './routes/restore.js';
 import { BackupRestoreQueue } from './queue/BackupRestoreQueue.js';
+import {
+  handleGetVapidPublicKey,
+  handleSubscribe,
+  handleUnsubscribe,
+  handleGetSubscriptions,
+  handleDeleteSubscription,
+  handleGetPreferences,
+  handleUpdatePreference,
+  handleGetNotificationTypes,
+  handleSendTestNotification,
+} from './routes/notifications.js';
+import { initializeVapid } from './services/vapidService.js';
+import { initializeScheduler, stopScheduler } from './services/notificationScheduler.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -296,6 +309,22 @@ console.log('HLS transcoding queue started');
 const backupRestoreQueue = new BackupRestoreQueue();
 await backupRestoreQueue.start();
 console.log('Backup/restore queue started');
+
+// Initialize VAPID keys for push notifications
+try {
+  await initializeVapid();
+  console.log('Push notifications initialized');
+} catch (error) {
+  console.warn('⚠ Push notifications initialization failed. Notifications will be disabled:', error);
+}
+
+// Initialize notification scheduler
+try {
+  await initializeScheduler();
+  console.log('Notification scheduler started');
+} catch (error) {
+  console.warn('⚠ Notification scheduler failed to start. Scheduled notifications will be disabled:', error);
+}
 
 // Main HTTP server using Node.js (compatible with Transformers.js)
 const server = createHttpServer(async (req, res) => {
@@ -592,6 +621,55 @@ const server = createHttpServer(async (req, res) => {
       return;
     }
 
+    // Notification endpoints
+    if (url.pathname === '/api/notifications/vapid-public-key' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetVapidPublicKey(request), request));
+      return;
+    }
+
+    if (url.pathname === '/api/notifications/subscribe' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleSubscribe(request), request));
+      return;
+    }
+
+    if (url.pathname === '/api/notifications/unsubscribe' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleUnsubscribe(request), request));
+      return;
+    }
+
+    if (url.pathname === '/api/notifications/subscriptions' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetSubscriptions(request), request));
+      return;
+    }
+
+    if (url.pathname.match(/\/api\/notifications\/subscriptions\/[^/]+$/) && req.method === 'DELETE') {
+      const subscriptionId = url.pathname.split('/').slice(-1)[0];
+      sendResponse(res, addCorsHeaders(await handleDeleteSubscription(request, subscriptionId), request));
+      return;
+    }
+
+    if (url.pathname === '/api/notifications/preferences' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetPreferences(request), request));
+      return;
+    }
+
+    if (url.pathname.match(/\/api\/notifications\/preferences\/[^/]+$/) && req.method === 'PUT') {
+      const notificationType = url.pathname.split('/').slice(-1)[0];
+      sendResponse(res, addCorsHeaders(await handleUpdatePreference(request, notificationType), request));
+      return;
+    }
+
+    if (url.pathname === '/api/notifications/types' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetNotificationTypes(request), request));
+      return;
+    }
+
+    // Test notification endpoint
+    if (url.pathname === '/api/notifications/test' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleSendTestNotification(request), request));
+      return;
+    }
+
     // Health check endpoint
     if (url.pathname === '/health') {
       sendResponse(res, addCorsHeaders(
@@ -775,6 +853,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // Graceful shutdown handler
 process.on('SIGINT', async () => {
   console.log('\nShutting down gracefully...');
+  stopScheduler();
   await transcriptionQueue.stop();
   if (emotionQueue) await emotionQueue.stop();
   await hlsQueue.stop();
@@ -785,6 +864,7 @@ process.on('SIGINT', async () => {
 
 process.on('SIGTERM', async () => {
   console.log('\nShutting down gracefully...');
+  stopScheduler();
   await transcriptionQueue.stop();
   if (emotionQueue) await emotionQueue.stop();
   await hlsQueue.stop();

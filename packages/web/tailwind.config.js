@@ -146,6 +146,16 @@ export default {
         'dark-md': '0 4px 6px -1px rgba(0, 0, 0, 0.4)',
         'dark-lg': '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
       },
+      // Custom animations
+      keyframes: {
+        'slide-up': {
+          '0%': { transform: 'translateY(100%)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+      },
+      animation: {
+        'slide-up': 'slide-up 0.3s ease-out',
+      },
     },
   },
   plugins: [],

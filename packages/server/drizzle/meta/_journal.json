@@ -78,6 +78,20 @@
       "when": 1770589657700,
       "tag": "0010_opposite_lady_mastermind",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1770836978521,
+      "tag": "0011_lying_umar",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1770926138022,
+      "tag": "0012_flashy_alice",
+      "breakpoints": true
     }
   ]
 }

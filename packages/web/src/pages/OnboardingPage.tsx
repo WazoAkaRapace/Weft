@@ -145,7 +145,7 @@ export function OnboardingPage() {
               placeholder="John Doe"
               disabled={isLoading}
               autoComplete="name"
-              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default placeholder:text-text-hint dark:placeholder:text-text-dark-hint transition-colors focus:outline-none focus:border-border-focus disabled:bg-neutral-100 dark:disabled:bg-dark-800 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -162,7 +162,7 @@ export function OnboardingPage() {
               placeholder="johndoe"
               disabled={isLoading}
               autoComplete="username"
-              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default placeholder:text-text-hint dark:placeholder:text-text-dark-hint transition-colors focus:outline-none focus:border-border-focus disabled:bg-neutral-100 dark:disabled:bg-dark-800 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -179,7 +179,7 @@ export function OnboardingPage() {
               placeholder="your@email.com"
               disabled={isLoading}
               autoComplete="email"
-              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default placeholder:text-text-hint dark:placeholder:text-text-dark-hint transition-colors focus:outline-none focus:border-border-focus disabled:bg-neutral-100 dark:disabled:bg-dark-800 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -197,7 +197,7 @@ export function OnboardingPage() {
               disabled={isLoading}
               minLength={8}
               autoComplete="new-password"
-              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default placeholder:text-text-hint dark:placeholder:text-text-dark-hint transition-colors focus:outline-none focus:border-border-focus disabled:bg-neutral-100 dark:disabled:bg-dark-800 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -215,7 +215,7 @@ export function OnboardingPage() {
               disabled={isLoading}
               minLength={8}
               autoComplete="new-password"
-              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default placeholder:text-text-hint dark:placeholder:text-text-dark-hint transition-colors focus:outline-none focus:border-border-focus disabled:bg-neutral-100 dark:disabled:bg-dark-800 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -228,7 +228,7 @@ export function OnboardingPage() {
               value={preferredLanguage}
               onChange={(e) => setPreferredLanguage(e.target.value)}
               disabled={isLoading}
-              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed bg-white dark:bg-background-card-dark"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default transition-colors focus:outline-none focus:border-border-focus disabled:bg-neutral-100 dark:disabled:bg-dark-800 disabled:cursor-not-allowed"
             >
               {TRANSCRIPTION_LANGUAGES.map((lang) => (
                 <option key={lang.code} value={lang.code}>

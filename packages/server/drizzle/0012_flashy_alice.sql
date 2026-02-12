@@ -1,0 +1,1 @@
+ALTER TABLE "notification_preferences" ADD COLUMN "preferred_days" jsonb DEFAULT '[0,1,2,3,4,5,6]'::jsonb;

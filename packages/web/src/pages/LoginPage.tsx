@@ -1,7 +1,13 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authClient, useSession } from '../lib/auth';
 import { useTheme } from '../contexts/ThemeContext';
+
+const API_BASE_URL = 'http://localhost:3001';
+
+interface CheckUsersResponse {
+  hasUsers: boolean;
+}
 
 export function LoginPage() {
   const { theme, effectiveTheme } = useTheme();
@@ -11,6 +17,29 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [hasUsers, setHasUsers] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkUsers = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/setup/check-users`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data: CheckUsersResponse = await response.json();
+          setHasUsers(data.hasUsers);
+        } else {
+          setHasUsers(false);
+        }
+      } catch {
+        setHasUsers(false);
+      }
+    };
+
+    checkUsers();
+  }, []);
 
   const getLogoSrc = () => {
     if (theme === 'dark') return '/logo-dark.svg';
@@ -83,7 +112,7 @@ export function LoginPage() {
               required
               placeholder="your@email.com"
               disabled={isLoading}
-              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default placeholder:text-text-hint dark:placeholder:text-text-dark-hint transition-colors focus:outline-none focus:border-border-focus disabled:bg-neutral-100 dark:disabled:bg-dark-800 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -100,7 +129,7 @@ export function LoginPage() {
               placeholder="••••••••"
               disabled={isLoading}
               minLength={8}
-              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default placeholder:text-text-hint dark:placeholder:text-text-dark-hint transition-colors focus:outline-none focus:border-border-focus disabled:bg-neutral-100 dark:disabled:bg-dark-800 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -113,12 +142,14 @@ export function LoginPage() {
           </button>
         </form>
 
-        <div className="text-center mt-6 text-sm text-text-secondary dark:text-text-dark-secondary">
-          Don't have an account?{' '}
-          <Link to="/register" className="text-primary hover:underline font-medium">
-            Sign up
-          </Link>
-        </div>
+        {hasUsers === false && (
+          <div className="text-center mt-6 text-sm text-text-secondary dark:text-text-dark-secondary">
+            Don't have an account?{' '}
+            <Link to="/register" className="text-primary hover:underline font-medium">
+              Sign up
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

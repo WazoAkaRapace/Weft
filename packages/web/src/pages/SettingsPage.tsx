@@ -5,6 +5,7 @@ import type {
   BackupJobStatus,
 } from '@weft/shared';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { NotificationSettings } from '../components/notifications/NotificationSettings';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -696,6 +697,14 @@ export function SettingsPage() {
               <span className="text-neutral-900 dark:text-dark-50 font-medium">{settings.email}</span>
             </div>
           </div>
+        </section>
+
+        {/* Notifications Section */}
+        <section className="bg-white dark:bg-dark-800 rounded-lg p-6 border border-neutral-200 dark:border-dark-600">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-dark-50 mb-4">
+            Notifications
+          </h2>
+          <NotificationSettings />
         </section>
 
         {/* Data Management Section */}

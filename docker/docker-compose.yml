@@ -135,6 +135,10 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       VOICE_EMOTION_API_URL: ${VOICE_EMOTION_API_URL:-http://voice-emotion-recognition:8000}
       TRANSCRIPTION_WORKER_CONCURRENCY: 1
+      # Push Notification VAPID Keys (generate with: node scripts/generate-vapid-keys.js)
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@weft.local}
     ports:
       - "${BACKEND_PORT:-3001}:3001"
     volumes:

@@ -296,6 +296,109 @@ export const tags = pgTable(
   })
 );
 
+// ============================================
+// NOTIFICATION SYSTEM TABLES
+// ============================================
+
+/**
+ * Push Subscriptions table
+ * Stores Web Push subscription data for each user/device
+ */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull().unique(),
+    p256dhKey: text('p256dh_key').notNull(),
+    authKey: text('auth_key').notNull(),
+    userAgent: text('user_agent'),
+    deviceName: text('device_name'),
+    lastUsedAt: timestamp('last_used_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('push_subscriptions_user_id_idx').on(table.userId),
+    endpointIdx: index('push_subscriptions_endpoint_idx').on(table.endpoint),
+  })
+);
+
+/**
+ * Notification Preferences table
+ * Stores user preferences for each notification type
+ */
+export const notificationPreferences = pgTable(
+  'notification_preferences',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    notificationType: text('notification_type').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+    // For time-based notifications (mood reminders)
+    preferredTime: text('preferred_time'), // HH:mm format
+    preferredTimeSecondary: text('preferred_time_secondary'), // Second daily reminder
+    timezone: text('timezone').default('UTC'),
+    // Days of week to send notifications (0=Sunday, 6=Saturday)
+    preferredDays: jsonb('preferred_days').$type<number[]>().default([0, 1, 2, 3, 4, 5, 6]),
+    // Custom settings as JSON
+    customSettings: jsonb('custom_settings').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('notification_preferences_user_id_idx').on(table.userId),
+    userTypeUnique: unique('notification_preferences_user_type_unique').on(table.userId, table.notificationType),
+  })
+);
+
+/**
+ * Notification History table
+ * Tracks sent notifications for analytics and debugging
+ */
+export const notificationHistory = pgTable(
+  'notification_history',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    subscriptionId: uuid('subscription_id')
+      .references(() => pushSubscriptions.id, { onDelete: 'set null' }),
+    notificationType: text('notification_type').notNull(),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    data: jsonb('data').$type<Record<string, unknown>>(),
+    status: text('status').notNull().default('sent'), // 'sent', 'delivered', 'failed'
+    error: text('error'),
+    sentAt: timestamp('sent_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('notification_history_user_id_idx').on(table.userId),
+    typeIdx: index('notification_history_type_idx').on(table.notificationType),
+    sentAtIdx: index('notification_history_sent_at_idx').on(table.sentAt),
+  })
+);
+
+/**
+ * VAPID Configuration table
+ * Stores VAPID keys for the application (single row for self-hosted)
+ */
+export const vapidConfig = pgTable(
+  'vapid_config',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    publicKey: text('public_key').notNull(),
+    privateKey: text('private_key').notNull(),
+    subject: text('subject').notNull(), // mailto: or URL
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  }
+);
+
 /**
  * Type exports
  */
@@ -321,3 +424,12 @@ export type Tag = typeof tags.$inferSelect;
 export type NewTag = typeof tags.$inferInsert;
 export type DailyMood = typeof dailyMoods.$inferSelect;
 export type NewDailyMood = typeof dailyMoods.$inferInsert;
+// Notification types
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type NewPushSubscription = typeof pushSubscriptions.$inferInsert;
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type NewNotificationPreference = typeof notificationPreferences.$inferInsert;
+export type NotificationHistory = typeof notificationHistory.$inferSelect;
+export type NewNotificationHistory = typeof notificationHistory.$inferInsert;
+export type VapidConfig = typeof vapidConfig.$inferSelect;
+export type NewVapidConfig = typeof vapidConfig.$inferInsert;

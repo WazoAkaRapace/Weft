@@ -1,19 +1,14 @@
 /**
  * PWA Install Prompt Component
  *
- * Shows an install banner when the PWA is available for installation.
- * Can be placed anywhere in the app to prompt users to install.
+ * Shows a floating install prompt when the PWA is available for installation.
+ * Appears as a compact toast-style notification.
  */
 
 import { useState } from 'react';
 import { usePWA } from '../hooks/usePWA';
 
 interface PWAInstallPromptProps {
-  /**
-   * Position of the prompt banner
-   */
-  position?: 'top' | 'bottom';
-
   /**
    * Whether to show the prompt automatically when installable
    */
@@ -26,7 +21,6 @@ interface PWAInstallPromptProps {
 }
 
 export function PWAInstallPrompt({
-  position = 'bottom',
   autoShow = true,
   className = '',
 }: PWAInstallPromptProps) {
@@ -53,58 +47,60 @@ export function PWAInstallPrompt({
     localStorage.setItem('pwa-install-dismissed', Date.now().toString());
   };
 
-  const positionClasses = position === 'top'
-    ? 'top-0 rounded-b-lg'
-    : 'bottom-0 rounded-t-lg';
-
   return (
     <div
       className={`
-        fixed ${positionClasses} left-0 right-0 z-50
-        bg-teal-600 text-white shadow-lg
-        p-4 flex items-center justify-between gap-4
+        fixed bottom-4 right-4 z-50
+        max-w-xs
+        bg-white dark:bg-neutral-800
+        text-neutral-900 dark:text-white
+        shadow-lg rounded-xl
+        border border-neutral-200 dark:border-neutral-700
+        p-3 flex items-center gap-3
+        animate-slide-up
         ${className}
       `}
       role="banner"
       aria-label="Install app prompt"
     >
-      <div className="flex items-center gap-3 flex-1">
-        <div className="flex-shrink-0 w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-          <img
-            src="/icons/icon-72x72.png"
-            alt="Weft"
-            className="w-10 h-10 rounded-lg"
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm">Install Weft</p>
-          <p className="text-xs text-teal-100 truncate">
-            Add to home screen for quick access
-          </p>
-        </div>
+      <div className="flex-shrink-0 w-10 h-10 bg-teal-100 dark:bg-teal-900/30 rounded-lg flex items-center justify-center">
+        <img
+          src="/icons/icon-72x72.png"
+          alt="Weft"
+          className="w-8 h-8 rounded"
+        />
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm">Install Weft</p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
+          Add to home screen
+        </p>
+      </div>
+
+      <div className="flex items-center gap-1 flex-shrink-0">
         <button
           onClick={handleDismiss}
-          className="px-3 py-1.5 text-sm text-teal-100 hover:text-white transition-colors"
-          aria-label="Dismiss install prompt"
+          className="p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+          aria-label="Dismiss"
         >
-          Not now
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
         <button
           onClick={handleInstall}
           disabled={isInstalling}
           className="
-            px-4 py-1.5 text-sm font-medium
-            bg-white text-teal-600
-            rounded-lg hover:bg-teal-50
+            px-3 py-1.5 text-xs font-medium
+            bg-teal-600 text-white
+            rounded-lg hover:bg-teal-700
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-colors
           "
           aria-label="Install app"
         >
-          {isInstalling ? 'Installing...' : 'Install'}
+          {isInstalling ? '...' : 'Install'}
         </button>
       </div>
     </div>

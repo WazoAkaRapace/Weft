@@ -173,34 +173,58 @@ self.addEventListener('sync', (event) => {
   }
 });
 
-// Push notifications (future enhancement)
+// Push notifications
 self.addEventListener('push', (event) => {
   console.log('[ServiceWorker] Push received');
 
+  let data = {
+    title: 'Weft',
+    body: 'New notification',
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-72x72.png',
+    tag: 'default',
+    data: { url: '/' },
+    actions: [
+      { action: 'open', title: 'Open' },
+      { action: 'dismiss', title: 'Dismiss' },
+    ],
+  };
+
   if (event.data) {
-    const data = event.data.json();
-
-    const options = {
-      body: data.body || 'New notification from Weft',
-      icon: '/icons/icon-192x192.png',
-      badge: '/icons/icon-72x72.png',
-      vibrate: [100, 50, 100],
-      data: {
-        url: data.url || '/',
-      },
-    };
-
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'Weft', options)
-    );
+    try {
+      const payload = event.data.json();
+      data = { ...data, ...payload };
+    } catch (e) {
+      console.warn('[ServiceWorker] Could not parse push data:', e);
+    }
   }
+
+  const options = {
+    body: data.body,
+    icon: data.icon,
+    badge: data.badge,
+    vibrate: [100, 50, 100],
+    tag: data.tag,
+    data: data.data,
+    actions: data.actions,
+    requireInteraction: false,
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
 });
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
-  console.log('[ServiceWorker] Notification clicked');
+  console.log('[ServiceWorker] Notification clicked', event.action);
 
   event.notification.close();
+
+  // If user clicked dismiss, don't do anything
+  if (event.action === 'dismiss') {
+    return;
+  }
 
   const urlToOpen = event.notification.data?.url || '/';
 

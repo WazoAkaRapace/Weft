@@ -144,7 +144,7 @@ export function RegisterPage() {
               required
               placeholder="Your name"
               disabled={isLoading}
-              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default placeholder:text-text-hint dark:placeholder:text-text-dark-hint transition-colors focus:outline-none focus:border-border-focus disabled:bg-neutral-100 dark:disabled:bg-dark-800 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -160,7 +160,7 @@ export function RegisterPage() {
               required
               placeholder="your@email.com"
               disabled={isLoading}
-              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default placeholder:text-text-hint dark:placeholder:text-text-dark-hint transition-colors focus:outline-none focus:border-border-focus disabled:bg-neutral-100 dark:disabled:bg-dark-800 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -177,7 +177,7 @@ export function RegisterPage() {
               placeholder="••••••••"
               disabled={isLoading}
               minLength={8}
-              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default placeholder:text-text-hint dark:placeholder:text-text-dark-hint transition-colors focus:outline-none focus:border-border-focus disabled:bg-neutral-100 dark:disabled:bg-dark-800 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -194,7 +194,7 @@ export function RegisterPage() {
               placeholder="••••••••"
               disabled={isLoading}
               minLength={8}
-              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base transition-colors focus:outline-none focus:border-border-focus disabled:bg-background dark:disabled:bg-background-dark disabled:cursor-not-allowed"
+              className="px-4 py-3 border border-border dark:border-border-dark rounded-lg text-base bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default placeholder:text-text-hint dark:placeholder:text-text-dark-hint transition-colors focus:outline-none focus:border-border-focus disabled:bg-neutral-100 dark:disabled:bg-dark-800 disabled:cursor-not-allowed"
             />
           </div>
 
