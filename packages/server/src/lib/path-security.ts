@@ -115,10 +115,11 @@ export function safeResolveDatabasePath(
  */
 export function sanitizeFilename(filename: string): string {
   // Remove path separators and null bytes
-  let sanitized = filename.replace(/[\/\\:\x00]/g, '_');
+  // eslint-disable-next-line no-control-regex
+  let sanitized = filename.replace(/[/\\:\x00]/g, '_');
 
   // Remove leading dots (hidden files) and dashes
-  sanitized = sanitized.replace(/^[\.-]+/, '');
+  sanitized = sanitized.replace(/^[\p{P}\p{S}]+/u, '');
 
   // Limit length
   if (sanitized.length > 255) {

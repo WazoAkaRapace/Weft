@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global console */
 
 /**
  * VAPID Key Generator for Weft Push Notifications
@@ -16,7 +17,6 @@
  */
 
 import webpush from 'web-push';
-import crypto from 'node:crypto';
 
 // Generate VAPID keys
 const keys = webpush.generateVAPIDKeys();
