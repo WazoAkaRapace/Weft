@@ -1,7 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-
-const API_BASE_URL = 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 interface CheckUsersResponse {
   hasUsers: boolean;
@@ -23,7 +22,7 @@ export function OnboardingRouteGuard({ children }: OnboardingRouteGuardProps) {
   useEffect(() => {
     const checkUsers = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/setup/check-users`, {
+        const response = await fetch(`${getApiUrl()}/api/setup/check-users`, {
           method: 'GET',
           credentials: 'include',
         });

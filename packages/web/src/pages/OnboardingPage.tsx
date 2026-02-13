@@ -1,8 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
-
-const API_BASE_URL = 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 interface CreateUserResponse {
   success: boolean;
@@ -71,7 +70,7 @@ export function OnboardingPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/setup/create-first-user`, {
+      const response = await fetch(`${getApiUrl()}/api/setup/create-first-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

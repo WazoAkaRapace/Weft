@@ -2,8 +2,7 @@ import { useState, FormEvent, useEffect } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { authClient } from '../lib/auth';
 import { useTheme } from '../contexts/ThemeContext';
-
-const API_BASE_URL = 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 interface CheckUsersResponse {
   hasUsers: boolean;
@@ -30,7 +29,7 @@ export function RegisterPage() {
   useEffect(() => {
     const checkUsers = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/setup/check-users`, {
+        const response = await fetch(`${getApiUrl()}/api/setup/check-users`, {
           method: 'GET',
           credentials: 'include',
         });
