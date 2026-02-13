@@ -777,6 +777,16 @@ async function importNotesWithTx(
       noteIdMap.set(note.id, newId);
       idMapping.notes.set(note.id, newId);
     }
+    console.log(`[Restore] Generated ${noteIdMap.size} note ID mappings`);
+
+    // Log a few sample mappings for debugging
+    let sampleCount = 0;
+    for (const [oldId, newId] of noteIdMap) {
+      if (sampleCount < 3) {
+        console.log(`[Restore] Sample mapping: ${oldId} -> ${newId}`);
+        sampleCount++;
+      }
+    }
 
     // Second pass: Insert all notes with mapped parentIds
     for (const note of notes) {
@@ -793,12 +803,18 @@ async function importNotesWithTx(
         let parentId: string | null = null;
         if (note.parentId) {
           const mappedParentId = noteIdMap.get(note.parentId);
+          console.log(`[Restore] Note ${note.id} has parentId ${note.parentId}, mapped to: ${mappedParentId ?? 'null'}`);
           if (mappedParentId) {
             parentId = mappedParentId;
           } else {
             // Parent doesn't exist in backup, skip this reference
             console.warn(`[Restore] Note ${note.id} references non-existent parent ${note.parentId}, setting parentId to null`);
           }
+        }
+
+        // Debug: log what we're about to insert
+        if (note.parentId) {
+          console.log(`[Restore] Inserting note ${note.id} with parentId field value: ${parentId}`);
         }
 
         await tx.insert(schema.notes).values({
