@@ -759,6 +759,69 @@ export async function restoreBackup(
 
 // Transaction-aware versions of import functions
 
+/**
+ * Sort notes so that parents are always inserted before children.
+ * This uses a topological sort based on the parentId relationships.
+ * Notes without a parentId (root notes) come first.
+ */
+function topologicalSortNotes(notes: schema.Note[]): schema.Note[] {
+  // Build a map of note id -> note
+  const noteMap = new Map<string, schema.Note>();
+  for (const note of notes) {
+    noteMap.set(note.id, note);
+  }
+
+  // Build adjacency list: parent -> children
+  const children = new Map<string, schema.Note[]>();
+  const rootNotes: schema.Note[] = [];
+
+  for (const note of notes) {
+    if (note.parentId && noteMap.has(note.parentId)) {
+      // This note has a parent that exists in the backup
+      if (!children.has(note.parentId)) {
+        children.set(note.parentId, []);
+      }
+      children.get(note.parentId)!.push(note);
+    } else {
+      // This is a root note (no parent or parent not in backup)
+      rootNotes.push(note);
+    }
+  }
+
+  // BFS from root notes to get topological order
+  const sorted: schema.Note[] = [];
+  const visited = new Set<string>();
+  const queue = [...rootNotes];
+
+  while (queue.length > 0) {
+    const note = queue.shift()!;
+    if (visited.has(note.id)) {
+      continue;
+    }
+    visited.add(note.id);
+    sorted.push(note);
+
+    // Add children to queue
+    const noteChildren = children.get(note.id);
+    if (noteChildren) {
+      for (const child of noteChildren) {
+        if (!visited.has(child.id)) {
+          queue.push(child);
+        }
+      }
+    }
+  }
+
+  // Add any notes that weren't visited (orphaned children with parent not in backup)
+  for (const note of notes) {
+    if (!visited.has(note.id)) {
+      sorted.push(note);
+    }
+  }
+
+  return sorted;
+}
+
 async function importNotesWithTx(
   userId: string,
   _strategy: RestoreStrategy,
@@ -779,17 +842,13 @@ async function importNotesWithTx(
     }
     console.log(`[Restore] Generated ${noteIdMap.size} note ID mappings`);
 
-    // Log a few sample mappings for debugging
-    let sampleCount = 0;
-    for (const [oldId, newId] of noteIdMap) {
-      if (sampleCount < 3) {
-        console.log(`[Restore] Sample mapping: ${oldId} -> ${newId}`);
-        sampleCount++;
-      }
-    }
+    // Sort notes so parents are inserted before children (topological sort)
+    // This ensures foreign key constraints are satisfied
+    const sortedNotes = topologicalSortNotes(notes);
+    console.log(`[Restore] Sorted ${sortedNotes.length} notes for insertion (parents before children)`);
 
-    // Second pass: Insert all notes with mapped parentIds
-    for (const note of notes) {
+    // Second pass: Insert all notes with mapped parentIds (in sorted order)
+    for (const note of sortedNotes) {
       try {
         const newId = noteIdMap.get(note.id)!;
 
@@ -803,18 +862,12 @@ async function importNotesWithTx(
         let parentId: string | null = null;
         if (note.parentId) {
           const mappedParentId = noteIdMap.get(note.parentId);
-          console.log(`[Restore] Note ${note.id} has parentId ${note.parentId}, mapped to: ${mappedParentId ?? 'null'}`);
           if (mappedParentId) {
             parentId = mappedParentId;
           } else {
             // Parent doesn't exist in backup, skip this reference
             console.warn(`[Restore] Note ${note.id} references non-existent parent ${note.parentId}, setting parentId to null`);
           }
-        }
-
-        // Debug: log what we're about to insert
-        if (note.parentId) {
-          console.log(`[Restore] Inserting note ${note.id} with parentId field value: ${parentId}`);
         }
 
         await tx.insert(schema.notes).values({
