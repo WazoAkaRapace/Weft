@@ -75,17 +75,35 @@ import { initializeScheduler, stopScheduler } from './services/notificationSched
 
 const PORT = process.env.PORT || 3001;
 
-// Get allowed origin from request or default to localhost
-function getAllowedOrigin(request: Request): string {
-  const origin = request.headers.get('Origin');
-  const allowedOrigins = [
+// Build allowed origins from environment variables
+function getAllowedOrigins(): string[] {
+  const origins: string[] = [
     'http://localhost:3000',
     'http://localhost:3001',
   ];
+
+  // Add frontend URL from environment (for Docker/production deployments)
+  if (process.env.FRONTEND_URL) {
+    origins.push(process.env.FRONTEND_URL);
+  }
+
+  // Add any additional CORS origins (comma-separated)
+  if (process.env.CORS_ORIGINS) {
+    const additionalOrigins = process.env.CORS_ORIGINS.split(',').map(o => o.trim()).filter(Boolean);
+    origins.push(...additionalOrigins);
+  }
+
+  return [...new Set(origins)]; // Remove duplicates
+}
+
+// Get allowed origin from request or default to first configured origin
+function getAllowedOrigin(request: Request): string {
+  const origin = request.headers.get('Origin');
+  const allowedOrigins = getAllowedOrigins();
   if (origin && allowedOrigins.includes(origin)) {
     return origin;
   }
-  return allowedOrigins[0]; // Default to localhost:3000
+  return allowedOrigins[0]; // Default to first configured origin
 }
 
 // Add CORS headers to a response

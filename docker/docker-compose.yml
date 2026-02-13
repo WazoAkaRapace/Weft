@@ -138,6 +138,7 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3001}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-development-secret-key-change-in-production-min-32-chars}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
       VOICE_EMOTION_API_URL: ${VOICE_EMOTION_API_URL:-http://voice-emotion-recognition:8000}
       TRANSCRIPTION_WORKER_CONCURRENCY: 1
       # Push Notification VAPID Keys (generate with: node scripts/generate-vapid-keys.js)
