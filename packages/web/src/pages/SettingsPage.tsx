@@ -396,7 +396,7 @@ export function SettingsPage() {
 
     try {
       const formData = new FormData();
-      formData.append('file', restoreFile);
+      formData.append('archive', restoreFile);
       formData.append('strategy', restoreStrategy);
 
       const response = await fetch(`${getApiUrl()}/api/restore`, {
