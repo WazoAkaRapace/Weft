@@ -22,23 +22,26 @@ const scheduledJobs = new Map<string, NodeJS.Timeout>();
 /**
  * Calculate the next occurrence of a scheduled notification
  * Takes into account the preferred days of the week
+ *
+ * All times are treated as UTC. The frontend sends UTC times,
+ * and this function calculates the next occurrence in UTC.
  */
 function calculateNextOccurrence(
   now: Date,
-  hours: number,
-  minutes: number,
-  preferredDays: number[]
+  hours: number,    // UTC hours
+  minutes: number,  // UTC minutes
+  preferredDays: number[]  // Days in UTC context (0=Sunday, 6=Saturday)
 ): Date {
   const scheduled = new Date(now);
-  scheduled.setHours(hours, minutes, 0, 0);
+  scheduled.setUTCHours(hours, minutes, 0, 0);
 
-  // Get current day of week (0=Sunday, 6=Saturday)
-  const currentDay = now.getDay();
-  const currentTime = now.getHours() * 60 + now.getMinutes();
+  // Get current day of week and time in UTC
+  const currentDay = now.getUTCDay();
+  const currentTime = now.getUTCHours() * 60 + now.getUTCMinutes();
   const scheduledTime = hours * 60 + minutes;
 
   // Find the next preferred day
-  // If today is a preferred day and time hasn't passed, use today
+  // If today is a preferred day and time hasn't passed (in UTC), use today
   if (preferredDays.includes(currentDay) && scheduledTime > currentTime) {
     return scheduled;
   }
@@ -52,7 +55,7 @@ function calculateNextOccurrence(
     checkDay = (checkDay + 1) % 7;
   }
 
-  scheduled.setDate(scheduled.getDate() + daysToAdd);
+  scheduled.setUTCDate(scheduled.getUTCDate() + daysToAdd);
   return scheduled;
 }
 

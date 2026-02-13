@@ -10,6 +10,28 @@ import { DayOfWeekSelector } from './DayOfWeekSelector';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+/**
+ * Convert local time string (HH:mm) to UTC time string
+ * Used when saving notification times to the backend
+ */
+function localTimeToUTC(localTime: string): string {
+  const [hours, minutes] = localTime.split(':').map(Number);
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  return `${date.getUTCHours().toString().padStart(2, '0')}:${date.getUTCMinutes().toString().padStart(2, '0')}`;
+}
+
+/**
+ * Convert UTC time string (HH:mm) to local time string
+ * Used when displaying notification times from the backend
+ */
+function utcToLocalTime(utcTime: string): string {
+  const [hours, minutes] = utcTime.split(':').map(Number);
+  const date = new Date();
+  date.setUTCHours(hours, minutes, 0, 0);
+  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+}
+
 export function NotificationSettings() {
   const {
     isSupported,
@@ -92,11 +114,26 @@ export function NotificationSettings() {
   const handleSaveSchedule = async (type: string, originalTime: string | undefined, originalDays: number[] | undefined) => {
     const time = timeInputs[type] || originalTime;
     const days = dayInputs[type] || originalDays || [0, 1, 2, 3, 4, 5, 6];
-    await updatePreference(type, { preferredTime: time, preferredDays: days });
+    // Convert local time to UTC before sending to backend
+    const utcTime = localTimeToUTC(time);
+    await updatePreference(type, { preferredTime: utcTime, preferredDays: days });
+    // Clear the local input state so the display uses the refreshed data from backend
+    setTimeInputs((prev) => {
+      const next = { ...prev };
+      delete next[type];
+      return next;
+    });
+    setDayInputs((prev) => {
+      const next = { ...prev };
+      delete next[type];
+      return next;
+    });
   };
 
   const hasScheduleChanges = (type: string, originalTime: string | undefined, originalDays: number[] | undefined) => {
-    const timeChanged = timeInputs[type] && timeInputs[type] !== originalTime;
+    // Convert original UTC time to local for comparison with the input
+    const localOriginalTime = originalTime ? utcToLocalTime(originalTime) : undefined;
+    const timeChanged = timeInputs[type] && timeInputs[type] !== localOriginalTime;
     const daysChanged = dayInputs[type] && JSON.stringify([...dayInputs[type]].sort()) !== JSON.stringify([...(originalDays || [0,1,2,3,4,5,6])].sort());
     return timeChanged || daysChanged;
   };
@@ -244,7 +281,7 @@ export function NotificationSettings() {
                               </label>
                               <input
                                 type="time"
-                                value={timeInputs[type.id] || type.preferredTime || '12:00'}
+                                value={timeInputs[type.id] || (type.preferredTime ? utcToLocalTime(type.preferredTime) : '12:00')}
                                 onChange={(e) => handleTimeChange(type.id, e.target.value)}
                                 className="px-2 py-1 text-xs border border-neutral-300 dark:border-neutral-600 rounded bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
                               />
