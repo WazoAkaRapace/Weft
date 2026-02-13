@@ -15,9 +15,7 @@
  * │   ├── transcripts.json
  * │   └── tags.json
  * └── files/
- *     ├── videos/
- *     ├── thumbnails/
- *     └── hls/
+ *     └── (preserves original upload directory structure)
  */
 
 import { eq } from 'drizzle-orm';
@@ -238,12 +236,12 @@ async function collectFiles(userId: string): Promise<FileReference[]> {
       if (pathResult.safe && pathResult.path) {
         try {
           const fileStat = await stat(pathResult.path);
-          // Calculate relative path for archive
+          // Calculate relative path for archive - preserve original structure
           const relativePath = relative(UPLOAD_DIR, pathResult.path);
           files.push({
             type: 'video',
             path: pathResult.path,
-            archivePath: join('files', 'videos', relativePath),
+            archivePath: join('files', relativePath),
             size: fileStat.size,
           });
         } catch {
@@ -261,12 +259,12 @@ async function collectFiles(userId: string): Promise<FileReference[]> {
       if (pathResult.safe && pathResult.path) {
         try {
           const fileStat = await stat(pathResult.path);
-          // Calculate relative path for archive
+          // Calculate relative path for archive - preserve original structure
           const relativePath = relative(UPLOAD_DIR, pathResult.path);
           files.push({
             type: 'thumbnail',
             path: pathResult.path,
-            archivePath: join('files', 'thumbnails', relativePath),
+            archivePath: join('files', relativePath),
             size: fileStat.size,
           });
         } catch {
@@ -302,11 +300,12 @@ async function collectFiles(userId: string): Promise<FileReference[]> {
               try {
                 const fileStat = await stat(hlsFilePathResult.path);
                 if (fileStat.isFile()) {
+                  // Preserve original structure
                   const relativeHlsPath = relative(UPLOAD_DIR, hlsFilePathResult.path);
                   files.push({
                     type: 'hls',
                     path: hlsFilePathResult.path,
-                    archivePath: join('files', 'hls', relativeHlsPath),
+                    archivePath: join('files', relativeHlsPath),
                     size: fileStat.size,
                   });
                 }
