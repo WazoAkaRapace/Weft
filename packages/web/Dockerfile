@@ -94,6 +94,10 @@ RUN echo 'server { \
         add_header Cache-Control "public, immutable"; \
     } \
     \
+    location /config.js { \
+        add_header Cache-Control "no-store, no-cache, must-revalidate"; \
+    } \
+    \
     gzip on; \
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript; \
     gzip_min_length 1000; \
@@ -102,6 +106,18 @@ RUN echo 'server { \
 # Copy built application from builder
 COPY --from=builder /app/packages/web/dist /usr/share/nginx/html
 
+# Create entrypoint script for runtime config generation
+RUN echo '#!/bin/sh' > /docker-entrypoint.d/40-generate-config.sh && \
+    echo 'echo "Generating runtime config..."' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo 'cat > /usr/share/nginx/html/config.js << EOF' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo '// Runtime configuration generated from Docker environment variables' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo 'window.__RUNTIME_CONFIG__ = {' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo '  API_URL: "${VITE_API_URL:-http://localhost:3001}"' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo '};' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo 'EOF' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo 'echo "Runtime config generated with API_URL=${VITE_API_URL:-http://localhost:3001}"' >> /docker-entrypoint.d/40-generate-config.sh && \
+    chmod +x /docker-entrypoint.d/40-generate-config.sh
+
 # Expose port
 EXPOSE 3000
 
@@ -109,5 +125,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-# Start nginx
+# Start nginx (the entrypoint script will run automatically)
 CMD ["nginx", "-g", "daemon off;"]

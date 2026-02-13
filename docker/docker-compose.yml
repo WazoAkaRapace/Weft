@@ -71,12 +71,17 @@ services:
   # ---------------------------------------------------------------------------
   # Frontend Service
   # ---------------------------------------------------------------------------
+  # Note: VITE_API_URL is configured at runtime via environment variable.
+  # Set this to the URL that browsers will use to reach the backend API.
+  # ---------------------------------------------------------------------------
   frontend:
     build:
       context: ..
       dockerfile: packages/web/Dockerfile
       target: production
     container_name: weft-frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
