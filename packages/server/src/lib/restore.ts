@@ -324,11 +324,28 @@ async function importDatabaseRecords(
 
   } catch (error) {
     summary.success = false;
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Restore] Transaction failed:', errorMsg);
     summary.errors.push({
       table: 'general',
       record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMsg,
     });
+  }
+
+  // Log summary of import results
+  console.log(`[Restore] Import summary:
+  - Journals: ${summary.restored.journals} restored, ${summary.skipped.journals} skipped
+  - Notes: ${summary.restored.notes} restored, ${summary.skipped.notes} skipped
+  - JournalNotes: ${summary.restored.journalNotes} restored, ${summary.skipped.journalNotes} skipped
+  - Templates: ${summary.restored.templates} restored, ${summary.skipped.templates} skipped
+  - DailyMoods: ${summary.restored.dailyMoods} restored, ${summary.skipped.dailyMoods} skipped
+  - Transcripts: ${summary.restored.transcripts} restored, ${summary.skipped.transcripts} skipped
+  - Tags: ${summary.restored.tags} restored, ${summary.skipped.tags} skipped
+  - Errors: ${summary.errors.length}`);
+
+  if (summary.errors.length > 0) {
+    console.error('[Restore] Import errors:', summary.errors);
   }
 
   return summary;
@@ -505,23 +522,27 @@ async function importJournalsWithTx(
           ...journal,
           id: newId,        // Generate new ID
           userId,           // Always use current user's ID
-          createdAt: journal.createdAt || new Date(),
-          updatedAt: journal.updatedAt || new Date(),
+          createdAt: typeof journal.createdAt === 'string' ? new Date(journal.createdAt) : (journal.createdAt || new Date()),
+          updatedAt: typeof journal.updatedAt === 'string' ? new Date(journal.updatedAt) : (journal.updatedAt || new Date()),
         });
         result.restored++;
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[Restore] Failed to import journal ${journal.id}:`, errorMsg);
         result.errors.push({
           table: 'journals',
           record: journal.id,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMsg,
         });
       }
     }
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Restore] Journal import failed:', errorMsg);
     result.errors.push({
       table: 'journals',
       record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMsg,
     });
   }
 
@@ -742,23 +763,27 @@ async function importNotesWithTx(
           ...note,
           id: newId,
           userId,
-          createdAt: note.createdAt || new Date(),
-          updatedAt: note.updatedAt || new Date(),
+          createdAt: typeof note.createdAt === 'string' ? new Date(note.createdAt) : (note.createdAt || new Date()),
+          updatedAt: typeof note.updatedAt === 'string' ? new Date(note.updatedAt) : (note.updatedAt || new Date()),
         });
         result.restored++;
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[Restore] Failed to import note ${note.id}:`, errorMsg);
         result.errors.push({
           table: 'notes',
           record: note.id,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMsg,
         });
       }
     }
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Restore] Note import failed:', errorMsg);
     result.errors.push({
       table: 'notes',
       record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMsg,
     });
   }
 
@@ -791,22 +816,26 @@ async function importJournalNotesWithTx(
           id: newId,
           journalId: newJournalId,
           noteId: newNoteId,
-          createdAt: link.createdAt || new Date(),
+          createdAt: typeof link.createdAt === 'string' ? new Date(link.createdAt) : (link.createdAt || new Date()),
         });
         result.restored++;
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[Restore] Failed to import journalNote ${link.id}:`, errorMsg);
         result.errors.push({
           table: 'journal_notes',
           record: link.id,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMsg,
         });
       }
     }
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Restore] JournalNote import failed:', errorMsg);
     result.errors.push({
       table: 'journal_notes',
       record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMsg,
     });
   }
 
@@ -831,23 +860,27 @@ async function importTemplatesWithTx(
           ...template,
           id: newId,
           userId,
-          createdAt: template.createdAt || new Date(),
-          updatedAt: template.updatedAt || new Date(),
+          createdAt: typeof template.createdAt === 'string' ? new Date(template.createdAt) : (template.createdAt || new Date()),
+          updatedAt: typeof template.updatedAt === 'string' ? new Date(template.updatedAt) : (template.updatedAt || new Date()),
         });
         result.restored++;
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[Restore] Failed to import template ${template.id}:`, errorMsg);
         result.errors.push({
           table: 'templates',
           record: template.id,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMsg,
         });
       }
     }
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Restore] Template import failed:', errorMsg);
     result.errors.push({
       table: 'templates',
       record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMsg,
     });
   }
 
@@ -872,23 +905,28 @@ async function importDailyMoodsWithTx(
           ...mood,
           id: newId,
           userId,
-          createdAt: mood.createdAt || new Date(),
-          updatedAt: mood.updatedAt || new Date(),
+          date: mood.date, // PostgreSQL DATE column accepts 'YYYY-MM-DD' string format
+          createdAt: typeof mood.createdAt === 'string' ? new Date(mood.createdAt) : (mood.createdAt || new Date()),
+          updatedAt: typeof mood.updatedAt === 'string' ? new Date(mood.updatedAt) : (mood.updatedAt || new Date()),
         });
         result.restored++;
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[Restore] Failed to import dailyMood ${mood.id}:`, errorMsg);
         result.errors.push({
           table: 'daily_moods',
           record: mood.id,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMsg,
         });
       }
     }
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Restore] DailyMood import failed:', errorMsg);
     result.errors.push({
       table: 'daily_moods',
       record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMsg,
     });
   }
 
@@ -921,22 +959,26 @@ async function importTranscriptsWithTx(
           ...transcript,
           id: newId,
           journalId: newJournalId,
-          createdAt: transcript.createdAt || new Date(),
+          createdAt: typeof transcript.createdAt === 'string' ? new Date(transcript.createdAt) : (transcript.createdAt || new Date()),
         });
         result.restored++;
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[Restore] Failed to import transcript ${transcript.id}:`, errorMsg);
         result.errors.push({
           table: 'transcripts',
           record: transcript.id,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMsg,
         });
       }
     }
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Restore] Transcript import failed:', errorMsg);
     result.errors.push({
       table: 'transcripts',
       record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMsg,
     });
   }
 
@@ -969,22 +1011,26 @@ async function importTagsWithTx(
           ...tag,
           id: newId,
           journalId: newJournalId,
-          createdAt: tag.createdAt || new Date(),
+          createdAt: typeof tag.createdAt === 'string' ? new Date(tag.createdAt) : (tag.createdAt || new Date()),
         });
         result.restored++;
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[Restore] Failed to import tag ${tag.id}:`, errorMsg);
         result.errors.push({
           table: 'tags',
           record: tag.id,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMsg,
         });
       }
     }
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Restore] Tag import failed:', errorMsg);
     result.errors.push({
       table: 'tags',
       record: 'N/A',
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMsg,
     });
   }
 
