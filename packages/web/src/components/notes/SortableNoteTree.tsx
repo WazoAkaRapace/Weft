@@ -4,7 +4,7 @@ import { useNavigationContext } from '../../contexts/NavigationContext';
 import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent, DragMoveEvent, closestCenter, useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import NoteTreeNode from './NoteTreeNode';
 import { NoteCreateForm } from './NoteCreateForm';
 import type { NoteTreeNode as NoteTreeNodeType } from '../../hooks/useNotes';
@@ -85,7 +85,7 @@ interface NestedSortableNotesProps {
   makeChildZone: boolean;
 }
 
-function NestedSortableNotes({ nodes, level, parentId, draggedOverNodeId, makeChildZone }: NestedSortableNotesProps) {
+function NestedSortableNotes({ nodes, level, draggedOverNodeId, makeChildZone }: NestedSortableNotesProps) {
   const { expandedNodeIds } = useNotesContext();
 
   // Get all note IDs at this level for SortableContext

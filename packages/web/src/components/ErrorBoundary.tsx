@@ -284,6 +284,7 @@ function RouteErrorFallback({ error, onReset }: DefaultErrorFallbackProps): Reac
  * Hook for programmatically resetting an error boundary
  * To be used with error boundaries that expose reset functionality
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useErrorBoundary() {
   const resetErrorBoundary = () => {
     // Navigate to home to reset the app state

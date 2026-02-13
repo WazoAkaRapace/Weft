@@ -17,6 +17,8 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { formatDuration } from '../lib/video-stream';
 import type { Transcript, Note } from '@weft/shared';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 export function JournalDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -59,8 +61,6 @@ export function JournalDetailPage() {
 
   // Track previous job status to detect when jobs complete
   const prevJobStatusRef = useRef(jobStatus);
-
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
   // Fetch only transcript data
   const fetchTranscript = useCallback(async () => {
@@ -492,7 +492,7 @@ export function JournalDetailPage() {
                 duration={journal.duration}
                 onTimeUpdate={handleTimeUpdate}
                 seekTo={seekTo}
-                hlsManifestPath={(journal as any).hlsManifestPath}
+                hlsManifestPath={journal.hlsManifestPath}
               />
             </div>
 
@@ -598,7 +598,7 @@ export function JournalDetailPage() {
 
             <div className="bg-white dark:bg-background-card-dark rounded-lg p-6 shadow-sm">
               <CollapsibleSection title="Transcript" defaultExpanded={true}>
-                {({ isExpanded }) => (
+                {() => (
                   <>
                     {journal.transcript ? (
                       <>

@@ -20,7 +20,6 @@ export function HistoryPage() {
     isLoading,
     error,
     loadMore,
-    refresh,
   } = useJournals(filterParams);
 
   const infiniteScrollTarget = useInfiniteScroll({

@@ -2,7 +2,7 @@
  * Custom hook for fetching emotion data
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { EmotionData } from '../components/emotions/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -19,7 +19,7 @@ export function useEmotionData(journalId: string): UseEmotionDataResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchEmotionData = async () => {
+  const fetchEmotionData = useCallback(async () => {
     if (!journalId) {
       setLoading(false);
       return;
@@ -60,11 +60,11 @@ export function useEmotionData(journalId: string): UseEmotionDataResult {
     } finally {
       setLoading(false);
     }
-  };
+  }, [journalId]);
 
   useEffect(() => {
     fetchEmotionData();
-  }, [journalId]);
+  }, [fetchEmotionData]);
 
   return {
     data,

@@ -90,7 +90,7 @@ export function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await authClient.signUp.email({
+      const { error } = await authClient.signUp.email({
         email,
         password,
         name,
@@ -103,7 +103,7 @@ export function RegisterPage() {
 
       // Redirect to dashboard on successful registration
       navigate('/dashboard');
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
     } finally {
       setIsLoading(false);

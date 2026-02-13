@@ -20,9 +20,6 @@ export function RecordingNotePanel({
   // Get selected note objects
   const selectedNotes = notes.filter((note) => selectedNoteIds.includes(note.id));
 
-  // Create a flat map of all notes for easy lookup
-  const notesMap = new Map(notes.map((note) => [note.id, note]));
-
   if (isCollapsed) {
     return (
       <>
@@ -162,7 +159,7 @@ function RecordingNoteSelector({
   selectedNoteIds,
   onSelectionChange,
 }: RecordingNoteSelectorProps) {
-  const { notes, noteTree, isLoading } = useNotes();
+  const { noteTree, isLoading } = useNotes();
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
 
   // Toggle expand/collapse
@@ -340,6 +337,3 @@ function NestedNoteList({
     </>
   );
 }
-
-// Helper to get noteTree from useNotes
-type noteTree = ReturnType<typeof useNotes>['noteTree'];

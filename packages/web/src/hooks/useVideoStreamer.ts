@@ -15,15 +15,11 @@ import type {
   VideoStreamerError,
 } from '@weft/shared';
 import {
-  DEFAULT_CHUNK_SIZE,
   DEFAULT_DURATION_INTERVAL,
-  DEFAULT_MIME_TYPE,
   DEFAULT_TIMESLICE,
   DEFAULT_VIDEO_BITRATE,
-  VideoStreamerError as VideoStreamerErrorClass,
 } from '@weft/shared';
 import {
-  detectSupportedCodec,
   getPreferredCodecForBrowser,
   createVideoStreamerError,
   formatDuration,
@@ -127,7 +123,6 @@ export interface UseVideoStreamerReturn {
 export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVideoStreamerReturn {
   const {
     preferredCodec,
-    chunkSize = DEFAULT_CHUNK_SIZE,
     durationUpdateInterval = DEFAULT_DURATION_INTERVAL,
     onProgress,
     onStateChange,
@@ -283,7 +278,6 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
         throw createVideoStreamerError(
           `Chunk upload failed: ${response.status} ${response.statusText}`,
           'SERVER_ERROR'
@@ -325,7 +319,7 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
         err instanceof Error ? err : undefined
       );
     }
-  }, [API_BASE, duration, onProgress, onComplete, setState]);
+  }, [duration, onProgress, onComplete, setState]);
 
   /**
    * Start periodic chunk uploads
@@ -490,7 +484,6 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
     startChunkedUploads,
     startDurationTracking,
     stopDurationTracking,
-    API_BASE,
   ]);
 
   /**

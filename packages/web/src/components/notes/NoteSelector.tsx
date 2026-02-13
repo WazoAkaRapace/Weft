@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNotes } from '../../hooks/useNotes';
-import type { Note } from '@weft/shared';
 
 interface NoteSelectorProps {
   selectedNoteIds: string[];
@@ -17,7 +16,7 @@ export function NoteSelector({
   isOpen,
   onClose,
 }: NoteSelectorProps) {
-  const { notes, noteTree, isLoading } = useNotes();
+  const { noteTree, isLoading } = useNotes();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
 
@@ -35,12 +34,11 @@ export function NoteSelector({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
-  // Reset search when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setSearchQuery('');
-    }
-  }, [isOpen]);
+  // Close handler that also resets search
+  const handleClose = useCallback(() => {
+    setSearchQuery('');
+    onClose();
+  }, [onClose]);
 
   // Filter notes by search query
   const filteredTree = useMemo(() => {
@@ -116,7 +114,7 @@ export function NoteSelector({
             Select Notes
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 hover:bg-neutral-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -177,7 +175,7 @@ export function NoteSelector({
               </button>
             )}
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
             >
               Done
@@ -291,6 +289,3 @@ function NestedNoteList({
     </>
   );
 }
-
-// Helper to get noteTree from useNotes
-type noteTree = ReturnType<typeof useNotes>['noteTree'];

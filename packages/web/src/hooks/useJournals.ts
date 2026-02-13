@@ -73,6 +73,7 @@ export function useJournals(params: JournalListParams): UseJournalsReturn {
 
   useEffect(() => {
     fetchJournals(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only re-fetch when specific params change, not when fetchJournals reference changes
   }, [params.page, params.limit, params.startDate, params.endDate, params.search]);
 
   return {

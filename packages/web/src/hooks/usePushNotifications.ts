@@ -59,13 +59,13 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   const [error, setError] = useState<string | null>(null);
 
   const isSupported = 'serviceWorker' in navigator && 'PushManager' in window;
-  const [permission, setPermission] = useState<NotificationPermission>('default');
-
-  useEffect(() => {
+  // Use lazy initializer to get initial permission state
+  const [permission, setPermission] = useState<NotificationPermission>(() => {
     if (isSupported) {
-      setPermission(Notification.permission);
+      return Notification.permission;
     }
-  }, [isSupported]);
+    return 'default';
+  });
 
   const isSubscribed = subscriptions.length > 0;
 
@@ -79,8 +79,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         const data = await response.json();
         setVapidPublicKey(data.publicKey);
       }
-    } catch (err) {
-      console.error('[PushNotifications] Failed to fetch VAPID key:', err);
+    } catch {
+      // Silently fail - notifications are optional
     }
   }, []);
 
@@ -94,8 +94,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         const data = await response.json();
         setSubscriptions(data.subscriptions);
       }
-    } catch (err) {
-      console.error('[PushNotifications] Failed to fetch subscriptions:', err);
+    } catch {
+      // Silently fail - subscriptions will be empty
     }
   }, []);
 
@@ -109,8 +109,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         const data = await response.json();
         setPreferences(data.preferences);
       }
-    } catch (err) {
-      console.error('[PushNotifications] Failed to fetch preferences:', err);
+    } catch {
+      // Silently fail - preferences will be empty
     }
   }, []);
 
@@ -162,8 +162,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           return true;
         }
         return false;
-      } catch (err) {
-        console.error('[PushNotifications] Subscribe error:', err);
+      } catch {
         setError('Failed to subscribe to notifications');
         return false;
       }
@@ -190,8 +189,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
       await refreshSubscriptions();
       return true;
-    } catch (err) {
-      console.error('[PushNotifications] Unsubscribe error:', err);
+    } catch {
       setError('Failed to unsubscribe');
       return false;
     }
@@ -211,8 +209,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           return true;
         }
         return false;
-      } catch (err) {
-        console.error('[PushNotifications] Delete subscription error:', err);
+      } catch {
         return false;
       }
     },
@@ -235,8 +232,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           return true;
         }
         return false;
-      } catch (err) {
-        console.error('[PushNotifications] Update preference error:', err);
+      } catch {
         return false;
       }
     },

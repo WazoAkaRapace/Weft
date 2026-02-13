@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useJournals } from '../../hooks/useJournals';
 import type { Journal } from '@weft/shared';
 import { formatDuration } from '../../lib/video-stream';
@@ -29,12 +29,7 @@ export function JournalSelector({
     search: searchQuery || undefined,
   };
 
-  const { journals, isLoading, error, refresh } = useJournals(params);
-
-  // Reset page when search changes
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery]);
+  const { journals, isLoading, error } = useJournals(params);
 
   // Handle escape key
   useEffect(() => {
@@ -50,17 +45,22 @@ export function JournalSelector({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
-  // Reset search when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setSearchQuery('');
-      setPage(1);
-    }
-  }, [isOpen]);
+  // Handle search change with page reset
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setPage(1);
+  };
+
+  // Reset state and close modal
+  const handleClose = () => {
+    setSearchQuery('');
+    setPage(1);
+    onClose();
+  };
 
   const handleSelect = async (journalId: string) => {
     await onJournalSelect(journalId);
-    onClose();
+    handleClose();
   };
 
   // Filter out excluded journals
@@ -75,7 +75,7 @@ export function JournalSelector({
             Link a Journal
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 hover:bg-neutral-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -90,7 +90,7 @@ export function JournalSelector({
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={handleSearchChange}
             placeholder="Search journals..."
             className="w-full px-3 py-2 border border-neutral-200 dark:border-dark-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-dark-900 text-text-default dark:text-text-dark-default"
             autoFocus

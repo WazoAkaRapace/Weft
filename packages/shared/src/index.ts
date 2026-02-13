@@ -110,6 +110,7 @@ export interface Journal {
     confidence: number;
   }> | null;
   emotionScores: Record<string, number> | null;
+  hlsManifestPath: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

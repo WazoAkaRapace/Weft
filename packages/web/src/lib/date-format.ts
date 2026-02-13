@@ -74,7 +74,7 @@ export function formatDate(dateStr: string): string {
  * Format a date as time (e.g., "2:30 PM")
  * (extracted from TimelineView for reuse)
  */
-function formatTime(date: Date | string): string {
+export function formatTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleTimeString('en-US', {
     hour: 'numeric',

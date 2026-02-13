@@ -63,7 +63,7 @@ export function TimelineView({
                   )}
                   <div className="absolute bottom-1 left-1 flex items-center gap-1.5">
                     {(journal.manualMood ?? journal.dominantEmotion) && (
-                      <EmotionBadge emotion={journal.manualMood ?? journal.dominantEmotion!} showLabel={false} className="text-xs px-1.5 py-0.5" />
+                      <EmotionBadge emotion={(journal.manualMood ?? journal.dominantEmotion) as EmotionLabel} showLabel={false} className="text-xs px-1.5 py-0.5" />
                     )}
                     <span className="bg-black/70 text-white px-1.5 py-0.5 rounded text-xs">
                       {formatDuration(journal.duration)}

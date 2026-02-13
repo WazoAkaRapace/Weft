@@ -60,7 +60,7 @@ export function EmotionChart({ scores, className = '' }: EmotionChartProps) {
 
         {/* Legend - single column on the right */}
         <div className="flex flex-col gap-2 text-sm">
-          {slices.map(({ emotion, score, percent }) => {
+          {slices.map(({ emotion, percent }) => {
             const config = EMOTION_CONFIG[emotion] || EMOTION_CONFIG.neutral;
             return (
               <div key={emotion} className="flex items-center gap-2">

@@ -36,8 +36,37 @@ function NoteTreeNode({ nodeId, level, dragHandleProps, isDragging = false, isDr
   const [noteToDelete, setNoteToDelete] = useState<{ id: string; title: string } | null>(null);
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
 
+  // Move useCallback hooks before any early returns to comply with React hooks rules
+  const confirmDelete = useCallback(async () => {
+    if (!noteToDelete) return;
+
+    // Check if the current URL is for this note (e.g., /notes/{nodeId})
+    const isCurrentPage = location.pathname === `/notes/${noteToDelete.id}`;
+    await deleteNote(noteToDelete.id);
+    // Redirect to /notes if we deleted the note that's currently being viewed
+    if (isCurrentPage) {
+      navigate('/notes');
+    }
+    setNoteToDelete(null);
+  }, [noteToDelete, deleteNote, location, navigate]);
+
+  const handleCreateTemplate = useCallback(async () => {
+    if (isCreatingTemplate) return;
+
+    setIsCreatingTemplate(true);
+    try {
+      const createdTemplate = await createTemplateFromNote(nodeId);
+      // Navigate to templates page to edit the newly created template
+      navigate(`/notes/templates/${createdTemplate.id}`);
+    } catch (error) {
+      console.error('Failed to create template:', error);
+    } finally {
+      setIsCreatingTemplate(false);
+    }
+  }, [nodeId, createTemplateFromNote, isCreatingTemplate, navigate]);
+
   // Find this node and its children
-  const findNode = (nodes: typeof notes): typeof nodes[0] | null => {
+  const findNode = (nodes: typeof notes): typeof notes[0] | null => {
     for (const node of nodes) {
       if (node.note.id === nodeId) return node;
       if (node.children.length > 0) {
@@ -79,42 +108,9 @@ function NoteTreeNode({ nodeId, level, dragHandleProps, isDragging = false, isDr
     startCreating(nodeId);
   };
 
-  const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    selectNote(nodeId);
-  };
-
   const handleDelete = () => {
     setNoteToDelete({ id: nodeId, title: node.note.title });
   };
-
-  const confirmDelete = useCallback(async () => {
-    if (!noteToDelete) return;
-
-    // Check if the current URL is for this note (e.g., /notes/{nodeId})
-    const isCurrentPage = location.pathname === `/notes/${noteToDelete.id}`;
-    await deleteNote(noteToDelete.id);
-    // Redirect to /notes if we deleted the note that's currently being viewed
-    if (isCurrentPage) {
-      navigate('/notes');
-    }
-    setNoteToDelete(null);
-  }, [noteToDelete, deleteNote, location, navigate]);
-
-  const handleCreateTemplate = useCallback(async () => {
-    if (isCreatingTemplate) return;
-
-    setIsCreatingTemplate(true);
-    try {
-      const createdTemplate = await createTemplateFromNote(nodeId);
-      // Navigate to templates page to edit the newly created template
-      navigate(`/notes/templates/${createdTemplate.id}`);
-    } catch (error) {
-      console.error('Failed to create template:', error);
-    } finally {
-      setIsCreatingTemplate(false);
-    }
-  }, [nodeId, createTemplateFromNote, isCreatingTemplate, navigate]);
 
   // Calculate indentation based on level
   const indent = level * 16; // 16px per level

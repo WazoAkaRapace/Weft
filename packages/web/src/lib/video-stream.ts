@@ -8,7 +8,6 @@ import type {
   BrowserCapabilities,
   VideoStreamerError,
   VideoStreamerErrorCode,
-  CODEC_PREFERENCE,
 } from '@weft/shared';
 
 /**
@@ -145,7 +144,7 @@ export function getPreferredCodecForBrowser(): VideoCodec | null {
  *
  * @returns Promise resolving to permission status
  */
-async function checkCameraPermission(): Promise<PermissionState | null> {
+async function _checkCameraPermission(): Promise<PermissionState | null> {
   if (!navigator.permissions) {
     return null;
   }
@@ -163,7 +162,7 @@ async function checkCameraPermission(): Promise<PermissionState | null> {
  *
  * @returns Promise resolving to permission status
  */
-async function checkMicrophonePermission(): Promise<PermissionState | null> {
+async function _checkMicrophonePermission(): Promise<PermissionState | null> {
   if (!navigator.permissions) {
     return null;
   }
@@ -199,7 +198,7 @@ export function createVideoStreamerError(
 /**
  * Class for managing a queue of media chunks for streaming
  */
-class MediaChunkQueue {
+class _MediaChunkQueue {
   private chunks: Blob[] = [];
   private isStreaming = true;
   private pendingResolve: ((value: Blob | null) => void) | null = null;
@@ -321,7 +320,7 @@ export function formatBytes(bytes: number): string {
  *
  * @returns true if all features are supported, false otherwise
  */
-function isVideoStreamingSupported(): boolean {
+function _isVideoStreamingSupported(): boolean {
   const capabilities = detectBrowserCapabilities();
   return (
     capabilities.mediaRecorder &&
@@ -337,7 +336,7 @@ function isVideoStreamingSupported(): boolean {
  *
  * @returns Object with support status and message
  */
-function getSupportStatus(): { supported: boolean; message: string } {
+function _getSupportStatus(): { supported: boolean; message: string } {
   const capabilities = detectBrowserCapabilities();
 
   if (!capabilities.mediaRecorder) {

@@ -27,7 +27,6 @@ const MOOD_OPTIONS: { value: EmotionLabel | null; label: string }[] = [
 export function MoodSelector({ value, onChange, disabled = false, className = '' }: MoodSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const selectedOption = MOOD_OPTIONS.find((opt) => opt.value === value);
   const config = value ? EMOTION_CONFIG[value] : null;
 
   const handleSelect = (mood: EmotionLabel | null) => {

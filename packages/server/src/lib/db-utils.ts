@@ -6,6 +6,9 @@
  */
 
 import { db } from '../db/index.js';
+import type { PgTransaction } from 'drizzle-orm/pg-core';
+import type { PostgresJsQueryResultHKT } from 'drizzle-orm/postgres-js';
+import type * as schemaType from '../db/schema.js';
 
 /**
  * Transaction isolation levels supported by PostgreSQL
@@ -26,6 +29,25 @@ export interface TransactionOptions {
 }
 
 /**
+ * Type alias for the database transaction object
+ * This is the type passed to the callback in withTransaction
+ */
+export type DatabaseTransaction = PgTransaction<
+  PostgresJsQueryResultHKT,
+  typeof schemaType,
+  ExtractTablesWithSchema<typeof schemaType>
+>;
+
+/**
+ * Extract tables with schema type helper
+ */
+type ExtractTablesWithSchema<T extends Record<string, unknown>> = {
+  [K in keyof T]: T[K] extends { _: unknown } ? T[K] : never;
+}[keyof T] extends never
+  ? never
+  : Record<string, never>;
+
+/**
  * Execute a callback within a database transaction
  *
  * If the callback throws an error or calls tx.rollback(), the transaction
@@ -44,5 +66,5 @@ export async function withTransaction<T>(
   callback: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>,
   options?: TransactionOptions
 ): Promise<T> {
-  return db.transaction(callback, options as any);
+  return db.transaction(callback, options);
 }

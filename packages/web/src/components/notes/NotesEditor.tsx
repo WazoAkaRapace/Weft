@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef, useMemo } from 'react';
 import {
   MDXEditor,
   type MDXEditorMethods,
@@ -47,23 +47,29 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
   isSaving = false,
   className = '',
 }, ref) => {
-  const [currentMarkdown, setCurrentMarkdown] = useState(initialNotes || '');
+  // Track initial notes to detect external changes
+  const initialNotesRef = useRef(initialNotes);
+  const [localEdits, setLocalEdits] = useState<string | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mdxEditorRef = useRef<MDXEditorMethods>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const markJustSelectedRef = useRef<(() => void) | null>(null);
 
-  // Update editor when initialNotes changes from parent
+  // Compute current markdown - use local edits if available, otherwise use initial notes
+  const currentMarkdown = useMemo(() => {
+    return localEdits ?? (initialNotes || '');
+  }, [localEdits, initialNotes]);
+
+  // Sync editor when initialNotes changes from parent (only if no local edits)
   useEffect(() => {
-    if (initialNotes !== currentMarkdown) {
-      const newContent = initialNotes || '';
-      setCurrentMarkdown(newContent);
-      // Use setMarkdown to update the editor content without losing focus
+    // If initialNotes changed and we have no local edits, update the editor
+    if (initialNotes !== initialNotesRef.current && localEdits === null) {
+      initialNotesRef.current = initialNotes;
       if (mdxEditorRef.current) {
-        mdxEditorRef.current.setMarkdown(newContent);
+        mdxEditorRef.current.setMarkdown(initialNotes || '');
       }
     }
-  }, [initialNotes]);
+  }, [initialNotes, localEdits]);
 
   const saveNotes = useCallback(
     async (notesToSave: string) => {
@@ -74,7 +80,7 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
 
   const handleChange = useCallback(
     (newMarkdown: string) => {
-      setCurrentMarkdown(newMarkdown);
+      setLocalEdits(newMarkdown);
 
       // Clear existing timeout
       if (saveTimeoutRef.current) {
@@ -142,7 +148,6 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
 
     const query = slashMatch[1]; // The captured text after slash: "q", "h1", "note", or "" for just "/" or "//"
     const isDoubleSlash = textBeforeCursor.match(/\/\/([a-zA-Z0-9]*)$/);
-    const slashText = isDoubleSlash ? ('//' + query) : (query ? '/' + query : '/'); // Full slash command: "//", "/", "/q", "/h1"
 
     // Get the ACTUAL current markdown from the editor (not React state which might be stale)
     const markdown = mdxEditorRef.current?.getMarkdown() || currentMarkdown;

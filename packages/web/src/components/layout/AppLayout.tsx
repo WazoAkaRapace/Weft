@@ -14,7 +14,8 @@ interface LayoutContextValue {
 
 const LayoutContext = createContext<LayoutContextValue | undefined>(undefined);
 
-function useLayoutContext() {
+// eslint-disable-next-line react-refresh/only-export-components -- Context hook needs to be exported alongside provider
+export function useLayoutContext() {
   const context = useContext(LayoutContext);
   if (!context) {
     throw new Error('useLayoutContext must be used within AppLayout');

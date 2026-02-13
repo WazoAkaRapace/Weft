@@ -11,7 +11,6 @@ interface LinkedNotesListProps {
 }
 
 export function LinkedNotesList({
-  journalId,
   notes,
   onUnlink,
   onNoteClick,

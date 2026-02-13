@@ -201,7 +201,9 @@ export function VideoPlayer({
       // Direct video playback (non-HLS)
       video.src = videoUrl;
     }
-  }, [videoUrl, isHLS, hlsManifestUrl]); // Note: isPlaying is intentionally not in deps to avoid re-init
+    // Note: isPlaying is intentionally not in deps to avoid re-init
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoUrl, isHLS, hlsManifestUrl]);
 
   // Video event listeners
   useEffect(() => {
@@ -239,6 +241,7 @@ export function VideoPlayer({
   }, []);
 
   // Handle external seek requests (e.g., from transcript clicks)
+  // Only update the video element - let timeupdate event update the React state
   useEffect(() => {
     const video = videoRef.current;
     if (!video || seekTo === undefined) return;
@@ -247,7 +250,8 @@ export function VideoPlayer({
     if (Math.abs(video.currentTime - seekTo) > 0.5) {
       isSeekingRef.current = true;
       video.currentTime = seekTo;
-      setCurrentTime(seekTo);
+      // Note: We don't call setCurrentTime here to avoid cascading renders
+      // The timeupdate event will update the state via handleTimeUpdate
 
       // Reset seeking flag after a short delay
       setTimeout(() => {

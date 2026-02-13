@@ -4,7 +4,6 @@
  * Blue for transcription, purple for emotion.
  */
 
-import type { JobStatusType } from '../../hooks/useJobStatus';
 
 interface JobRetryButtonProps {
   type: 'transcription' | 'emotion';

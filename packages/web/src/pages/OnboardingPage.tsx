@@ -4,10 +4,6 @@ import { useTheme } from '../contexts/ThemeContext';
 
 const API_BASE_URL = 'http://localhost:3001';
 
-interface CheckUsersResponse {
-  hasUsers: boolean;
-}
-
 interface CreateUserResponse {
   success: boolean;
   message: string;
@@ -101,7 +97,7 @@ export function OnboardingPage() {
       navigate('/login', {
         state: { message: 'Account created successfully! Please sign in.' }
       });
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);

@@ -17,15 +17,9 @@ export const authClient = createAuthClient({
  * Auth hooks and utilities
  */
 export const {
-  
-  
+
+
   signOut,
   useSession,
-  
-} = authClient;
 
-/**
- * Type exports for use in components
- */
-type Session = typeof authClient.$Infer.Session;
-type User = typeof authClient.$Infer.User;
+} = authClient;

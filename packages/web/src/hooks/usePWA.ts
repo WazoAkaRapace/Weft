@@ -64,13 +64,6 @@ interface UsePWAReturn extends PWAInstallState {
  * ```
  */
 export function usePWA(): UsePWAReturn {
-  const [state, setState] = useState<PWAInstallState>({
-    canInstall: false,
-    isInstalled: false,
-    isPromptShowing: false,
-    deferredPrompt: null,
-  });
-
   /**
    * Check if the app is running in standalone mode
    */
@@ -84,6 +77,14 @@ export function usePWA(): UsePWAReturn {
 
     return isStandalone || !!isIOSStandalone;
   }, []);
+
+  // Use lazy initializer to compute initial installed state
+  const [state, setState] = useState<PWAInstallState>(() => ({
+    canInstall: false,
+    isInstalled: checkIfInstalled(),
+    isPromptShowing: false,
+    deferredPrompt: null,
+  }));
 
   /**
    * Trigger the install prompt
@@ -126,15 +127,7 @@ export function usePWA(): UsePWAReturn {
   }, [state.deferredPrompt]);
 
   useEffect(() => {
-    // Check if already installed
-    const installed = checkIfInstalled();
-
-    if (installed) {
-      setState((prev) => ({ ...prev, isInstalled: true }));
-      return;
-    }
-
-    // Listen for the beforeinstallprompt event
+    // Listen for the beforeinstallprompt event (only if not already installed)
     const handleBeforeInstallPrompt = (e: Event) => {
       console.log('[PWA] beforeinstallprompt event fired');
       e.preventDefault();

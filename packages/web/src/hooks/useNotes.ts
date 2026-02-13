@@ -53,11 +53,14 @@ function buildNoteTree(notes: Note[]): NoteTreeNode[] {
 
   // Second pass: build hierarchy
   notes.forEach(note => {
-    const node = noteMap.get(note.id)!;
+    const node = noteMap.get(note.id);
+    if (!node) return;
     if (note.parentId && noteMap.has(note.parentId)) {
-      const parent = noteMap.get(note.parentId)!;
-      parent.children.push(node);
-      node.level = parent.level + 1;
+      const parent = noteMap.get(note.parentId);
+      if (parent) {
+        parent.children.push(node);
+        node.level = parent.level + 1;
+      }
     } else {
       rootNodes.push(node);
     }

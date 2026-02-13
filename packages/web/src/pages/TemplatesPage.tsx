@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTemplates } from '../hooks/useTemplates';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -9,26 +9,11 @@ export function TemplatesPage() {
   const navigate = useNavigate();
   const { templateId } = useParams<{ templateId?: string }>();
   const { templates, isLoading, error, deleteTemplate, createTemplate, updateTemplate } = useTemplates();
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [templateToDelete, setTemplateToDelete] = useState<Template | null>(null);
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
 
-  // Update selected template when URL changes or templates load
-  useEffect(() => {
-    if (templateId === 'new') {
-      // Creating new template
-      setSelectedTemplateId(null);
-      setIsCreatingNew(true);
-    } else if (templateId) {
-      // Editing existing template
-      setSelectedTemplateId(templateId);
-      setIsCreatingNew(false);
-    } else {
-      // No template ID - show empty state
-      setSelectedTemplateId(null);
-      setIsCreatingNew(false);
-    }
-  }, [templateId]);
+  // Derive state from URL parameter
+  const isCreatingNew = templateId === 'new';
+  const selectedTemplateId = templateId && templateId !== 'new' ? templateId : null;
 
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
 
@@ -37,8 +22,6 @@ export function TemplatesPage() {
   };
 
   const handleSelectTemplate = (template: Template) => {
-    setSelectedTemplateId(template.id);
-    setIsCreatingNew(false);
     navigate(`/notes/templates/${template.id}`, { replace: true });
   };
 
@@ -48,8 +31,6 @@ export function TemplatesPage() {
 
   const handleTemplateCreated = (createdTemplate: Template) => {
     // Switch to edit mode with the newly created template and update URL
-    setSelectedTemplateId(createdTemplate.id);
-    setIsCreatingNew(false);
     navigate(`/notes/templates/${createdTemplate.id}`, { replace: true });
   };
 
@@ -61,7 +42,7 @@ export function TemplatesPage() {
     if (!templateToDelete) return;
     await deleteTemplate(templateToDelete.id);
     if (selectedTemplateId === templateToDelete.id) {
-      setSelectedTemplateId(null);
+      navigate('/notes/templates', { replace: true });
     }
     setTemplateToDelete(null);
   };

@@ -53,7 +53,7 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      const { data, error: signInError } = await authClient.signIn.email({
+      const { error: signInError } = await authClient.signIn.email({
         email,
         password,
         callbackURL: '/dashboard',
@@ -72,7 +72,7 @@ export function LoginPage() {
       setTimeout(() => {
         navigate('/dashboard', { replace: true });
       }, 100);
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
       setIsLoading(false);
     }

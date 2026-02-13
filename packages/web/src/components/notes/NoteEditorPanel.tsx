@@ -9,6 +9,8 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import type { UpdateNoteData } from '../../hooks/useNotes';
 import type { Journal } from '@weft/shared';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 export function NoteEditorPanel() {
   const { getSelectedNote, updateNote } = useNotesContext();
   const { setHasUnsavedChanges } = useNavigationContext();
@@ -88,8 +90,6 @@ export function NoteEditorPanel() {
 
     return () => clearInterval(interval);
   }, [setHasUnsavedChanges, selectedNote]);
-
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
   // Fetch linked journals
   const fetchLinkedJournals = useCallback(async () => {

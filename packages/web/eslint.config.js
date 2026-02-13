@@ -13,6 +13,8 @@ export default tseslint.config(
       'test-results/',
       'e2e/',
       'test/',
+      'public/sw.js', // Service worker runs in ServiceWorker context
+      'scripts/', // Build/utility scripts
     ],
   },
   js.configs.recommended,

@@ -4,17 +4,16 @@ import { useJournals } from '../hooks/useJournals';
 import { FeedList } from '../components/feed/FeedList';
 import { MoodPromptCard } from '../components/feed/MoodPromptCard';
 import { QuickMoodDialog } from '../components/feed/QuickMoodDialog';
-import type { FeedEntry, DailyMood, TimeOfDay } from '@weft/shared';
+import type { FeedEntry, DailyMood, TimeOfDay, MoodValue } from '@weft/shared';
 import { getMood, upsertMood } from '../lib/moodApi';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { notes, isLoading: isLoadingNotes, error: notesError } = useNotes();
-  const { journals, isLoading: isLoadingJournals, error: journalsError } = useJournals({ page: 1, limit: 10 });
+  const { notes, isLoading: isLoadingNotes } = useNotes();
+  const { journals, isLoading: isLoadingJournals } = useJournals({ page: 1, limit: 10 });
   const [moodsByDate, setMoodsByDate] = useState<Record<string, DailyMood[]>>({});
-  const [isLoadingMoods, setIsLoadingMoods] = useState(false);
   const [todayMoods, setTodayMoods] = useState<DailyMood[]>([]);
   const [showMoodDialog, setShowMoodDialog] = useState(false);
   const [pendingTimeOfDay, setPendingTimeOfDay] = useState<TimeOfDay | null>(null);
@@ -88,7 +87,8 @@ export function DashboardPage() {
     };
 
     fetchMoodsForDates();
-  }, [allEntries.length]); // Only re-run when the number of entries changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only re-run when the number of entries changes
+  }, [allEntries.length]);
 
   // Fetch today's mood data
   useEffect(() => {
@@ -141,7 +141,7 @@ export function DashboardPage() {
       const today = format(new Date(), 'yyyy-MM-dd');
       await upsertMood({
         date: today,
-        mood: mood as any,
+        mood: mood as MoodValue,
         timeOfDay: pendingTimeOfDay,
         notes: notes || undefined,
       });

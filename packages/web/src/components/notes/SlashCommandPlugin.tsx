@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export interface SlashCommand {
   id: string;
@@ -211,7 +211,9 @@ export function SlashCommandMenu({ isOpen, position, query, isDoubleSlash, onSel
     return searchStr.includes(query.toLowerCase());
   });
 
-  // Reset selected index when filtered commands change
+  // Reset selected index when query changes
+  // This is a legitimate use case for setState in effect - we need to reset UI state
+  // when the search query changes to ensure the first item is always selected
   useEffect(() => {
     setSelectedIndex(0);
   }, [query]);
@@ -326,6 +328,7 @@ export function SlashCommandMenu({ isOpen, position, query, isDoubleSlash, onSel
 }
 
 // Hook to detect slash commands in markdown content
+// eslint-disable-next-line react-refresh/only-export-components
 export function useSlashCommandDetection(
   onSelect: (command: SlashCommand) => void
 ) {
@@ -408,7 +411,7 @@ export function useSlashCommandDetection(
       document.removeEventListener('input', checkSlashCommand, true);
       document.removeEventListener('keyup', checkSlashCommand, true);
     };
-  }, []);
+  }, [menuOpen]);
 
   // Close menu if selection moves into a nested editor
   useEffect(() => {

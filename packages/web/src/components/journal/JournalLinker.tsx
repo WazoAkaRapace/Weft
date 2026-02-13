@@ -17,7 +17,6 @@ interface JournalLinkerProps {
 }
 
 export function JournalLinker({
-  noteId,
   linkedJournals,
   onLink,
   onUnlink,

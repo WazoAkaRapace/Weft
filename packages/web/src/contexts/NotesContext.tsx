@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode, useMemo, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useMemo, useEffect, useRef } from 'react';
 import { useNotes, type NoteTreeNode, type CreateNoteData, type UpdateNoteData } from '../hooks/useNotes';
 
 interface NotesContextValue {
@@ -45,12 +45,12 @@ export function NotesProvider({ children, initialNoteId = null }: NotesProviderP
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
   const [isCreating, setIsCreating] = useState(false);
   const [creatingParentId, setCreatingParentId] = useState<string | null>(null);
-  const [lastExpandedNoteId, setLastExpandedNoteId] = useState<string | null>(null);
+  const lastExpandedNoteIdRef = useRef<string | null>(null);
 
   // Update selected note when initialNoteId changes (from URL)
-  // Also expand the tree to show the note
+  // This is a legitimate use case - we need to sync URL state with component state
   useEffect(() => {
-    if (initialNoteId !== undefined && initialNoteId !== lastExpandedNoteId && !isLoading && noteTree.length > 0) {
+    if (initialNoteId !== undefined && initialNoteId !== lastExpandedNoteIdRef.current && !isLoading && noteTree.length > 0) {
       setSelectedNoteId(initialNoteId);
 
       // Expand parent nodes and the note itself if it has children
@@ -77,10 +77,10 @@ export function NotesProvider({ children, initialNoteId = null }: NotesProviderP
       const idsToExpand = findAndExpandParents(noteTree, initialNoteId);
       if (idsToExpand) {
         setExpandedNodeIds(prev => new Set([...prev, ...idsToExpand]));
-        setLastExpandedNoteId(initialNoteId);
+        lastExpandedNoteIdRef.current = initialNoteId;
       }
     }
-  }, [initialNoteId, lastExpandedNoteId, isLoading, noteTree]);
+  }, [initialNoteId, isLoading, noteTree]);
 
   const selectNote = useCallback((id: string | null) => {
     setSelectedNoteId(id);
@@ -273,6 +273,7 @@ export function NotesProvider({ children, initialNoteId = null }: NotesProviderP
   return <NotesContext.Provider value={value}>{children}</NotesContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useNotesContext() {
   const context = useContext(NotesContext);
   if (!context) {

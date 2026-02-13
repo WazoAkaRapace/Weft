@@ -64,7 +64,6 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
     duration,
     bytesUploaded,
     error: recordingError,
-    recordingState,
     mediaStream,
     startRecording,
     stopRecording,
