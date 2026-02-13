@@ -519,9 +519,24 @@ async function importJournalsWithTx(
         idMapping.journals.set(journal.id, newId);
 
         await tx.insert(schema.journals).values({
-          ...journal,
-          id: newId,        // Generate new ID
-          userId,           // Always use current user's ID
+          id: newId,
+          userId,
+          title: journal.title,
+          videoPath: journal.videoPath,
+          thumbnailPath: journal.thumbnailPath,
+          duration: journal.duration,
+          location: journal.location,
+          notes: journal.notes,
+          manualMood: journal.manualMood,
+          dominantEmotion: journal.dominantEmotion,
+          emotionTimeline: journal.emotionTimeline,
+          emotionScores: journal.emotionScores,
+          hlsManifestPath: journal.hlsManifestPath,
+          hlsStatus: journal.hlsStatus,
+          hlsError: journal.hlsError,
+          hlsCreatedAt: journal.hlsCreatedAt
+            ? (typeof journal.hlsCreatedAt === 'string' ? new Date(journal.hlsCreatedAt) : journal.hlsCreatedAt)
+            : null,
           createdAt: typeof journal.createdAt === 'string' ? new Date(journal.createdAt) : (journal.createdAt || new Date()),
           updatedAt: typeof journal.updatedAt === 'string' ? new Date(journal.updatedAt) : (journal.updatedAt || new Date()),
         });
@@ -754,15 +769,48 @@ async function importNotesWithTx(
   const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
 
   try {
+    // First pass: Generate all new IDs and populate the mapping
+    // This is needed because notes can have parent-child relationships
+    const noteIdMap = new Map<string, string>();
+    for (const note of notes) {
+      const newId = randomUUID();
+      noteIdMap.set(note.id, newId);
+      idMapping.notes.set(note.id, newId);
+    }
+
+    // Second pass: Insert all notes with mapped parentIds
     for (const note of notes) {
       try {
-        const newId = randomUUID();
-        idMapping.notes.set(note.id, newId);
+        const newId = noteIdMap.get(note.id)!;
+
+        // Convert deletedAt timestamp if present
+        let deletedAt: Date | null = null;
+        if (note.deletedAt) {
+          deletedAt = typeof note.deletedAt === 'string' ? new Date(note.deletedAt) : note.deletedAt;
+        }
+
+        // Map parentId to new ID if present
+        let parentId: string | null = null;
+        if (note.parentId) {
+          const mappedParentId = noteIdMap.get(note.parentId);
+          if (mappedParentId) {
+            parentId = mappedParentId;
+          } else {
+            // Parent doesn't exist in backup, skip this reference
+            console.warn(`[Restore] Note ${note.id} references non-existent parent ${note.parentId}, setting parentId to null`);
+          }
+        }
 
         await tx.insert(schema.notes).values({
-          ...note,
           id: newId,
           userId,
+          title: note.title,
+          content: note.content,
+          icon: note.icon,
+          color: note.color,
+          parentId,
+          position: note.position,
+          deletedAt,
           createdAt: typeof note.createdAt === 'string' ? new Date(note.createdAt) : (note.createdAt || new Date()),
           updatedAt: typeof note.updatedAt === 'string' ? new Date(note.updatedAt) : (note.updatedAt || new Date()),
         });
@@ -857,9 +905,12 @@ async function importTemplatesWithTx(
         const newId = randomUUID();
 
         await tx.insert(schema.templates).values({
-          ...template,
           id: newId,
           userId,
+          title: template.title,
+          content: template.content,
+          icon: template.icon,
+          color: template.color,
           createdAt: typeof template.createdAt === 'string' ? new Date(template.createdAt) : (template.createdAt || new Date()),
           updatedAt: typeof template.updatedAt === 'string' ? new Date(template.updatedAt) : (template.updatedAt || new Date()),
         });
@@ -902,10 +953,12 @@ async function importDailyMoodsWithTx(
         const newId = randomUUID();
 
         await tx.insert(schema.dailyMoods).values({
-          ...mood,
           id: newId,
           userId,
           date: mood.date, // PostgreSQL DATE column accepts 'YYYY-MM-DD' string format
+          mood: mood.mood,
+          timeOfDay: mood.timeOfDay,
+          notes: mood.notes,
           createdAt: typeof mood.createdAt === 'string' ? new Date(mood.createdAt) : (mood.createdAt || new Date()),
           updatedAt: typeof mood.updatedAt === 'string' ? new Date(mood.updatedAt) : (mood.updatedAt || new Date()),
         });
@@ -956,9 +1009,10 @@ async function importTranscriptsWithTx(
         idMapping.transcripts.set(transcript.id, newId);
 
         await tx.insert(schema.transcripts).values({
-          ...transcript,
           id: newId,
           journalId: newJournalId,
+          text: transcript.text,
+          segments: transcript.segments,
           createdAt: typeof transcript.createdAt === 'string' ? new Date(transcript.createdAt) : (transcript.createdAt || new Date()),
         });
         result.restored++;
@@ -1008,9 +1062,9 @@ async function importTagsWithTx(
         idMapping.tags.set(tag.id, newId);
 
         await tx.insert(schema.tags).values({
-          ...tag,
           id: newId,
           journalId: newJournalId,
+          tag: tag.tag,
           createdAt: typeof tag.createdAt === 'string' ? new Date(tag.createdAt) : (tag.createdAt || new Date()),
         });
         result.restored++;
