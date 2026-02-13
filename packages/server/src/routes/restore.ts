@@ -84,12 +84,33 @@ async function parseMultipartFormData(request: Request): Promise<{
     throw new Error('No boundary found in content type');
   }
 
-  const boundary = boundaryMatch[1];
+  // Remove quotes if present (boundary can be quoted in Content-Type)
+  const boundary = boundaryMatch[1].replace(/^["']|["']$/g, '');
   const buffer = Buffer.from(await request.arrayBuffer());
 
   // Parse multipart data
   const parts: Array<{ name: string; filename?: string; mimeType?: string; data: Buffer }> = [];
-  let position = 0;
+
+  // Find and skip past the first boundary line
+  // Multipart format: --boundary\r\n<part1>\r\n--boundary\r\n<part2>\r\n--boundary--
+  const firstBoundary = Buffer.from(`--${boundary}\r\n`);
+  let position = buffer.indexOf(firstBoundary);
+
+  if (position === -1) {
+    // Try without \r\n in case the first boundary is at the very start
+    const altBoundary = Buffer.from(`--${boundary}`);
+    position = buffer.indexOf(altBoundary);
+    if (position === -1) {
+      throw new Error('Could not find initial boundary in multipart data');
+    }
+    position = altBoundary.length;
+    // Skip \r\n if present
+    if (buffer[position] === 0x0d && buffer[position + 1] === 0x0a) {
+      position += 2;
+    }
+  } else {
+    position += firstBoundary.length;
+  }
 
   while (position < buffer.length) {
     // Find boundary

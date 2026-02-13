@@ -47,6 +47,8 @@ export interface RestoreJobInput {
 interface QueuedJob extends BackupJob {
   attempts: number;
   processedAt?: Date;
+  archivePath?: string;
+  strategy?: RestoreStrategy;
 }
 
 export class BackupRestoreQueue {
@@ -135,6 +137,8 @@ export class BackupRestoreQueue {
       },
       createdAt: new Date(),
       expiresAt: new Date(Date.now() + this.jobExpirationMs),
+      archivePath: input.archivePath,
+      strategy: input.strategy,
     };
 
     this.queue.set(jobId, job);
@@ -335,15 +339,16 @@ export class BackupRestoreQueue {
 
     updateProgress('Initializing restore', 1, 10);
 
-    // Extract restore parameters from job (we'd store these when adding the job)
-    // For now, we'll need to extend the job interface or retrieve from elsewhere
-    // This is a placeholder - the actual implementation would need the archivePath and strategy
+    // Validate that we have the required archive path
+    if (!job.archivePath) {
+      throw new Error('No archive path provided for restore job');
+    }
 
-    // Call the restore library function
+    // Call the restore library function with stored parameters
     const result = await restoreBackup(
       job.userId,
-      '', // archivePath - would be stored with job
-      'skip', // strategy - would be stored with job
+      job.archivePath,
+      job.strategy || 'skip',
       (progress: RestoreProgress) => {
         updateProgress(progress.step, progress.stepIndex, progress.percentage);
       }
