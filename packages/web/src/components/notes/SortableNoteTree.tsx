@@ -349,7 +349,7 @@ export function NoteTree({ isCollapsed = false }: SortableNoteTreeProps) {
   };
 
   const handleNewNote = () => {
-    startCreating(null); // null = root note
+    navigateWithWarning(() => startCreating(null)); // null = root note
   };
 
   return (
@@ -436,7 +436,7 @@ export function NoteTree({ isCollapsed = false }: SortableNoteTreeProps) {
       {/* Manage Templates Button - Fixed at bottom */}
       <div className="px-4 py-3 border-t border-neutral-200 dark:border-dark-600">
         <button
-          onClick={() => navigate('/notes/templates')}
+          onClick={() => navigateWithWarning(() => navigate('/notes/templates'))}
           className="flex items-center gap-2 text-sm text-neutral-600 dark:text-dark-300 hover:text-neutral-900 dark:hover:text-dark-50 transition-colors"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

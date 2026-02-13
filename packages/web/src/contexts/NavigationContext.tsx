@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
 
 interface NavigationContextValue {
   hasUnsavedChanges: boolean;
   setHasUnsavedChanges: (has: boolean) => void;
-  navigateWithWarning: (callback: () => void) => void;
+  registerUnsavedChangesChecker: (checker: () => boolean) => void;
+  navigateWithWarning: (callback: () => void, checkNow?: () => boolean) => void;
 }
 
 const NavigationContext = createContext<NavigationContextValue | undefined>(undefined);
@@ -16,9 +17,18 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const unsavedChangesCheckerRef = useRef<(() => boolean) | null>(null);
 
-  const navigateWithWarning = useCallback((callback: () => void) => {
-    if (hasUnsavedChanges) {
+  const registerUnsavedChangesChecker = useCallback((checker: () => boolean) => {
+    unsavedChangesCheckerRef.current = checker;
+  }, []);
+
+  const navigateWithWarning = useCallback((callback: () => void, checkNow?: () => boolean) => {
+    // Use the provided checker function, or fall back to the registered one, or use state
+    const checkUnsaved = checkNow || unsavedChangesCheckerRef.current;
+    const hasChanges = checkUnsaved ? checkUnsaved() : hasUnsavedChanges;
+
+    if (hasChanges) {
       setPendingNavigation(() => callback);
       setShowWarning(true);
     } else {
@@ -41,7 +51,12 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   }, []);
 
   return (
-    <NavigationContext.Provider value={{ hasUnsavedChanges, setHasUnsavedChanges, navigateWithWarning }}>
+    <NavigationContext.Provider value={{
+      hasUnsavedChanges,
+      setHasUnsavedChanges,
+      registerUnsavedChangesChecker,
+      navigateWithWarning
+    }}>
       {children}
       {showWarning && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">

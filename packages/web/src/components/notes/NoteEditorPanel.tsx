@@ -13,7 +13,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export function NoteEditorPanel() {
   const { getSelectedNote, updateNote } = useNotesContext();
-  const { setHasUnsavedChanges } = useNavigationContext();
+  const { registerUnsavedChangesChecker } = useNavigationContext();
   const navigate = useNavigate();
   const selectedNote = getSelectedNote();
 
@@ -58,8 +58,8 @@ export function NoteEditorPanel() {
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       // Check if there are unsaved changes
-      const hasUnsavedChanges = notesEditorRef.current?.hasUnsavedChanges();
-      if (hasUnsavedChanges) {
+      const hasUnsaved = notesEditorRef.current?.hasUnsavedChanges();
+      if (hasUnsaved) {
         // Show a warning dialog (browser-specific, can't be customized)
         e.preventDefault();
         // Chrome requires returnValue to be set
@@ -75,21 +75,12 @@ export function NoteEditorPanel() {
     };
   }, []);
 
-  // Track unsaved changes and update navigation context
+  // Register a synchronous checker function for navigation warnings
   useEffect(() => {
-    const checkUnsavedChanges = () => {
-      const hasUnsaved = notesEditorRef.current?.hasUnsavedChanges() || false;
-      setHasUnsavedChanges(hasUnsaved);
-    };
-
-    // Check immediately
-    checkUnsavedChanges();
-
-    // Set up an interval to check for changes (since editor changes are async)
-    const interval = setInterval(checkUnsavedChanges, 1000);
-
-    return () => clearInterval(interval);
-  }, [setHasUnsavedChanges, selectedNote]);
+    registerUnsavedChangesChecker(() => {
+      return notesEditorRef.current?.hasUnsavedChanges() || false;
+    });
+  }, [registerUnsavedChangesChecker]);
 
   // Fetch linked journals
   const fetchLinkedJournals = useCallback(async () => {
@@ -598,6 +589,7 @@ export function NoteEditorPanel() {
       {/* Content Editor */}
       <div className="flex-1 overflow-y-auto overflow-x-auto">
         <NotesEditor
+          key={selectedNote.note.id}
           ref={notesEditorRef}
           notes={selectedNote.note.content}
           onSave={handleSaveContent}

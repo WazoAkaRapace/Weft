@@ -47,8 +47,8 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
   isSaving = false,
   className = '',
 }, ref) => {
-  // Track initial notes to detect external changes
-  const initialNotesRef = useRef(initialNotes);
+  // Use a ref for unsaved changes - avoids closure issues in useImperativeHandle
+  const hasUnsavedChangesRef = useRef(false);
   const [localEdits, setLocalEdits] = useState<string | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mdxEditorRef = useRef<MDXEditorMethods>(null);
@@ -60,20 +60,11 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
     return localEdits ?? (initialNotes || '');
   }, [localEdits, initialNotes]);
 
-  // Sync editor when initialNotes changes from parent (only if no local edits)
-  useEffect(() => {
-    // If initialNotes changed and we have no local edits, update the editor
-    if (initialNotes !== initialNotesRef.current && localEdits === null) {
-      initialNotesRef.current = initialNotes;
-      if (mdxEditorRef.current) {
-        mdxEditorRef.current.setMarkdown(initialNotes || '');
-      }
-    }
-  }, [initialNotes, localEdits]);
-
   const saveNotes = useCallback(
     async (notesToSave: string) => {
       await onSave(notesToSave);
+      setLocalEdits(null);
+      hasUnsavedChangesRef.current = false; // Reset on save
     },
     [onSave]
   );
@@ -81,6 +72,7 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
   const handleChange = useCallback(
     (newMarkdown: string) => {
       setLocalEdits(newMarkdown);
+      hasUnsavedChangesRef.current = true; // Set on keystroke
 
       // Clear existing timeout
       if (saveTimeoutRef.current) {
@@ -105,12 +97,8 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
       const currentContent = mdxEditorRef.current?.getMarkdown() || currentMarkdown;
       await saveNotes(currentContent);
     },
-    hasUnsavedChanges: () => {
-      const currentContent = mdxEditorRef.current?.getMarkdown() || currentMarkdown;
-      const initialContent = initialNotes || '';
-      return currentContent !== initialContent;
-    },
-  }), [currentMarkdown, saveNotes, initialNotes]);
+    hasUnsavedChanges: () => hasUnsavedChangesRef.current, // Return ref value directly
+  }), [currentMarkdown, saveNotes]);
 
   // Cleanup timeout on unmount
   useEffect(() => {

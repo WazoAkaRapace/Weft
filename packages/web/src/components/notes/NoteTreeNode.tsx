@@ -105,7 +105,7 @@ function NoteTreeNode({ nodeId, level, dragHandleProps, isDragging = false, isDr
 
   const handleAddChild = (e: React.MouseEvent) => {
     e.stopPropagation();
-    startCreating(nodeId);
+    navigateWithWarning(() => startCreating(nodeId));
   };
 
   const handleDelete = () => {
