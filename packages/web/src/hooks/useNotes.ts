@@ -103,7 +103,7 @@ export function useNotes(): UseNotesReturn {
   }, []);
 
   const createNote = useCallback(async (data: CreateNoteData): Promise<Note> => {
-    const response = await fetch(`${API_BASE}/api/notes`, {
+    const response = await fetch(`${getApiUrl()}/api/notes`, {
       method: 'POST',
       credentials: 'include',
       headers: {

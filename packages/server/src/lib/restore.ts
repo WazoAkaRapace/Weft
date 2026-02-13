@@ -12,7 +12,6 @@ import * as tarFs from 'tar-fs';
 import { createGunzip } from 'node:zlib';
 import { createReadStream } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
-import { randomUUID } from 'node:crypto';
 import { db } from '../db/index.js';
 import { eq, inArray } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
@@ -23,31 +22,6 @@ import {
   sanitizeFilename,
 } from './path-security.js';
 import { withTransaction } from './db-utils.js';
-
-/**
- * ID mapping for restoring data with new IDs
- * Maps old IDs from backup to new IDs for current user
- */
-export interface IdMapping {
-  journals: Map<string, string>;      // old journal ID -> new journal ID
-  notes: Map<string, string>;         // old note ID -> new note ID
-  transcripts: Map<string, string>;   // old transcript ID -> new transcript ID
-  tags: Map<string, string>;          // old tag ID -> new tag ID
-  journalNotes: Map<string, string>;  // old journalNote ID -> new journalNote ID
-}
-
-/**
- * Create a new ID mapping
- */
-function createIdMapping(): IdMapping {
-  return {
-    journals: new Map(),
-    notes: new Map(),
-    transcripts: new Map(),
-    tags: new Map(),
-    journalNotes: new Map(),
-  };
-}
 
 /**
  * Restore strategy for handling conflicts
@@ -235,38 +209,34 @@ async function importDatabaseRecords(
   try {
     // Execute the entire restore operation in a transaction
     await withTransaction(async (tx) => {
-      // Create ID mapping for translating old IDs to new IDs
-      const idMapping = createIdMapping();
-
       // Handle replace strategy: delete existing user data first
       if (strategy === 'replace') {
         await deleteUserDataWithTx(userId, tx);
         summary.warnings.push('Existing user data deleted due to replace strategy');
       }
 
-      // Import journals FIRST (populates journal ID mapping)
+      // Import journals (preserve original IDs)
       if (records.journals && records.journals.length > 0) {
-        const journalResult = await importJournalsWithTx(userId, strategy, records.journals, idMapping, tx);
+        const journalResult = await importJournalsWithTx(userId, strategy, records.journals, tx);
         summary.restored.journals = journalResult.restored;
         summary.skipped.journals = journalResult.skipped;
         summary.errors.push(...journalResult.errors);
       }
 
-      // Import notes SECOND (populates note ID mapping)
+      // Import notes (preserve original IDs, sort for parent-child relationships)
       if (records.notes && records.notes.length > 0) {
-        const notesResult = await importNotesWithTx(userId, strategy, records.notes, idMapping, tx);
+        const notesResult = await importNotesWithTx(userId, strategy, records.notes, tx);
         summary.restored.notes = notesResult.restored;
         summary.skipped.notes = notesResult.skipped;
         summary.errors.push(...notesResult.errors);
       }
 
-      // Import journal notes THIRD (uses journal and note ID mappings)
+      // Import journal notes (preserve original IDs)
       if (records.journalNotes && records.journalNotes.length > 0) {
         const journalNotesResult = await importJournalNotesWithTx(
           userId,
           strategy,
           records.journalNotes,
-          idMapping,
           tx
         );
         summary.restored.journalNotes = journalNotesResult.restored;
@@ -274,29 +244,28 @@ async function importDatabaseRecords(
         summary.errors.push(...journalNotesResult.errors);
       }
 
-      // Import templates
+      // Import templates (preserve original IDs)
       if (records.templates && records.templates.length > 0) {
-        const templatesResult = await importTemplatesWithTx(userId, strategy, records.templates, idMapping, tx);
+        const templatesResult = await importTemplatesWithTx(userId, strategy, records.templates, tx);
         summary.restored.templates = templatesResult.restored;
         summary.skipped.templates = templatesResult.skipped;
         summary.errors.push(...templatesResult.errors);
       }
 
-      // Import daily moods
+      // Import daily moods (preserve original IDs)
       if (records.dailyMoods && records.dailyMoods.length > 0) {
-        const moodsResult = await importDailyMoodsWithTx(userId, strategy, records.dailyMoods, idMapping, tx);
+        const moodsResult = await importDailyMoodsWithTx(userId, strategy, records.dailyMoods, tx);
         summary.restored.dailyMoods = moodsResult.restored;
         summary.skipped.dailyMoods = moodsResult.skipped;
         summary.errors.push(...moodsResult.errors);
       }
 
-      // Import transcripts (uses journal ID mapping)
+      // Import transcripts (preserve original IDs)
       if (records.transcripts && records.transcripts.length > 0) {
         const transcriptsResult = await importTranscriptsWithTx(
           userId,
           strategy,
           records.transcripts,
-          idMapping,
           tx
         );
         summary.restored.transcripts = transcriptsResult.restored;
@@ -304,13 +273,12 @@ async function importDatabaseRecords(
         summary.errors.push(...transcriptsResult.errors);
       }
 
-      // Import tags (uses journal ID mapping)
+      // Import tags (preserve original IDs)
       if (records.tags && records.tags.length > 0) {
         const tagsResult = await importTagsWithTx(
           userId,
           strategy,
           records.tags,
-          idMapping,
           tx
         );
         summary.restored.tags = tagsResult.restored;
@@ -356,11 +324,12 @@ async function importDatabaseRecords(
  *
  * Uses safe path resolution to prevent path traversal attacks.
  *
- * @param fileList - List of files to restore (relative paths)
+ * @param fileList - List of files to restore (absolute paths to source files)
+ * @param sourceBaseDir - Base directory of the source files (to compute relative paths)
  * @param targetDir - Target upload directory (UPLOAD_DIR)
  * @returns Number of files successfully restored
  */
-async function restoreFiles(fileList: string[], targetDir: string): Promise<number> {
+async function restoreFiles(fileList: string[], sourceBaseDir: string, targetDir: string): Promise<number> {
   let restoredCount = 0;
   const errors: string[] = [];
 
@@ -375,22 +344,24 @@ async function restoreFiles(fileList: string[], targetDir: string): Promise<numb
     return 0;
   }
 
+  console.log(`[Restore] Restoring ${fileList.length} files from ${sourceBaseDir} to ${targetDir}`);
+
   for (const file of fileList) {
     try {
       const sourcePath = file;
-      // Remove backup prefix if present and sanitize
-      const relativePath = file.replace(/^backup\//, '');
 
-      // Validate and sanitize the destination path
-      const pathResult = safeResolveDatabasePath(relativePath, targetDir);
+      // Compute the relative path from the source base directory
+      // e.g., /app/uploads/restore-temp/userId/files/videos/abc.webm
+      //       -> videos/abc.webm (relative to files/ directory)
+      const relativePath = path.relative(sourceBaseDir, file);
 
-      if (!pathResult.safe || !pathResult.path) {
-        console.warn(`[Restore] Blocked unsafe restore path: ${relativePath}`);
-        errors.push(`${file}: ${pathResult.safe ? 'Unknown error' : pathResult.error}`);
+      if (!relativePath || relativePath.startsWith('..')) {
+        console.warn(`[Restore] Skipping file with invalid relative path: ${file}`);
         continue;
       }
 
-      const destinationPath = pathResult.path;
+      // Construct the destination path
+      const destinationPath = path.join(targetDir, relativePath);
 
       // Ensure destination directory exists
       const destDir = path.dirname(destinationPath);
@@ -399,8 +370,10 @@ async function restoreFiles(fileList: string[], targetDir: string): Promise<numb
       // Copy file
       await fs.copyFile(sourcePath, destinationPath);
       restoredCount++;
+      console.log(`[Restore] Restored file: ${relativePath}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      console.error(`[Restore] Failed to restore file ${file}: ${message}`);
       errors.push(`${file}: ${message}`);
     }
   }
@@ -409,6 +382,7 @@ async function restoreFiles(fileList: string[], targetDir: string): Promise<numb
     console.warn('[Restore] File restore errors:', errors);
   }
 
+  console.log(`[Restore] Restored ${restoredCount} of ${fileList.length} files`);
   return restoredCount;
 }
 
@@ -499,27 +473,35 @@ async function deleteUserData(userId: string): Promise<void> {
 }
 
 /**
- * Import journal records with new ID generation
+ * Import journal records preserving original IDs
  * Transaction-aware version
  */
 async function importJournalsWithTx(
   userId: string,
-  _strategy: RestoreStrategy,
+  strategy: RestoreStrategy,
   journals: schema.Journal[],
-  idMapping: IdMapping,
   tx: any
 ): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
   const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
 
   try {
-    // Always import all journals with new IDs (ignore ID conflicts in backup)
     for (const journal of journals) {
       try {
-        const newId = randomUUID();
-        idMapping.journals.set(journal.id, newId);
+        // For merge strategy, check if journal already exists
+        if (strategy === 'merge') {
+          const existing = await tx
+            .select({ id: schema.journals.id })
+            .from(schema.journals)
+            .where(eq(schema.journals.id, journal.id))
+            .limit(1);
+          if (existing.length > 0) {
+            result.skipped++;
+            continue;
+          }
+        }
 
         await tx.insert(schema.journals).values({
-          id: newId,
+          id: journal.id, // Preserve original ID
           userId,
           title: journal.title,
           videoPath: journal.videoPath,
@@ -543,12 +525,17 @@ async function importJournalsWithTx(
         result.restored++;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`[Restore] Failed to import journal ${journal.id}:`, errorMsg);
-        result.errors.push({
-          table: 'journals',
-          record: journal.id,
-          error: errorMsg,
-        });
+        // For merge strategy, duplicate key errors are expected - count as skipped
+        if (strategy === 'merge' && errorMsg.includes('duplicate key')) {
+          result.skipped++;
+        } else {
+          console.error(`[Restore] Failed to import journal ${journal.id}:`, errorMsg);
+          result.errors.push({
+            table: 'journals',
+            record: journal.id,
+            error: errorMsg,
+          });
+        }
       }
     }
   } catch (error) {
@@ -730,8 +717,11 @@ export async function restoreBackup(
 
       await collectFiles(filesDir, filesDir);
 
+      console.log(`[Restore] Found ${filesToRestore.length} files to restore in ${filesDir}`);
+
       // Restore files to validated upload directory
-      filesRestored = await restoreFiles(filesToRestore, uploadDir);
+      // Pass filesDir as sourceBaseDir so relative paths are computed correctly
+      filesRestored = await restoreFiles(filesToRestore, filesDir, uploadDir);
     } catch {
       // Files directory may not exist
     }
@@ -824,33 +814,32 @@ function topologicalSortNotes(notes: schema.Note[]): schema.Note[] {
 
 async function importNotesWithTx(
   userId: string,
-  _strategy: RestoreStrategy,
+  strategy: RestoreStrategy,
   notes: schema.Note[],
-  idMapping: IdMapping,
   tx: any
 ): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
   const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
 
   try {
-    // First pass: Generate all new IDs and populate the mapping
-    // This is needed because notes can have parent-child relationships
-    const noteIdMap = new Map<string, string>();
-    for (const note of notes) {
-      const newId = randomUUID();
-      noteIdMap.set(note.id, newId);
-      idMapping.notes.set(note.id, newId);
-    }
-    console.log(`[Restore] Generated ${noteIdMap.size} note ID mappings`);
-
     // Sort notes so parents are inserted before children (topological sort)
     // This ensures foreign key constraints are satisfied
     const sortedNotes = topologicalSortNotes(notes);
-    console.log(`[Restore] Sorted ${sortedNotes.length} notes for insertion (parents before children)`);
+    console.log(`[Restore] Importing ${sortedNotes.length} notes (sorted for parent-child order)`);
 
-    // Second pass: Insert all notes with mapped parentIds (in sorted order)
     for (const note of sortedNotes) {
       try {
-        const newId = noteIdMap.get(note.id)!;
+        // For merge strategy, check if note already exists
+        if (strategy === 'merge') {
+          const existing = await tx
+            .select({ id: schema.notes.id })
+            .from(schema.notes)
+            .where(eq(schema.notes.id, note.id))
+            .limit(1);
+          if (existing.length > 0) {
+            result.skipped++;
+            continue;
+          }
+        }
 
         // Convert deletedAt timestamp if present
         let deletedAt: Date | null = null;
@@ -858,26 +847,14 @@ async function importNotesWithTx(
           deletedAt = typeof note.deletedAt === 'string' ? new Date(note.deletedAt) : note.deletedAt;
         }
 
-        // Map parentId to new ID if present
-        let parentId: string | null = null;
-        if (note.parentId) {
-          const mappedParentId = noteIdMap.get(note.parentId);
-          if (mappedParentId) {
-            parentId = mappedParentId;
-          } else {
-            // Parent doesn't exist in backup, skip this reference
-            console.warn(`[Restore] Note ${note.id} references non-existent parent ${note.parentId}, setting parentId to null`);
-          }
-        }
-
         await tx.insert(schema.notes).values({
-          id: newId,
+          id: note.id, // Preserve original ID
           userId,
           title: note.title,
           content: note.content,
           icon: note.icon,
           color: note.color,
-          parentId,
+          parentId: note.parentId, // Preserve original parentId reference
           position: note.position,
           deletedAt,
           createdAt: typeof note.createdAt === 'string' ? new Date(note.createdAt) : (note.createdAt || new Date()),
@@ -886,20 +863,17 @@ async function importNotesWithTx(
         result.restored++;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        const errorStack = error instanceof Error ? error.stack : '';
-        const errorCause = error instanceof Error && (error as any).cause ? String((error as any).cause) : '';
-        console.error(`[Restore] Failed to import note ${note.id}:`, errorMsg);
-        if (errorCause) {
-          console.error(`[Restore] Caused by:`, errorCause);
+        // For merge strategy, duplicate key errors are expected - count as skipped
+        if (strategy === 'merge' && errorMsg.includes('duplicate key')) {
+          result.skipped++;
+        } else {
+          console.error(`[Restore] Failed to import note ${note.id}:`, errorMsg);
+          result.errors.push({
+            table: 'notes',
+            record: note.id,
+            error: errorMsg,
+          });
         }
-        if (errorStack) {
-          console.error(`[Restore] Stack:`, errorStack);
-        }
-        result.errors.push({
-          table: 'notes',
-          record: note.id,
-          error: errorMsg + (errorCause ? ` | Cause: ${errorCause}` : ''),
-        });
       }
     }
   } catch (error) {
@@ -917,9 +891,8 @@ async function importNotesWithTx(
 
 async function importJournalNotesWithTx(
   _userId: string,
-  _strategy: RestoreStrategy,
+  strategy: RestoreStrategy,
   journalNotes: schema.JournalNote[],
-  idMapping: IdMapping,
   tx: any
 ): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
   const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
@@ -927,31 +900,38 @@ async function importJournalNotesWithTx(
   try {
     for (const link of journalNotes) {
       try {
-        const newJournalId = idMapping.journals.get(link.journalId);
-        const newNoteId = idMapping.notes.get(link.noteId);
-
-        if (!newJournalId || !newNoteId) {
-          result.skipped++;
-          continue;
+        // For merge strategy, check if link already exists
+        if (strategy === 'merge') {
+          const existing = await tx
+            .select({ id: schema.journalNotes.id })
+            .from(schema.journalNotes)
+            .where(eq(schema.journalNotes.id, link.id))
+            .limit(1);
+          if (existing.length > 0) {
+            result.skipped++;
+            continue;
+          }
         }
 
-        const newId = randomUUID();
-
         await tx.insert(schema.journalNotes).values({
-          id: newId,
-          journalId: newJournalId,
-          noteId: newNoteId,
+          id: link.id, // Preserve original ID
+          journalId: link.journalId, // Preserve original journal reference
+          noteId: link.noteId, // Preserve original note reference
           createdAt: typeof link.createdAt === 'string' ? new Date(link.createdAt) : (link.createdAt || new Date()),
         });
         result.restored++;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`[Restore] Failed to import journalNote ${link.id}:`, errorMsg);
-        result.errors.push({
-          table: 'journal_notes',
-          record: link.id,
-          error: errorMsg,
-        });
+        if (strategy === 'merge' && errorMsg.includes('duplicate key')) {
+          result.skipped++;
+        } else {
+          console.error(`[Restore] Failed to import journalNote ${link.id}:`, errorMsg);
+          result.errors.push({
+            table: 'journal_notes',
+            record: link.id,
+            error: errorMsg,
+          });
+        }
       }
     }
   } catch (error) {
@@ -969,9 +949,8 @@ async function importJournalNotesWithTx(
 
 async function importTemplatesWithTx(
   userId: string,
-  _strategy: RestoreStrategy,
+  strategy: RestoreStrategy,
   templates: schema.Template[],
-  _idMapping: IdMapping,
   tx: any
 ): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
   const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
@@ -979,10 +958,21 @@ async function importTemplatesWithTx(
   try {
     for (const template of templates) {
       try {
-        const newId = randomUUID();
+        // For merge strategy, check if template already exists
+        if (strategy === 'merge') {
+          const existing = await tx
+            .select({ id: schema.templates.id })
+            .from(schema.templates)
+            .where(eq(schema.templates.id, template.id))
+            .limit(1);
+          if (existing.length > 0) {
+            result.skipped++;
+            continue;
+          }
+        }
 
         await tx.insert(schema.templates).values({
-          id: newId,
+          id: template.id, // Preserve original ID
           userId,
           title: template.title,
           content: template.content,
@@ -994,12 +984,16 @@ async function importTemplatesWithTx(
         result.restored++;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`[Restore] Failed to import template ${template.id}:`, errorMsg);
-        result.errors.push({
-          table: 'templates',
-          record: template.id,
-          error: errorMsg,
-        });
+        if (strategy === 'merge' && errorMsg.includes('duplicate key')) {
+          result.skipped++;
+        } else {
+          console.error(`[Restore] Failed to import template ${template.id}:`, errorMsg);
+          result.errors.push({
+            table: 'templates',
+            record: template.id,
+            error: errorMsg,
+          });
+        }
       }
     }
   } catch (error) {
@@ -1017,9 +1011,8 @@ async function importTemplatesWithTx(
 
 async function importDailyMoodsWithTx(
   userId: string,
-  _strategy: RestoreStrategy,
+  strategy: RestoreStrategy,
   dailyMoods: schema.DailyMood[],
-  _idMapping: IdMapping,
   tx: any
 ): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
   const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
@@ -1027,10 +1020,21 @@ async function importDailyMoodsWithTx(
   try {
     for (const mood of dailyMoods) {
       try {
-        const newId = randomUUID();
+        // For merge strategy, check if mood already exists
+        if (strategy === 'merge') {
+          const existing = await tx
+            .select({ id: schema.dailyMoods.id })
+            .from(schema.dailyMoods)
+            .where(eq(schema.dailyMoods.id, mood.id))
+            .limit(1);
+          if (existing.length > 0) {
+            result.skipped++;
+            continue;
+          }
+        }
 
         await tx.insert(schema.dailyMoods).values({
-          id: newId,
+          id: mood.id, // Preserve original ID
           userId,
           date: mood.date, // PostgreSQL DATE column accepts 'YYYY-MM-DD' string format
           mood: mood.mood,
@@ -1042,12 +1046,16 @@ async function importDailyMoodsWithTx(
         result.restored++;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`[Restore] Failed to import dailyMood ${mood.id}:`, errorMsg);
-        result.errors.push({
-          table: 'daily_moods',
-          record: mood.id,
-          error: errorMsg,
-        });
+        if (strategy === 'merge' && errorMsg.includes('duplicate key')) {
+          result.skipped++;
+        } else {
+          console.error(`[Restore] Failed to import dailyMood ${mood.id}:`, errorMsg);
+          result.errors.push({
+            table: 'daily_moods',
+            record: mood.id,
+            error: errorMsg,
+          });
+        }
       }
     }
   } catch (error) {
@@ -1065,9 +1073,8 @@ async function importDailyMoodsWithTx(
 
 async function importTranscriptsWithTx(
   _userId: string,
-  _strategy: RestoreStrategy,
+  strategy: RestoreStrategy,
   transcripts: schema.Transcript[],
-  idMapping: IdMapping,
   tx: any
 ): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
   const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
@@ -1075,19 +1082,22 @@ async function importTranscriptsWithTx(
   try {
     for (const transcript of transcripts) {
       try {
-        const newJournalId = idMapping.journals.get(transcript.journalId);
-
-        if (!newJournalId) {
-          result.skipped++;
-          continue;
+        // For merge strategy, check if transcript already exists
+        if (strategy === 'merge') {
+          const existing = await tx
+            .select({ id: schema.transcripts.id })
+            .from(schema.transcripts)
+            .where(eq(schema.transcripts.id, transcript.id))
+            .limit(1);
+          if (existing.length > 0) {
+            result.skipped++;
+            continue;
+          }
         }
 
-        const newId = randomUUID();
-        idMapping.transcripts.set(transcript.id, newId);
-
         await tx.insert(schema.transcripts).values({
-          id: newId,
-          journalId: newJournalId,
+          id: transcript.id, // Preserve original ID
+          journalId: transcript.journalId, // Preserve original journal reference
           text: transcript.text,
           segments: transcript.segments,
           createdAt: typeof transcript.createdAt === 'string' ? new Date(transcript.createdAt) : (transcript.createdAt || new Date()),
@@ -1095,12 +1105,16 @@ async function importTranscriptsWithTx(
         result.restored++;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`[Restore] Failed to import transcript ${transcript.id}:`, errorMsg);
-        result.errors.push({
-          table: 'transcripts',
-          record: transcript.id,
-          error: errorMsg,
-        });
+        if (strategy === 'merge' && errorMsg.includes('duplicate key')) {
+          result.skipped++;
+        } else {
+          console.error(`[Restore] Failed to import transcript ${transcript.id}:`, errorMsg);
+          result.errors.push({
+            table: 'transcripts',
+            record: transcript.id,
+            error: errorMsg,
+          });
+        }
       }
     }
   } catch (error) {
@@ -1118,9 +1132,8 @@ async function importTranscriptsWithTx(
 
 async function importTagsWithTx(
   _userId: string,
-  _strategy: RestoreStrategy,
+  strategy: RestoreStrategy,
   tags: schema.Tag[],
-  idMapping: IdMapping,
   tx: any
 ): Promise<{ restored: number; skipped: number; errors: Array<{ table: string; record: string; error: string }> }> {
   const result = { restored: 0, skipped: 0, errors: [] as Array<{ table: string; record: string; error: string }> };
@@ -1128,31 +1141,38 @@ async function importTagsWithTx(
   try {
     for (const tag of tags) {
       try {
-        const newJournalId = idMapping.journals.get(tag.journalId);
-
-        if (!newJournalId) {
-          result.skipped++;
-          continue;
+        // For merge strategy, check if tag already exists
+        if (strategy === 'merge') {
+          const existing = await tx
+            .select({ id: schema.tags.id })
+            .from(schema.tags)
+            .where(eq(schema.tags.id, tag.id))
+            .limit(1);
+          if (existing.length > 0) {
+            result.skipped++;
+            continue;
+          }
         }
 
-        const newId = randomUUID();
-        idMapping.tags.set(tag.id, newId);
-
         await tx.insert(schema.tags).values({
-          id: newId,
-          journalId: newJournalId,
+          id: tag.id, // Preserve original ID
+          journalId: tag.journalId, // Preserve original journal reference
           tag: tag.tag,
           createdAt: typeof tag.createdAt === 'string' ? new Date(tag.createdAt) : (tag.createdAt || new Date()),
         });
         result.restored++;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`[Restore] Failed to import tag ${tag.id}:`, errorMsg);
-        result.errors.push({
-          table: 'tags',
-          record: tag.id,
-          error: errorMsg,
-        });
+        if (strategy === 'merge' && errorMsg.includes('duplicate key')) {
+          result.skipped++;
+        } else {
+          console.error(`[Restore] Failed to import tag ${tag.id}:`, errorMsg);
+          result.errors.push({
+            table: 'tags',
+            record: tag.id,
+            error: errorMsg,
+          });
+        }
       }
     }
   } catch (error) {

@@ -92,7 +92,7 @@ export async function getMood(date: string): Promise<MoodResponse> {
  * Create or update mood for a date
  */
 export async function upsertMood(entry: MoodLogEntry): Promise<MoodResponse> {
-  const response = await fetch(`${API_BASE}/api/moods`, {
+  const response = await fetch(`${getApiUrl()}/api/moods`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
