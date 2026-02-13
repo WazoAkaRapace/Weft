@@ -833,11 +833,19 @@ async function importNotesWithTx(
         result.restored++;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : '';
+        const errorCause = error instanceof Error && (error as any).cause ? String((error as any).cause) : '';
         console.error(`[Restore] Failed to import note ${note.id}:`, errorMsg);
+        if (errorCause) {
+          console.error(`[Restore] Caused by:`, errorCause);
+        }
+        if (errorStack) {
+          console.error(`[Restore] Stack:`, errorStack);
+        }
         result.errors.push({
           table: 'notes',
           record: note.id,
-          error: errorMsg,
+          error: errorMsg + (errorCause ? ` | Cause: ${errorCause}` : ''),
         });
       }
     }
