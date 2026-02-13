@@ -6,8 +6,7 @@ import type {
 } from '@weft/shared';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { NotificationSettings } from '../components/notifications/NotificationSettings';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 interface UserSettings {
   preferredLanguage: string;
@@ -162,7 +161,7 @@ export function SettingsPage() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/user/settings`, {
+        const response = await fetch(`${getApiUrl()}/api/user/settings`, {
           credentials: 'include',
         });
 
@@ -194,7 +193,7 @@ export function SettingsPage() {
     setIsSaving(true);
 
     try {
-      const response = await fetch(`${API_BASE}/api/user/settings`, {
+      const response = await fetch(`${getApiUrl()}/api/user/settings`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -240,7 +239,7 @@ export function SettingsPage() {
 
     try {
       // Use Better Auth's built-in password change endpoint
-      const response = await fetch(`${API_BASE}/api/auth/password`, {
+      const response = await fetch(`${getApiUrl()}/api/auth/password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -277,7 +276,7 @@ export function SettingsPage() {
     setBackupError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/api/backup/create`, {
+      const response = await fetch(`${getApiUrl()}/api/backup/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -307,7 +306,7 @@ export function SettingsPage() {
 
     backupPollIntervalRef.current = setInterval(async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/backup/status/${jobId}`, {
+        const response = await fetch(`${getApiUrl()}/api/backup/status/${jobId}`, {
           credentials: 'include',
         });
 
@@ -352,7 +351,7 @@ export function SettingsPage() {
     if (!backupJobId) return;
 
     try {
-      const response = await fetch(`${API_BASE}/api/backup/download/${backupJobId}`, {
+      const response = await fetch(`${getApiUrl()}/api/backup/download/${backupJobId}`, {
         credentials: 'include',
       });
 
@@ -400,7 +399,7 @@ export function SettingsPage() {
       formData.append('file', restoreFile);
       formData.append('strategy', restoreStrategy);
 
-      const response = await fetch(`${API_BASE}/api/restore`, {
+      const response = await fetch(`${getApiUrl()}/api/restore`, {
         method: 'POST',
         credentials: 'include',
         body: formData,
@@ -427,7 +426,7 @@ export function SettingsPage() {
 
     restorePollIntervalRef.current = setInterval(async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/restore/status/${jobId}`, {
+        const response = await fetch(`${getApiUrl()}/api/restore/status/${jobId}`, {
           credentials: 'include',
         });
 

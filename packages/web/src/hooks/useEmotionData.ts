@@ -4,8 +4,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { EmotionData } from '../components/emotions/types';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 export interface UseEmotionDataResult {
   data: EmotionData | null;
@@ -29,7 +28,7 @@ export function useEmotionData(journalId: string): UseEmotionDataResult {
     setError(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/journals/${journalId}/emotions`, {
+      const response = await fetch(`${getApiUrl()}/api/journals/${journalId}/emotions`, {
         method: 'GET',
         credentials: 'include',
         headers: {

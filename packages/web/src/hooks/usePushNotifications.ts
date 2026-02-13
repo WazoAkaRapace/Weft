@@ -5,8 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 interface PushSubscriptionData {
   id: string;
@@ -72,7 +71,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   // Fetch VAPID public key
   const fetchVapidKey = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/notifications/vapid-public-key`, {
+      const response = await fetch(`${getApiUrl()}/api/notifications/vapid-public-key`, {
         credentials: 'include',
       });
       if (response.ok) {
@@ -87,7 +86,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   // Fetch subscriptions
   const refreshSubscriptions = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/notifications/subscriptions`, {
+      const response = await fetch(`${getApiUrl()}/api/notifications/subscriptions`, {
         credentials: 'include',
       });
       if (response.ok) {
@@ -102,7 +101,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   // Fetch preferences
   const refreshPreferences = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/notifications/preferences`, {
+      const response = await fetch(`${getApiUrl()}/api/notifications/preferences`, {
         credentials: 'include',
       });
       if (response.ok) {
@@ -146,7 +145,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
         });
 
-        const response = await fetch(`${API_BASE}/api/notifications/subscribe`, {
+        const response = await fetch(`${getApiUrl()}/api/notifications/subscribe`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -179,7 +178,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       if (subscription) {
         await subscription.unsubscribe();
 
-        await fetch(`${API_BASE}/api/notifications/unsubscribe`, {
+        await fetch(`${getApiUrl()}/api/notifications/unsubscribe`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -199,7 +198,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   const deleteSubscription = useCallback(
     async (id: string): Promise<boolean> => {
       try {
-        const response = await fetch(`${API_BASE}/api/notifications/subscriptions/${id}`, {
+        const response = await fetch(`${getApiUrl()}/api/notifications/subscriptions/${id}`, {
           method: 'DELETE',
           credentials: 'include',
         });
@@ -220,7 +219,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   const updatePreference = useCallback(
     async (type: string, settings: Partial<NotificationTypeConfig>): Promise<boolean> => {
       try {
-        const response = await fetch(`${API_BASE}/api/notifications/preferences/${type}`, {
+        const response = await fetch(`${getApiUrl()}/api/notifications/preferences/${type}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

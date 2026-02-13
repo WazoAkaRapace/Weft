@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { JournalListParams, PaginatedResponse, Journal } from '@weft/shared';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 interface UseJournalsReturn {
   journals: Journal[];
@@ -38,7 +37,7 @@ export function useJournals(params: JournalListParams): UseJournalsReturn {
       }
 
       const response = await fetch(
-        `${API_BASE}/api/journals/paginated?${queryParams.toString()}`,
+        `${getApiUrl()}/api/journals/paginated?${queryParams.toString()}`,
         {
           credentials: 'include',
         }

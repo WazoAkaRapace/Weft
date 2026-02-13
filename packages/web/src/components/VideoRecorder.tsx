@@ -24,8 +24,7 @@ import {
   AdmonitionDirectiveDescriptor,
 } from '@mdxeditor/editor';
 import type { StreamCompleteResponse } from '@weft/shared';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 type RecorderUIState = 'idle' | 'recording' | 'complete';
 
@@ -184,7 +183,7 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
     setSaveError('');
 
     try {
-      const response = await fetch(`${API_BASE}/api/journals/${journalId}`, {
+      const response = await fetch(`${getApiUrl()}/api/journals/${journalId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -201,7 +200,7 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
       if (selectedNoteIds.length > 0) {
         await Promise.all(
           selectedNoteIds.map(noteId =>
-            fetch(`${API_BASE}/api/notes/${noteId}/journals/${journalId}`, {
+            fetch(`${getApiUrl()}/api/notes/${noteId}/journals/${journalId}`, {
               method: 'POST',
               credentials: 'include',
             })

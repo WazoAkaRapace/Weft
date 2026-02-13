@@ -4,8 +4,7 @@
  */
 
 import type { DailyMood, MoodLogEntry, TimeOfDay } from '../components/calendar/types';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from './config';
 
 export interface MoodResponse {
   data: Array<{
@@ -61,7 +60,7 @@ export async function getCalendarMoods(
   month: number
 ): Promise<CalendarMoodsResponse> {
   const response = await fetch(
-    `${API_BASE}/api/moods/calendar?year=${year}&month=${month}`,
+    `${getApiUrl()}/api/moods/calendar?year=${year}&month=${month}`,
     {
       credentials: 'include',
     }
@@ -78,7 +77,7 @@ export async function getCalendarMoods(
  * Get mood for a specific date
  */
 export async function getMood(date: string): Promise<MoodResponse> {
-  const response = await fetch(`${API_BASE}/api/moods/${date}`, {
+  const response = await fetch(`${getApiUrl()}/api/moods/${date}`, {
     credentials: 'include',
   });
 
@@ -113,7 +112,7 @@ export async function upsertMood(entry: MoodLogEntry): Promise<MoodResponse> {
  * Delete mood for a date
  */
 export async function deleteMood(date: string, timeOfDay: TimeOfDay): Promise<{ success: boolean; error: string | null }> {
-  const response = await fetch(`${API_BASE}/api/moods/${date}?timeOfDay=${timeOfDay}`, {
+  const response = await fetch(`${getApiUrl()}/api/moods/${date}?timeOfDay=${timeOfDay}`, {
     method: 'DELETE',
     credentials: 'include',
   });

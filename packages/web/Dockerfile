@@ -72,8 +72,8 @@ RUN pnpm build
 # -----------------------------------------------------------------------------
 FROM nginx:alpine AS production
 
-# Install wget for health check
-RUN apk add --no-cache wget
+# Install wget for health check and gettext for envsubst
+RUN apk add --no-cache wget gettext
 
 # Copy nginx configuration
 RUN rm -f /etc/nginx/conf.d/default.conf
@@ -106,16 +106,16 @@ RUN echo 'server { \
 # Copy built application from builder
 COPY --from=builder /app/packages/web/dist /usr/share/nginx/html
 
-# Create entrypoint script for runtime config generation
+# Create config template and entrypoint script
+# The template uses ${VITE_API_URL} placeholder that envsubst will replace
+RUN echo 'window.__RUNTIME_CONFIG__ = { API_URL: "${VITE_API_URL}" };' > /usr/share/nginx/html/config.js.template && \
+    mv /usr/share/nginx/html/config.js /usr/share/nginx/html/config.js.default
+
+# Create entrypoint script that generates config from environment
 RUN echo '#!/bin/sh' > /docker-entrypoint.d/40-generate-config.sh && \
-    echo 'echo "Generating runtime config..."' >> /docker-entrypoint.d/40-generate-config.sh && \
-    echo 'cat > /usr/share/nginx/html/config.js << EOF' >> /docker-entrypoint.d/40-generate-config.sh && \
-    echo '// Runtime configuration generated from Docker environment variables' >> /docker-entrypoint.d/40-generate-config.sh && \
-    echo 'window.__RUNTIME_CONFIG__ = {' >> /docker-entrypoint.d/40-generate-config.sh && \
-    echo '  API_URL: "${VITE_API_URL:-http://localhost:3001}"' >> /docker-entrypoint.d/40-generate-config.sh && \
-    echo '};' >> /docker-entrypoint.d/40-generate-config.sh && \
-    echo 'EOF' >> /docker-entrypoint.d/40-generate-config.sh && \
-    echo 'echo "Runtime config generated with API_URL=${VITE_API_URL:-http://localhost:3001}"' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo 'export VITE_API_URL="${VITE_API_URL:-http://localhost:3001}"' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo 'envsubst < /usr/share/nginx/html/config.js.template > /usr/share/nginx/html/config.js' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo 'echo "Runtime config generated with API_URL=$VITE_API_URL"' >> /docker-entrypoint.d/40-generate-config.sh && \
     chmod +x /docker-entrypoint.d/40-generate-config.sh
 
 # Expose port

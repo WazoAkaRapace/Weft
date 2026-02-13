@@ -7,8 +7,7 @@
 import { useState } from 'react';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 import { DayOfWeekSelector } from './DayOfWeekSelector';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../../lib/config';
 
 /**
  * Convert local time string (HH:mm) to UTC time string
@@ -58,7 +57,7 @@ export function NotificationSettings() {
     setIsTesting(true);
     setTestResult(null);
     try {
-      const response = await fetch(`${API_BASE}/api/notifications/test`, {
+      const response = await fetch(`${getApiUrl()}/api/notifications/test`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

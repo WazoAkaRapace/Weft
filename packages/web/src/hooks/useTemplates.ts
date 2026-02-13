@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Template } from '@weft/shared';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 export interface CreateTemplateData {
   title: string;
@@ -38,7 +37,7 @@ export function useTemplates(): UseTemplatesReturn {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/api/templates`, {
+      const response = await fetch(`${getApiUrl()}/api/templates`, {
         credentials: 'include',
       });
 
@@ -56,7 +55,7 @@ export function useTemplates(): UseTemplatesReturn {
   }, []);
 
   const createTemplate = useCallback(async (data: CreateTemplateData): Promise<Template> => {
-    const response = await fetch(`${API_BASE}/api/templates`, {
+    const response = await fetch(`${getApiUrl()}/api/templates`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -78,7 +77,7 @@ export function useTemplates(): UseTemplatesReturn {
   }, []);
 
   const updateTemplate = useCallback(async (id: string, data: UpdateTemplateData): Promise<void> => {
-    const response = await fetch(`${API_BASE}/api/templates/${id}`, {
+    const response = await fetch(`${getApiUrl()}/api/templates/${id}`, {
       method: 'PUT',
       credentials: 'include',
       headers: {
@@ -100,7 +99,7 @@ export function useTemplates(): UseTemplatesReturn {
   }, []);
 
   const deleteTemplate = useCallback(async (id: string): Promise<void> => {
-    const response = await fetch(`${API_BASE}/api/templates/${id}`, {
+    const response = await fetch(`${getApiUrl()}/api/templates/${id}`, {
       method: 'DELETE',
       credentials: 'include',
     });
@@ -114,7 +113,7 @@ export function useTemplates(): UseTemplatesReturn {
   }, []);
 
   const createTemplateFromNote = useCallback(async (noteId: string): Promise<Template> => {
-    const response = await fetch(`${API_BASE}/api/templates/from-note/${noteId}`, {
+    const response = await fetch(`${getApiUrl()}/api/templates/from-note/${noteId}`, {
       method: 'POST',
       credentials: 'include',
       headers: {

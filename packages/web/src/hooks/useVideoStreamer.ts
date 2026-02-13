@@ -25,9 +25,7 @@ import {
   formatDuration,
   formatBytes,
 } from '../lib/video-stream';
-
-// API base URL from environment or default
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 // Chunk upload interval (30 seconds)
 const CHUNK_UPLOAD_INTERVAL = 30000;
@@ -265,7 +263,7 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
     isLast: boolean
   ): Promise<void> => {
     try {
-      const response = await fetch(`${API_BASE}/api/journals/stream/chunk`, {
+      const response = await fetch(`${getApiUrl()}/api/journals/stream/chunk`, {
         method: 'POST',
         headers: {
           'Content-Type': codec,
@@ -429,7 +427,7 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
       mediaRecorderRef.current = mediaRecorder;
 
       // Initialize stream on server
-      const initResponse = await fetch(`${API_BASE}/api/journals/stream/init`, {
+      const initResponse = await fetch(`${getApiUrl()}/api/journals/stream/init`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Note } from '@weft/shared';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 export interface NoteTreeNode {
   note: Note;
@@ -86,7 +85,7 @@ export function useNotes(): UseNotesReturn {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/api/notes`, {
+      const response = await fetch(`${getApiUrl()}/api/notes`, {
         credentials: 'include',
       });
 
@@ -126,7 +125,7 @@ export function useNotes(): UseNotesReturn {
   }, []);
 
   const updateNote = useCallback(async (id: string, data: UpdateNoteData): Promise<void> => {
-    const response = await fetch(`${API_BASE}/api/notes/${id}`, {
+    const response = await fetch(`${getApiUrl()}/api/notes/${id}`, {
       method: 'PUT',
       credentials: 'include',
       headers: {
@@ -148,7 +147,7 @@ export function useNotes(): UseNotesReturn {
   }, []);
 
   const deleteNote = useCallback(async (id: string): Promise<void> => {
-    const response = await fetch(`${API_BASE}/api/notes/${id}`, {
+    const response = await fetch(`${getApiUrl()}/api/notes/${id}`, {
       method: 'DELETE',
       credentials: 'include',
     });
@@ -162,7 +161,7 @@ export function useNotes(): UseNotesReturn {
   }, []);
 
   const reorderNotes = useCallback(async (notes: Array<{ id: string; position: number; parentId?: string | null }>): Promise<void> => {
-    const response = await fetch(`${API_BASE}/api/notes/reorder`, {
+    const response = await fetch(`${getApiUrl()}/api/notes/reorder`, {
       method: 'POST',
       credentials: 'include',
       headers: {

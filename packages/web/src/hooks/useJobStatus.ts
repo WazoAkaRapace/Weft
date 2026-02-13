@@ -3,8 +3,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 export type JobStatusType = 'pending' | 'processing' | 'completed' | 'failed' | null;
 
@@ -52,7 +51,7 @@ export function useJobStatus(
     if (!journalId || !isMountedRef.current) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/journals/${journalId}/jobs`, {
+      const response = await fetch(`${getApiUrl()}/api/journals/${journalId}/jobs`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -142,7 +141,7 @@ export function useJobStatus(
     }));
 
     try {
-      const response = await fetch(`${API_URL}/api/journals/${journalId}/transcription/retry`, {
+      const response = await fetch(`${getApiUrl()}/api/journals/${journalId}/transcription/retry`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -180,7 +179,7 @@ export function useJobStatus(
     }));
 
     try {
-      const response = await fetch(`${API_URL}/api/journals/${journalId}/emotions/retry`, {
+      const response = await fetch(`${getApiUrl()}/api/journals/${journalId}/emotions/retry`, {
         method: 'POST',
         credentials: 'include',
         headers: {

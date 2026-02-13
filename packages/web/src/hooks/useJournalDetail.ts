@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { JournalWithTranscript, Transcript } from '@weft/shared';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 interface UseJournalDetailReturn {
   journal: JournalWithTranscript | null;
@@ -24,7 +23,7 @@ export function useJournalDetail(journalId: string): UseJournalDetailReturn {
     try {
       // Fetch journal details
       const journalResponse = await fetch(
-        `${API_BASE}/api/journals/${journalId}`,
+        `${getApiUrl()}/api/journals/${journalId}`,
         {
           credentials: 'include',
         }
@@ -44,7 +43,7 @@ export function useJournalDetail(journalId: string): UseJournalDetailReturn {
 
       // Fetch transcript
       const transcriptResponse = await fetch(
-        `${API_BASE}/api/journals/${journalId}/transcript`,
+        `${getApiUrl()}/api/journals/${journalId}/transcript`,
         {
           credentials: 'include',
         }
@@ -72,7 +71,7 @@ export function useJournalDetail(journalId: string): UseJournalDetailReturn {
   const updateNotes = useCallback(
     async (notes: string) => {
       try {
-        const response = await fetch(`${API_BASE}/api/journals/${journalId}`, {
+        const response = await fetch(`${getApiUrl()}/api/journals/${journalId}`, {
           method: 'PUT',
           credentials: 'include',
           headers: {

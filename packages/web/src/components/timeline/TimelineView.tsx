@@ -1,7 +1,6 @@
 import type { Journal } from '@weft/shared';
 import { EmotionBadge } from '../emotions/EmotionBadge';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../../lib/config';
 
 interface TimelineViewProps {
   journals: Journal[];
@@ -54,7 +53,7 @@ export function TimelineView({
                 <div className="w-30 h-20 flex-shrink-0 rounded-lg overflow-hidden relative">
                   {journal.thumbnailPath ? (
                     <img
-                      src={`${API_BASE}${journal.thumbnailPath.replace('/app', '')}`}
+                      src={`${getApiUrl()}${journal.thumbnailPath.replace('/app', '')}`}
                       alt={journal.title}
                       className="w-full h-full object-cover"
                     />

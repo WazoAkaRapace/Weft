@@ -16,8 +16,7 @@ import { NoteSelector } from '../components/notes/NoteSelector';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { formatDuration } from '../lib/video-stream';
 import type { Transcript, Note } from '@weft/shared';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../lib/config';
 
 export function JournalDetailPage() {
   const navigate = useNavigate();
@@ -65,7 +64,7 @@ export function JournalDetailPage() {
   // Fetch only transcript data
   const fetchTranscript = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/journals/${id}/transcript`, {
+      const response = await fetch(`${getApiUrl()}/api/journals/${id}/transcript`, {
         credentials: 'include',
       });
 
@@ -81,7 +80,7 @@ export function JournalDetailPage() {
   // Fetch only journal (emotion) data
   const fetchEmotionData = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/journals/${id}`, {
+      const response = await fetch(`${getApiUrl()}/api/journals/${id}`, {
         credentials: 'include',
       });
 
@@ -114,7 +113,7 @@ export function JournalDetailPage() {
   const handleUpdateManualMood = useCallback(async (mood: string | null) => {
     if (!id) return;
     try {
-      const response = await fetch(`${API_BASE}/api/journals/${id}`, {
+      const response = await fetch(`${getApiUrl()}/api/journals/${id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -134,7 +133,7 @@ export function JournalDetailPage() {
     if (!id || !editingTitle.trim()) return;
     setIsSavingTitle(true);
     try {
-      const response = await fetch(`${API_BASE}/api/journals/${id}`, {
+      const response = await fetch(`${getApiUrl()}/api/journals/${id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -229,7 +228,7 @@ export function JournalDetailPage() {
     if (!id) return;
     setIsNotesLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/api/journals/${id}/notes`, {
+      const response = await fetch(`${getApiUrl()}/api/journals/${id}/notes`, {
         credentials: 'include',
       });
       if (response.ok) {
@@ -247,7 +246,7 @@ export function JournalDetailPage() {
   const handleLinkNote = useCallback(async (noteId: string) => {
     if (!id) return;
     try {
-      const response = await fetch(`${API_BASE}/api/notes/${noteId}/journals/${id}`, {
+      const response = await fetch(`${getApiUrl()}/api/notes/${noteId}/journals/${id}`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -263,7 +262,7 @@ export function JournalDetailPage() {
   const handleUnlinkNote = useCallback(async (noteId: string) => {
     if (!id) return;
     try {
-      const response = await fetch(`${API_BASE}/api/notes/${noteId}/journals/${id}`, {
+      const response = await fetch(`${getApiUrl()}/api/notes/${noteId}/journals/${id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -280,7 +279,7 @@ export function JournalDetailPage() {
     if (!id) return;
     setIsDeleting(true);
     try {
-      const response = await fetch(`${API_BASE}/api/journals/${id}`, {
+      const response = await fetch(`${getApiUrl()}/api/journals/${id}`, {
         method: 'DELETE',
         credentials: 'include',
       });

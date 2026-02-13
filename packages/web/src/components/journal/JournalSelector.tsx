@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useJournals } from '../../hooks/useJournals';
 import type { Journal } from '@weft/shared';
 import { formatDuration } from '../../lib/video-stream';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../../lib/config';
 
 interface JournalSelectorProps {
   isOpen: boolean;
@@ -164,7 +163,7 @@ function JournalListItem({ journal, onSelect }: JournalListItemProps) {
         className="w-24 h-16 bg-cover bg-center rounded flex-shrink-0"
         style={{
           backgroundImage: journal.thumbnailPath
-            ? `url(${API_BASE}${journal.thumbnailPath.replace(/^\/app/, '')})`
+            ? `url(${getApiUrl()}${journal.thumbnailPath.replace(/^\/app/, '')})`
             : undefined,
           backgroundColor: !journal.thumbnailPath ? '#374151' : undefined,
         }}

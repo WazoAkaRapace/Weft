@@ -8,8 +8,7 @@ import { JournalLinker } from '../journal/JournalLinker';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import type { UpdateNoteData } from '../../hooks/useNotes';
 import type { Journal } from '@weft/shared';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../../lib/config';
 
 export function NoteEditorPanel() {
   const { getSelectedNote, updateNote } = useNotesContext();
@@ -87,7 +86,7 @@ export function NoteEditorPanel() {
     if (!selectedNote) return;
     setIsJournalsLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/api/notes/${selectedNote.note.id}/journals`, {
+      const response = await fetch(`${getApiUrl()}/api/notes/${selectedNote.note.id}/journals`, {
         credentials: 'include',
       });
       if (response.ok) {
@@ -105,7 +104,7 @@ export function NoteEditorPanel() {
   const handleLinkJournal = useCallback(async (journalId: string) => {
     if (!selectedNote) return;
     try {
-      const response = await fetch(`${API_BASE}/api/notes/${selectedNote.note.id}/journals/${journalId}`, {
+      const response = await fetch(`${getApiUrl()}/api/notes/${selectedNote.note.id}/journals/${journalId}`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -121,7 +120,7 @@ export function NoteEditorPanel() {
   const handleUnlinkJournal = useCallback(async (journalId: string) => {
     if (!selectedNote) return;
     try {
-      const response = await fetch(`${API_BASE}/api/notes/${selectedNote.note.id}/journals/${journalId}`, {
+      const response = await fetch(`${getApiUrl()}/api/notes/${selectedNote.note.id}/journals/${journalId}`, {
         method: 'DELETE',
         credentials: 'include',
       });

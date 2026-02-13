@@ -1,8 +1,7 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { formatDuration } from '../../lib/video-stream';
 import Hls from 'hls.js';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../../lib/config';
 
 interface VideoPlayerProps {
   videoPath: string;
@@ -33,16 +32,16 @@ export function VideoPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Transform video path to use backend API URL (memoized to prevent reloads)
-  const videoUrl = useMemo(() => API_BASE + videoPath.replace(/^\/app/, ''), [videoPath]);
+  const videoUrl = useMemo(() => getApiUrl() + videoPath.replace(/^\/app/, ''), [videoPath]);
   const thumbnailUrl = useMemo(
-    () => (thumbnailPath ? API_BASE + thumbnailPath.replace(/^\/app/, '') : undefined),
+    () => (thumbnailPath ? getApiUrl() + thumbnailPath.replace(/^\/app/, '') : undefined),
     [thumbnailPath]
   );
 
   // Determine the HLS manifest URL
   const hlsManifestUrl = useMemo(() => {
     if (hlsManifestPath) {
-      return API_BASE + hlsManifestPath.replace(/^\/app/, '');
+      return getApiUrl() + hlsManifestPath.replace(/^\/app/, '');
     }
     return null;
   }, [hlsManifestPath]);

@@ -4,8 +4,7 @@ import type { Journal } from '@weft/shared';
 import { formatDuration } from '../../lib/video-stream';
 import { JournalSelector } from './JournalSelector';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../../lib/config';
 
 interface JournalLinkerProps {
   noteId: string;
@@ -137,7 +136,7 @@ function JournalCard({ journal, onClick, onUnlink }: JournalCardProps) {
         className="h-20 bg-cover bg-center"
         style={{
           backgroundImage: journal.thumbnailPath
-            ? `url(${API_BASE}${journal.thumbnailPath.replace(/^\/app/, '')})`
+            ? `url(${getApiUrl()}${journal.thumbnailPath.replace(/^\/app/, '')})`
             : undefined,
           backgroundColor: !journal.thumbnailPath ? '#374151' : undefined,
         }}

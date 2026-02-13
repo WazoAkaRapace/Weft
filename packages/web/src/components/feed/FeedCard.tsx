@@ -1,8 +1,7 @@
 import type { FeedEntry } from '@weft/shared';
 import { EmotionBadge } from '../emotions/EmotionBadge';
 import { formatRelativeTime, formatDuration } from '../../lib/date-format';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiUrl } from '../../lib/config';
 
 interface FeedCardProps {
   entry: FeedEntry;
@@ -20,7 +19,7 @@ export function FeedCard({ entry, onClick }: FeedCardProps) {
         <div className="w-30 h-20 flex-shrink-0 rounded-lg overflow-hidden relative">
           {entry.thumbnailPath ? (
             <img
-              src={`${API_BASE}${entry.thumbnailPath.replace('/app', '')}`}
+              src={`${getApiUrl()}${entry.thumbnailPath.replace('/app', '')}`}
               alt={entry.title}
               className="w-full h-full object-cover"
             />
