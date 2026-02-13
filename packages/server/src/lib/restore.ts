@@ -62,9 +62,7 @@ export interface BackupManifest {
   timestamp: string;
   userId: string;
   checksums: {
-    manifest: string;
-    database?: string;
-    files?: string;
+    [filename: string]: string;
   };
   stats?: {
     journals: number;
@@ -187,10 +185,6 @@ function validateManifest(manifest: any): { valid: boolean; error?: string } {
   // Validate checksums object
   if (!manifest.checksums || typeof manifest.checksums !== 'object') {
     return { valid: false, error: 'Missing or invalid checksums object' };
-  }
-
-  if (!manifest.checksums.manifest) {
-    return { valid: false, error: 'Missing manifest checksum' };
   }
 
   return { valid: true };

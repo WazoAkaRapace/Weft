@@ -45,7 +45,6 @@ export interface RestoreJobInput {
 }
 
 interface QueuedJob extends BackupJob {
-  attempts: number;
   processedAt?: Date;
   archivePath?: string;
   strategy?: RestoreStrategy;
@@ -100,7 +99,6 @@ export class BackupRestoreQueue {
       type: 'backup',
       userId: input.userId,
       status: 'pending',
-      attempts: 0,
       progress: {
         currentStep: 'Queued',
         currentStepIndex: 0,
@@ -128,7 +126,6 @@ export class BackupRestoreQueue {
       type: 'restore',
       userId: input.userId,
       status: 'pending',
-      attempts: 0,
       progress: {
         currentStep: 'Queued',
         currentStepIndex: 0,
@@ -270,31 +267,9 @@ export class BackupRestoreQueue {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`[BackupRestoreQueue] Worker ${workerId} failed job ${job.id}:`, errorMessage);
-
-      // Handle retries
-      const maxRetries = parseInt(process.env.BACKUP_RESTORE_MAX_RETRIES || '3', 10);
-
-      if (job.attempts < maxRetries) {
-        // Retry later
-        job.status = 'pending';
-        job.attempts++;
-        job.error = errorMessage;
-
-        // Calculate exponential backoff delay
-        const delay = Math.min(Math.pow(2, job.attempts) * 1000, 60000); // Max 60 seconds
-
-        setTimeout(() => {
-          this.processing.delete(job.id);
-        }, delay);
-
-        console.log(`[BackupRestoreQueue] Job ${job.id} will retry in ${delay}ms (attempt ${job.attempts}/${maxRetries})`);
-        return;
-      } else {
-        // Max retries reached
-        job.status = 'failed';
-        job.error = errorMessage;
-        console.error(`[BackupRestoreQueue] Job ${job.id} failed after ${maxRetries} attempts`);
-      }
+      job.status = 'failed';
+      job.error = errorMessage;
+      console.error(`[BackupRestoreQueue] Job ${job.id} failed: ${errorMessage}`);
     } finally {
       this.processing.delete(job.id);
     }
