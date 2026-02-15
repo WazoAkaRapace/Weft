@@ -154,7 +154,7 @@ export function DayCell({
   const hasAnyMood = hasMorningMood || hasAfternoonMood;
 
   const getCellStyles = () => {
-    const baseStyles = 'aspect-square flex flex-col rounded transition-all relative text-xs overflow-hidden';
+    const baseStyles = 'flex flex-col rounded transition-all relative text-xs overflow-hidden min-h-[80px] sm:min-h-0 sm:aspect-square';
 
     if (!isCurrentMonth) {
       return `${baseStyles} text-neutral-300 dark:text-dark-600 cursor-default`;

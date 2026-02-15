@@ -51,16 +51,16 @@ export function AppLayout({ children }: AppLayoutProps) {
         )}
 
         <main className={`flex-1 overflow-x-hidden overflow-auto ${isNotesMode ? 'pt-0 md:pt-0' : 'pt-16 md:pt-0'}`}>
-          {/* Mobile menu button */}
-          {(
+          {/* Mobile menu button - attached to left edge, hidden when drawer is open */}
+          {!sidebarOpen && (
             <button
-              className="md:hidden fixed top-4 left-4 z-30 p-2 bg-white dark:bg-dark-700 rounded-lg shadow hover:bg-neutral-100 dark:hover:bg-dark-600 transition-colors"
+              className="md:hidden fixed top-1/2 -translate-y-1/2 left-0 z-50 p-1.5 bg-white dark:bg-dark-700 rounded-r-lg shadow-md hover:bg-neutral-100 dark:hover:bg-dark-600 transition-colors"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open menu"
             >
               <svg
-                width="24"
-                height="24"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"

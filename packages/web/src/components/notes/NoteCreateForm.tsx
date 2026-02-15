@@ -225,7 +225,7 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
         </button>
 
         {showIconPicker && (
-          <div className="absolute z-10 mt-1 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg grid grid-cols-8 gap-1">
+          <div className="absolute z-10 mt-1 left-0 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg grid grid-cols-4 sm:grid-cols-8 gap-1 w-auto min-w-[160px] sm:min-w-0">
             {NOTE_ICONS.map(icon => (
               <button
                 key={icon}
@@ -234,7 +234,7 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
                   setSelectedIcon(icon);
                   setShowIconPicker(false);
                 }}
-                className={`p-2 text-xl rounded hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors ${
+                className={`p-1.5 sm:p-2 text-xl rounded hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors ${
                   selectedIcon === icon ? 'bg-primary-50 dark:bg-primary-900/30' : ''
                 }`}
               >
@@ -277,7 +277,7 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
         </button>
 
         {showColorPicker && (
-          <div className="absolute z-10 mt-1 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg space-y-1">
+          <div className="absolute z-10 mt-1 left-0 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg space-y-1">
             {NOTE_COLORS.map(color => (
               <button
                 key={color.name}

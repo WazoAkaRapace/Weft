@@ -20,7 +20,7 @@ export function NoteEditorPanel() {
   const [titleInput, setTitleInput] = useState('');
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [colorPickerPosition, setColorPickerPosition] = useState<{ top: number; right: number } | null>(null);
+  const [colorPickerPosition, setColorPickerPosition] = useState<{ top: number; left: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -195,9 +195,12 @@ export function NoteEditorPanel() {
       setColorPickerPosition(null);
     } else if (colorButtonRef.current) {
       const rect = colorButtonRef.current.getBoundingClientRect();
+      // Position the picker to stay within viewport
+      const pickerWidth = 120; // approximate width of color picker
+      const left = Math.min(rect.left, window.innerWidth - pickerWidth - 16);
       setColorPickerPosition({
         top: rect.bottom + 8,
-        right: window.innerWidth - rect.right,
+        left: Math.max(16, left),
       });
       setShowColorPicker(true);
     }
@@ -263,9 +266,9 @@ export function NoteEditorPanel() {
         }
       >
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 md:gap-4 sm:overflow-hidden sm:min-w-0 relative z-50">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 md:gap-4 sm:overflow-hidden sm:min-w-0 relative z-10">
           {/* Top row on mobile: Icon, Title, Color, Edit/Save buttons */}
-          <div className="flex items-center justify-between w-full sm:w-auto sm:hidden gap-1 pl-14">
+          <div className="flex items-center justify-between w-full sm:w-auto sm:hidden gap-1">
             {/* Icon */}
             <div className="relative flex-shrink-0">
               <button
@@ -276,12 +279,12 @@ export function NoteEditorPanel() {
               </button>
 
               {showIconPicker && (
-                <div className="absolute z-50 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg grid grid-cols-4 sm:grid-cols-8 gap-1 left-0 max-w-[calc(100vw-4rem)]">
+                <div className="absolute z-50 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg grid grid-cols-4 sm:grid-cols-8 gap-1 left-0 w-auto min-w-[160px]">
                   {NOTE_ICONS.map(icon => (
                     <button
                       key={icon}
                       onClick={() => handleIconSelect(icon)}
-                      className={`p-1 text-lg rounded hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors ${
+                      className={`p-1.5 sm:p-1 text-lg rounded hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors ${
                         selectedNote.note.icon === icon ? 'bg-primary-50 dark:bg-primary-900/30' : ''
                       }`}
                     >
@@ -335,7 +338,7 @@ export function NoteEditorPanel() {
 
               {showColorPicker && colorPickerPosition && createPortal(
                 <div className="fixed z-50 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg space-y-1 max-h-60 overflow-y-auto"
-                     style={{ top: `${colorPickerPosition.top}px`, right: `${colorPickerPosition.right}px` }}>
+                     style={{ top: `${colorPickerPosition.top}px`, left: `${colorPickerPosition.left}px` }}>
                   {NOTE_COLORS.map(color => (
                     <button
                       key={color.name}
@@ -381,7 +384,7 @@ export function NoteEditorPanel() {
                   type="button"
                   onClick={handleSaveClick}
                   disabled={isSaving}
-                  className={`h-8 w-8 flex items-center justify-center rounded-lg transition-colors whitespace-nowrap flex-shrink-0 ${
+                  className={`h-10 w-10 sm:h-8 sm:w-8 flex items-center justify-center rounded-lg transition-colors whitespace-nowrap flex-shrink-0 ${
                     saveStatus === 'saved'
                       ? 'bg-success text-white'
                       : saveStatus === 'error'
@@ -391,21 +394,21 @@ export function NoteEditorPanel() {
                   title={saveStatus === 'saved' ? 'Saved' : saveStatus === 'saving' ? 'Saving...' : saveStatus === 'error' ? 'Failed' : 'Save'}
                 >
                   {saveStatus === 'saved' ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   ) : saveStatus === 'saving' ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
                       <circle cx="12" cy="12" r="10" opacity="0.25" />
                       <path d="M12 2a10 10 0 0 1 10 10" />
                     </svg>
                   ) : saveStatus === 'error' ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <line x1="18" y1="6" x2="6" y2="18" />
                       <line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
                   ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
                       <polyline points="17 21 17 13 7 13 7 21" />
                       <polyline points="7 3 7 8 15 8" />
@@ -428,7 +431,7 @@ export function NoteEditorPanel() {
               </button>
 
               {showIconPicker && (
-                <div className="absolute z-50 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg grid grid-cols-4 sm:grid-cols-8 gap-1 left-0 max-w-[calc(100vw-4rem)]">
+                <div className="absolute z-50 mt-2 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg grid grid-cols-4 sm:grid-cols-8 gap-1 left-0 w-auto min-w-[160px] sm:min-w-0">
                   {NOTE_ICONS.map(icon => (
                     <button
                       key={icon}
@@ -487,7 +490,7 @@ export function NoteEditorPanel() {
 
               {showColorPicker && colorPickerPosition && createPortal(
                 <div className="fixed z-50 p-2 bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-600 rounded-lg shadow-lg space-y-1 max-h-60 overflow-y-auto"
-                     style={{ top: `${colorPickerPosition.top}px`, right: `${colorPickerPosition.right}px` }}>
+                     style={{ top: `${colorPickerPosition.top}px`, left: `${colorPickerPosition.left}px` }}>
                   {NOTE_COLORS.map(color => (
                     <button
                       key={color.name}
