@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { useNotes } from '../hooks/useNotes';
 import { useJournals } from '../hooks/useJournals';
+import { useMoodMutations } from '../hooks/useMoodMutations';
 import { FeedList } from '../components/feed/FeedList';
 import { MoodPromptCard } from '../components/feed/MoodPromptCard';
 import { QuickMoodDialog } from '../components/feed/QuickMoodDialog';
 import type { FeedEntry, DailyMood, TimeOfDay, MoodValue } from '@weft/shared';
-import { getMood, upsertMood } from '../lib/moodApi';
+import { getMood } from '../lib/moodApi';
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 
@@ -13,11 +14,11 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const { notes, isLoading: isLoadingNotes } = useNotes();
   const { journals, isLoading: isLoadingJournals } = useJournals({ page: 1, limit: 10 });
+  const { upsertMood } = useMoodMutations();
   const [moodsByDate, setMoodsByDate] = useState<Record<string, DailyMood[]>>({});
   const [todayMoods, setTodayMoods] = useState<DailyMood[]>([]);
   const [showMoodDialog, setShowMoodDialog] = useState(false);
   const [pendingTimeOfDay, setPendingTimeOfDay] = useState<TimeOfDay | null>(null);
-  const [isSavingMood, setIsSavingMood] = useState(false);
 
   // Filter out deleted notes and convert to FeedEntry format
   const noteEntries: FeedEntry[] = useMemo(() => notes
@@ -62,7 +63,6 @@ export function DashboardPage() {
         )
       );
 
-      setIsLoadingMoods(true);
       const moodsData: Record<string, DailyMood[]> = {};
 
       try {
@@ -81,8 +81,6 @@ export function DashboardPage() {
         }
       } catch (error) {
         console.error('Failed to fetch moods:', error);
-      } finally {
-        setIsLoadingMoods(false);
       }
     };
 
@@ -136,10 +134,9 @@ export function DashboardPage() {
   const handleSaveMood = async (mood: string, notes: string | null) => {
     if (!pendingTimeOfDay) return;
 
-    setIsSavingMood(true);
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
-      await upsertMood({
+      await upsertMood.mutateAsync({
         date: today,
         mood: mood as MoodValue,
         timeOfDay: pendingTimeOfDay,
@@ -150,14 +147,14 @@ export function DashboardPage() {
       const response = await getMood(today);
       if (response.data) {
         setTodayMoods(response.data);
+        // Also update moodsByDate so the feed displays the new mood
+        setMoodsByDate(prev => ({ ...prev, [today]: response.data }));
       }
 
       setShowMoodDialog(false);
       setPendingTimeOfDay(null);
     } catch (error) {
       console.error('Failed to save mood:', error);
-    } finally {
-      setIsSavingMood(false);
     }
   };
 
@@ -196,7 +193,7 @@ export function DashboardPage() {
           timeOfDay={pendingTimeOfDay}
           onClose={handleCloseDialog}
           onSave={handleSaveMood}
-          isLoading={isSavingMood}
+          isLoading={upsertMood.isPending}
         />
       )}
     </div>

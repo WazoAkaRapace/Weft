@@ -58,11 +58,16 @@ export function FeedList({ entries, isLoading, hasNotes, hasJournals, onEntryCli
 
     return Object.keys(moodsByDate)
       .filter(dateKey => {
-        const dateKeyDate = new Date(dateKey).toDateString();
+        // Parse date string as local date (not UTC) to avoid timezone issues
+        const [year, month, day] = dateKey.split('-').map(Number);
+        const dateKeyDate = new Date(year, month - 1, day).toDateString();
         // Only include if this date has moods but no entries
         return moodsByDate[dateKey].length > 0 && !groupedEntries[dateKeyDate];
       })
-      .map(dateKey => new Date(dateKey).toDateString());
+      .map(dateKey => {
+        const [year, month, day] = dateKey.split('-').map(Number);
+        return new Date(year, month - 1, day).toDateString();
+      });
   }, [moodsByDate, groupedEntries]);
 
   // Combine entry dates and mood-only dates, sort descending (newest first)
