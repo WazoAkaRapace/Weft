@@ -22,20 +22,20 @@ export function AIChatPage() {
 
   return (
     <div className="flex h-full bg-white dark:bg-dark-800 relative">
-      {/* Backdrop overlay - mobile only */}
+      {/* Backdrop overlay */}
       {isContextOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40"
           onClick={() => setIsContextOpen(false)}
         />
       )}
 
-      {/* Context Sidebar - full-page drawer on mobile, sidebar on desktop */}
+      {/* Context Sidebar - slide-in drawer from right */}
       <div className={`
-        fixed md:relative inset-0 md:inset-auto right-0 top-0 h-full z-50
-        md:w-80 md:h-full
+        fixed right-0 top-0 h-full z-50
+        w-full md:w-[48rem]
         transition-transform duration-300 ease-in-out
-        ${isContextOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+        ${isContextOpen ? 'translate-x-0' : 'translate-x-full'}
       `}>
         <ContextSelector
           selected={selectedContext}
@@ -45,7 +45,7 @@ export function AIChatPage() {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 w-full">
         <ChatMessages
           messages={messages}
           isLoading={isLoading}

@@ -16,7 +16,7 @@ export function ContextSelector({ selected, onChange, onClose }: ContextSelector
 
   // Fetch journals and notes for the picker
   const { journals } = useJournals({ limit: 20, page: 1 });
-  const { notes } = useNotes();
+  const { notes, noteTree } = useNotes();
 
   const handleRemoveItem = (id: string) => {
     onChange(selected.filter(item => item.id !== id));
@@ -31,7 +31,7 @@ export function ContextSelector({ selected, onChange, onClose }: ContextSelector
 
   return (
     <>
-      <div className="w-full md:w-80 h-full border-r border-neutral-200 dark:border-dark-600 bg-white dark:bg-dark-800 flex flex-col">
+      <div className="w-full h-full bg-white dark:bg-dark-800 flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-neutral-200 dark:border-dark-600 flex items-center justify-between">
           <div>
@@ -43,11 +43,11 @@ export function ContextSelector({ selected, onChange, onClose }: ContextSelector
               Add journals or notes as context
             </p>
           </div>
-          {/* Mobile close button */}
+          {/* Close button */}
           {onClose && (
             <button
               onClick={onClose}
-              className="md:hidden p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-dark-300 transition-colors"
+              className="p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-dark-300 transition-colors"
               aria-label="Close context panel"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -115,6 +115,7 @@ export function ContextSelector({ selected, onChange, onClose }: ContextSelector
         <ContextPickerModal
           journals={journals}
           notes={notes}
+          noteTree={noteTree}
           selected={selected}
           onSelect={handleAddItems}
           onClose={() => setIsPickerOpen(false)}

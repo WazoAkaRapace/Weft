@@ -1,38 +1,239 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import type { ContextItem } from '../../hooks/useAIChat';
 import type { Journal } from '@weft/shared';
 import type { Note } from '@weft/shared';
+import type { NoteTreeNode } from '../../hooks/useNotes';
 
 interface ContextPickerModalProps {
   journals: Journal[];
   notes: Note[];
+  noteTree: NoteTreeNode[];
   selected: ContextItem[];
   onSelect: (items: ContextItem[]) => void;
   onClose: () => void;
 }
 
+/**
+ * Flatten the note tree in depth-first traversal order (parents before children)
+ */
+function flattenNoteTree(nodes: NoteTreeNode[]): Note[] {
+  const result: Note[] = [];
+  for (const node of nodes) {
+    result.push(node.note);
+    result.push(...flattenNoteTree(node.children));
+  }
+  return result;
+}
+
+/**
+ * Get all descendant note IDs from a node (including the node itself)
+ */
+function getDescendantIds(node: NoteTreeNode): string[] {
+  const ids = [node.note.id];
+  for (const child of node.children) {
+    ids.push(...getDescendantIds(child));
+  }
+  return ids;
+}
+
+/**
+ * Find a node by ID in the tree
+ */
+function findNodeInTree(nodes: NoteTreeNode[], id: string): NoteTreeNode | null {
+  for (const node of nodes) {
+    if (node.note.id === id) return node;
+    const found = findNodeInTree(node.children, id);
+    if (found) return found;
+  }
+  return null;
+}
+
 type TabType = 'journals' | 'notes';
+
+interface NestedNoteListProps {
+  nodes: NoteTreeNode[];
+  level: number;
+  expandedNodeIds: Set<string>;
+  selectedItems: Set<string>;
+  selectedIds: Set<string>;
+  noteTree: NoteTreeNode[];
+  onToggleNode: (nodeId: string) => void;
+  onToggleItem: (id: string, shiftKey: boolean) => void;
+  formatDate: (date: Date | string | undefined | null) => string;
+}
+
+function NestedNoteList({
+  nodes,
+  level,
+  expandedNodeIds,
+  selectedItems,
+  selectedIds,
+  noteTree,
+  onToggleNode,
+  onToggleItem,
+  formatDate,
+}: NestedNoteListProps) {
+  return (
+    <>
+      {nodes.map(node => {
+        const isSelected = selectedItems.has(node.note.id) || selectedIds.has(node.note.id);
+        const isAlreadySelected = selectedIds.has(node.note.id);
+        const isExpanded = expandedNodeIds.has(node.note.id);
+        const hasChildren = node.children.length > 0;
+
+        return (
+          <div key={node.note.id}>
+            <div
+              className={`flex items-center gap-2 py-3 px-3 rounded-lg border-2 transition-colors ${
+                isAlreadySelected
+                  ? 'opacity-60 cursor-not-allowed border-neutral-200 dark:border-dark-600'
+                  : 'cursor-pointer hover:border-neutral-300 dark:hover:border-dark-500'
+              } ${isSelected ? 'border-primary bg-primary-50 dark:bg-primary-900/20' : 'border-neutral-200 dark:border-dark-600'}`}
+              style={{ paddingLeft: `${level * 20 + 12}px` }}
+              onClick={(e) => !isAlreadySelected && onToggleItem(node.note.id, e.shiftKey)}
+            >
+              {/* Expand/Collapse Chevron */}
+              {hasChildren ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleNode(node.note.id); }}
+                  className="p-0.5 hover:bg-neutral-200 dark:hover:bg-dark-600 rounded transition-colors flex-shrink-0"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                  >
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+              ) : (
+                <span className="w-5 flex-shrink-0" />
+              )}
+
+              {/* Checkbox */}
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                isSelected ? 'border-primary bg-primary' : 'border-neutral-300 dark:border-dark-500'
+              }`}>
+                {isSelected && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </div>
+
+              {/* Note Icon & Title */}
+              <span className="text-lg flex-shrink-0">{node.note.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p
+                  className="font-medium text-neutral-900 dark:text-dark-100 truncate"
+                  title={hasChildren ? `Shift+click to select all children` : undefined}
+                >
+                  {node.note.title}
+                  {hasChildren && (
+                    <span className="ml-2 text-xs text-neutral-400 dark:text-dark-500 font-normal">
+                      ({node.children.length} {node.children.length === 1 ? 'child' : 'children'})
+                    </span>
+                  )}
+                </p>
+                {node.note.updatedAt && (
+                  <p className="text-sm text-neutral-500 dark:text-dark-400">
+                    {formatDate(node.note.updatedAt)}
+                  </p>
+                )}
+                {node.note.content && (
+                  <p className="text-sm text-neutral-600 dark:text-dark-400 mt-1 line-clamp-2">
+                    {node.note.content}
+                  </p>
+                )}
+              </div>
+
+              {isAlreadySelected && (
+                <span className="text-xs bg-primary text-white px-2 py-1 rounded">Added</span>
+              )}
+            </div>
+
+            {/* Render children if expanded */}
+            {hasChildren && isExpanded && (
+              <NestedNoteList
+                nodes={node.children}
+                level={level + 1}
+                expandedNodeIds={expandedNodeIds}
+                selectedItems={selectedItems}
+                selectedIds={selectedIds}
+                noteTree={noteTree}
+                onToggleNode={onToggleNode}
+                onToggleItem={onToggleItem}
+                formatDate={formatDate}
+              />
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
 
 export function ContextPickerModal({
   journals,
   notes,
+  noteTree,
   selected,
   onSelect,
   onClose,
 }: ContextPickerModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('journals');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
 
   const selectedIds = new Set(selected.map(item => item.id));
 
-  const handleToggleItem = (id: string) => {
+  const toggleNode = useCallback((nodeId: string) => {
+    setExpandedNodeIds(prev => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleToggleItem = (id: string, shiftKey: boolean) => {
     setSelectedItems(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
+
+      // If shift key is pressed, toggle the node and all its children
+      if (shiftKey) {
+        const node = findNodeInTree(noteTree, id);
+        if (node) {
+          const allIds = getDescendantIds(node);
+          const allIdsExcludingAlreadySelected = allIds.filter(noteId => !selectedIds.has(noteId));
+
+          // Check if the parent is currently selected
+          const isParentSelected = prev.has(id) || selectedIds.has(id);
+
+          if (isParentSelected) {
+            // Deselect all
+            allIdsExcludingAlreadySelected.forEach(noteId => newSet.delete(noteId));
+          } else {
+            // Select all
+            allIdsExcludingAlreadySelected.forEach(noteId => newSet.add(noteId));
+          }
+        }
       } else {
-        newSet.add(id);
+        // Normal toggle for single item
+        if (newSet.has(id)) {
+          newSet.delete(id);
+        } else {
+          newSet.add(id);
+        }
       }
+
       return newSet;
     });
   };
@@ -55,29 +256,29 @@ export function ContextPickerModal({
 
   const handleAddSelected = () => {
     const itemsToAdd: ContextItem[] = [];
+    const orderedNotes = flattenNoteTree(noteTree);
 
-    selectedItems.forEach(id => {
-      // Check journals
-      const journal = journals.find(j => j.id === id);
-      if (journal) {
+    // Add journals first (in their original order)
+    journals.forEach(journal => {
+      if (selectedItems.has(journal.id)) {
         itemsToAdd.push({
           type: 'journal',
           id: journal.id,
           title: journal.title,
-          content: journal.notes,
+          content: journal.notes ?? undefined,
           date: toISOString(journal.createdAt),
         });
-        return;
       }
+    });
 
-      // Check notes
-      const note = notes.find(n => n.id === id);
-      if (note) {
+    // Add notes in tree order (parents before children)
+    orderedNotes.forEach(note => {
+      if (selectedItems.has(note.id)) {
         itemsToAdd.push({
           type: 'note',
           id: note.id,
           title: note.title,
-          content: note.content,
+          content: note.content ?? undefined,
           date: toISOString(note.updatedAt),
         });
       }
@@ -112,8 +313,8 @@ export function ContextPickerModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-dark-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 md:p-8">
+      <div className="bg-white dark:bg-dark-800 rounded-xl shadow-xl w-full h-full md:max-w-4xl md:max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-dark-600">
           <div>
@@ -121,7 +322,7 @@ export function ContextPickerModal({
               Add Context
             </h2>
             <p className="text-sm text-neutral-500 dark:text-dark-400 mt-1">
-              Select journals and notes to include as context
+              Select journals and notes to include as context. Shift+click a parent note to select all children.
             </p>
           </div>
           <button
@@ -182,7 +383,7 @@ export function ContextPickerModal({
                   return (
                     <div
                       key={journal.id}
-                      onClick={() => !isAlreadySelected && handleToggleItem(journal.id)}
+                      onClick={() => !isAlreadySelected && handleToggleItem(journal.id, false)}
                       className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
                         isSelected
                           ? 'border-primary bg-primary-50 dark:bg-primary-900/20'
@@ -243,66 +444,17 @@ export function ContextPickerModal({
                   <p>No notes found</p>
                 </div>
               ) : (
-                notes.map(note => {
-                  const isSelected = selectedItems.has(note.id) || selectedIds.has(note.id);
-                  const isAlreadySelected = selectedIds.has(note.id);
-
-                  return (
-                    <div
-                      key={note.id}
-                      onClick={() => !isAlreadySelected && handleToggleItem(note.id)}
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                        isSelected
-                          ? 'border-primary bg-primary-50 dark:bg-primary-900/20'
-                          : 'border-neutral-200 dark:border-dark-600 hover:border-neutral-300 dark:hover:border-dark-500'
-                      } ${isAlreadySelected ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                          isSelected
-                            ? 'border-primary bg-primary'
-                            : 'border-neutral-300 dark:border-dark-500'
-                        }`}>
-                          {isSelected && (
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="white"
-                              strokeWidth="3"
-                            >
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          )}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-neutral-900 dark:text-dark-100 truncate flex items-center gap-2">
-                            {note.icon && <span>{note.icon}</span>}
-                            {note.title}
-                          </p>
-                          {note.updatedAt && (
-                            <p className="text-sm text-neutral-500 dark:text-dark-400">
-                              {formatDate(note.updatedAt)}
-                            </p>
-                          )}
-                          {note.content && (
-                            <p className="text-sm text-neutral-600 dark:text-dark-400 mt-1 line-clamp-2">
-                              {note.content}
-                            </p>
-                          )}
-                        </div>
-
-                        {isAlreadySelected && (
-                          <span className="text-xs bg-primary text-white px-2 py-1 rounded">
-                            Added
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
+                <NestedNoteList
+                  nodes={noteTree}
+                  level={0}
+                  expandedNodeIds={expandedNodeIds}
+                  selectedItems={selectedItems}
+                  selectedIds={selectedIds}
+                  noteTree={noteTree}
+                  onToggleNode={toggleNode}
+                  onToggleItem={handleToggleItem}
+                  formatDate={formatDate}
+                />
               )}
             </div>
           )}

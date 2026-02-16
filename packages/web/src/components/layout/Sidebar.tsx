@@ -290,8 +290,8 @@ function NavigationSidebarContent({ isCollapsed, onClose, onToggleCollapse }: { 
   );
 }
 
-function NotesTreeSidebarContent({ isCollapsed }: { isCollapsed: boolean }) {
-  return <NoteTree isCollapsed={isCollapsed} />;
+function NotesTreeSidebarContent() {
+  return <NoteTree isCollapsed={false} />;
 }
 
 export function Sidebar({ isNotesMode, isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarContainerProps) {
@@ -302,8 +302,8 @@ export function Sidebar({ isNotesMode, isOpen, isCollapsed, onClose, onToggleCol
         fixed md:relative
         transition-transform duration-300
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        ${isCollapsed ? 'w-16' : 'w-64'}
-        ${isCollapsed ? 'group hover:w-64' : ''}
+        ${isNotesMode ? 'w-64' : (isCollapsed ? 'w-16' : 'w-64')}
+        ${isNotesMode ? '' : (isCollapsed ? 'group hover:w-64' : '')}
       `}
     >
       {/* Navigation sidebar - visible when NOT in notes mode */}
@@ -315,7 +315,6 @@ export function Sidebar({ isNotesMode, isOpen, isCollapsed, onClose, onToggleCol
           flex flex-col
           transition-transform duration-300 ease-in-out
           ${isNotesMode ? '-translate-x-full' : 'translate-x-0'}
-          ${isCollapsed ? '!w-64 group-hover:!w-64' : ''}
         `}
       >
         <NavigationSidebarContent
@@ -334,10 +333,9 @@ export function Sidebar({ isNotesMode, isOpen, isCollapsed, onClose, onToggleCol
           flex flex-col
           transition-transform duration-300 ease-in-out
           ${isNotesMode ? 'translate-x-0' : '-translate-x-full'}
-          ${isCollapsed ? '!w-64 group-hover:!w-64' : ''}
         `}
       >
-        {isNotesMode && <NotesTreeSidebarContent isCollapsed={isCollapsed} />}
+        {isNotesMode && <NotesTreeSidebarContent />}
       </aside>
     </div>
   );

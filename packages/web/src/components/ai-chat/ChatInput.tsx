@@ -58,11 +58,11 @@ export function ChatInput({ onSend, disabled, onClear, hasContext, onOpenContext
             }}
           />
 
-          {/* Context button - mobile only */}
+          {/* Context button */}
           <button
             type="button"
             onClick={onOpenContext}
-            className="md:hidden relative p-3 bg-neutral-100 dark:bg-dark-700 text-neutral-600 dark:text-dark-300 rounded-lg hover:bg-neutral-200 dark:hover:bg-dark-600 transition-colors"
+            className="relative p-3 bg-neutral-100 dark:bg-dark-700 text-neutral-600 dark:text-dark-300 rounded-lg hover:bg-neutral-200 dark:hover:bg-dark-600 transition-colors"
             aria-label="Open context panel"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
