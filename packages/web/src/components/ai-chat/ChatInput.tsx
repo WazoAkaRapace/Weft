@@ -5,9 +5,11 @@ interface ChatInputProps {
   disabled: boolean;
   onClear: () => void;
   hasContext: boolean;
+  onOpenContext: () => void;
+  contextCount: number;
 }
 
-export function ChatInput({ onSend, disabled, onClear, hasContext }: ChatInputProps) {
+export function ChatInput({ onSend, disabled, onClear, hasContext, onOpenContext, contextCount }: ChatInputProps) {
   const [input, setInput] = useState('');
 
   const handleSubmit = (e: FormEvent) => {
@@ -56,19 +58,36 @@ export function ChatInput({ onSend, disabled, onClear, hasContext }: ChatInputPr
             }}
           />
 
+          {/* Context button - mobile only */}
+          <button
+            type="button"
+            onClick={onOpenContext}
+            className="md:hidden relative p-3 bg-neutral-100 dark:bg-dark-700 text-neutral-600 dark:text-dark-300 rounded-lg hover:bg-neutral-200 dark:hover:bg-dark-600 transition-colors"
+            aria-label="Open context panel"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+            </svg>
+            {contextCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-xs rounded-full flex items-center justify-center">
+                {contextCount}
+              </span>
+            )}
+          </button>
+
           <button
             type="submit"
             disabled={disabled || !input.trim()}
-            className="px-6 py-3 bg-primary text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium"
+            className="px-4 md:px-6 py-3 bg-primary text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium"
           >
             {disabled ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Sending...
+                <span className="hidden sm:inline">Sending...</span>
               </>
             ) : (
               <>
-                <span>Send</span>
+                <span className="hidden sm:inline">Send</span>
                 <svg
                   width="16"
                   height="16"

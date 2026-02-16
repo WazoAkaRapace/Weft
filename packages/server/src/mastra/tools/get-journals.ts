@@ -64,7 +64,7 @@ export const getJournalsTool = createTool({
       }
 
       // Execute query with joins if transcripts are requested
-      let query = db
+      const query = db
         .select({
           id: journals.id,
           title: journals.title,

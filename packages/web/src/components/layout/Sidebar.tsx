@@ -6,18 +6,21 @@ import { navigationStructure, NavItem, NavGroup } from '../../lib/navigation';
 import { NoteTree } from '../notes/SortableNoteTree';
 
 interface SidebarProps {
-  mode?: 'navigation' | 'notes-tree';
   isOpen: boolean;
   isCollapsed: boolean;
   onClose: () => void;
   onToggleCollapse: () => void;
 }
 
+interface SidebarContainerProps extends SidebarProps {
+  isNotesMode: boolean;
+}
+
 function isNavGroup(item: NavItem | NavGroup): item is NavGroup {
   return 'items' in item;
 }
 
-function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Omit<SidebarProps, 'mode'>) {
+function NavigationSidebarContent({ isCollapsed, onClose, onToggleCollapse }: { isCollapsed: boolean; onClose: () => void; onToggleCollapse: () => void }) {
   const { data: session } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
@@ -59,17 +62,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
   };
 
   return (
-    <aside
-      className={`
-        h-screen bg-white dark:bg-dark-800 border-r border-neutral-200 dark:border-dark-600
-        flex flex-col
-        fixed md:relative z-50
-        transition-all duration-300
-        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        ${isCollapsed ? 'w-16' : 'w-64'}
-        ${isCollapsed ? 'group hover:w-64' : ''}
-      `}
-    >
+    <>
       {/* Logo/Brand */}
       <div className="p-4 border-b border-neutral-200 dark:border-dark-600 flex items-center justify-between">
         {!isCollapsed && (
@@ -109,7 +102,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
                     key={`group-item-${groupIndex}`}
                     onClick={() => {
                       navigateWithWarning(() => {
-                        navigate(groupItem.path);
+                        navigate(groupItem.path, { viewTransition: true });
                         if (window.innerWidth < 768) {
                           onClose();
                         }
@@ -147,7 +140,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
               key={`item-${index}`}
               onClick={() => {
                 navigateWithWarning(() => {
-                  navigate(item.path);
+                  navigate(item.path, { viewTransition: true });
                   if (window.innerWidth < 768) {
                     onClose();
                   }
@@ -220,7 +213,7 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
         <button
           onClick={() => {
             navigateWithWarning(() => {
-              navigate('/settings');
+              navigate('/settings', { viewTransition: true });
               if (window.innerWidth < 768) {
                 onClose();
               }
@@ -293,32 +286,59 @@ function NavigationSidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: O
           </svg>
         </button>
       </div>
-    </aside>
+    </>
   );
 }
 
-function NotesTreeSidebar({ isOpen, isCollapsed }: { isOpen: boolean; isCollapsed: boolean }) {
+function NotesTreeSidebarContent({ isCollapsed }: { isCollapsed: boolean }) {
+  return <NoteTree isCollapsed={isCollapsed} />;
+}
+
+export function Sidebar({ isNotesMode, isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarContainerProps) {
   return (
-    <aside
+    <div
       className={`
-        h-screen bg-white dark:bg-dark-800 border-r border-neutral-200 dark:border-dark-600
-        flex flex-col
-        fixed md:relative z-50
-        transition-all duration-300
+        h-screen shrink-0 z-50
+        fixed md:relative
+        transition-transform duration-300
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         ${isCollapsed ? 'w-16' : 'w-64'}
         ${isCollapsed ? 'group hover:w-64' : ''}
       `}
     >
-      <NoteTree isCollapsed={isCollapsed} />
-    </aside>
+      {/* Navigation sidebar - visible when NOT in notes mode */}
+      <aside
+        className={`
+          sidebar-nav
+          absolute top-0 left-0 h-full w-full
+          bg-white dark:bg-dark-800 border-r border-neutral-200 dark:border-dark-600
+          flex flex-col
+          transition-transform duration-300 ease-in-out
+          ${isNotesMode ? '-translate-x-full' : 'translate-x-0'}
+          ${isCollapsed ? '!w-64 group-hover:!w-64' : ''}
+        `}
+      >
+        <NavigationSidebarContent
+          isCollapsed={isCollapsed}
+          onClose={onClose}
+          onToggleCollapse={onToggleCollapse}
+        />
+      </aside>
+
+      {/* Notes sidebar - visible when in notes mode */}
+      <aside
+        className={`
+          sidebar-notes
+          absolute top-0 left-0 h-full w-full
+          bg-white dark:bg-dark-800 border-r border-neutral-200 dark:border-dark-600
+          flex flex-col
+          transition-transform duration-300 ease-in-out
+          ${isNotesMode ? 'translate-x-0' : '-translate-x-full'}
+          ${isCollapsed ? '!w-64 group-hover:!w-64' : ''}
+        `}
+      >
+        {isNotesMode && <NotesTreeSidebarContent isCollapsed={isCollapsed} />}
+      </aside>
+    </div>
   );
-}
-
-export function Sidebar({ mode = 'navigation', ...props }: SidebarProps) {
-  if (mode === 'notes-tree') {
-    return <NotesTreeSidebar isOpen={props.isOpen} isCollapsed={props.isCollapsed} />;
-  }
-
-  return <NavigationSidebar {...props} />;
 }

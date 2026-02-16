@@ -344,7 +344,7 @@ export function NoteTree({ isCollapsed = false }: SortableNoteTreeProps) {
 
   const handleBackToNavigation = () => {
     navigateWithWarning(() => {
-      navigate('/dashboard');
+      navigate('/dashboard', { viewTransition: true });
     });
   };
 

@@ -35,7 +35,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     <LayoutContext.Provider value={{ sidebarOpen, setSidebarOpen, isNotesMode }}>
       <div className="flex h-screen bg-neutral-50 dark:bg-dark-900">
         <Sidebar
-          mode={isNotesMode ? 'notes-tree' : 'navigation'}
+          isNotesMode={isNotesMode}
           isOpen={sidebarOpen}
           isCollapsed={sidebarCollapsed}
           onClose={() => setSidebarOpen(false)}
@@ -50,7 +50,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           />
         )}
 
-        <main className={`flex-1 overflow-x-hidden overflow-auto ${isNotesMode ? 'pt-0 md:pt-0' : 'pt-16 md:pt-0'}`}>
+        <main className="flex-1 overflow-x-hidden overflow-auto">
           {/* Mobile menu button - attached to left edge, hidden when drawer is open */}
           {!sidebarOpen && (
             <button
@@ -70,28 +70,6 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <line x1="3" y1="6" x2="21" y2="6" />
                 <line x1="3" y1="12" x2="21" y2="12" />
                 <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            </button>
-          )}
-
-          {/* Desktop collapse button - hide in notes mode on desktop */}
-          {!isNotesMode && (
-            <button
-              className="hidden md:flex fixed top-4 left-4 z-30 p-2 bg-white dark:bg-dark-700 rounded-lg shadow hover:bg-neutral-100 dark:hover:bg-dark-600 transition-colors items-center justify-center"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className={`transition-transform ${sidebarCollapsed ? 'rotate-180' : ''} text-neutral-900 dark:text-dark-50`}
-              >
-                <polyline points="9 18 15 12 9 6" />
               </svg>
             </button>
           )}

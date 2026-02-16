@@ -8,9 +8,10 @@ import { ContextItemComponent } from './ContextItem';
 interface ContextSelectorProps {
   selected: ContextItem[];
   onChange: (items: ContextItem[]) => void;
+  onClose?: () => void;
 }
 
-export function ContextSelector({ selected, onChange }: ContextSelectorProps) {
+export function ContextSelector({ selected, onChange, onClose }: ContextSelectorProps) {
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   // Fetch journals and notes for the picker
@@ -30,16 +31,31 @@ export function ContextSelector({ selected, onChange }: ContextSelectorProps) {
 
   return (
     <>
-      <div className="w-80 border-r border-neutral-200 dark:border-dark-600 bg-white dark:bg-dark-800 flex flex-col">
+      <div className="w-full md:w-80 h-full border-r border-neutral-200 dark:border-dark-600 bg-white dark:bg-dark-800 flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-neutral-200 dark:border-dark-600">
-          <h3 className="font-semibold text-neutral-900 dark:text-dark-100 flex items-center gap-2">
-            <span>📎</span>
-            <span>Context</span>
-          </h3>
-          <p className="text-xs text-neutral-500 dark:text-dark-400 mt-1">
-            Add journals or notes as context
-          </p>
+        <div className="p-4 border-b border-neutral-200 dark:border-dark-600 flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-neutral-900 dark:text-dark-100 flex items-center gap-2">
+              <span>📎</span>
+              <span>Context</span>
+            </h3>
+            <p className="text-xs text-neutral-500 dark:text-dark-400 mt-1">
+              Add journals or notes as context
+            </p>
+          </div>
+          {/* Mobile close button */}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="md:hidden p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-dark-300 transition-colors"
+              aria-label="Close context panel"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Add button */}

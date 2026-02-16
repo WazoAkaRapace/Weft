@@ -37,6 +37,7 @@ export function useSmoothStream(options: UseSmoothStreamOptions = {}): UseSmooth
   // React state - only updated when text actually changes
   const [visibleText, setVisibleText] = useState<string>('');
   const [isComplete, setIsComplete] = useState<boolean>(true);
+  const [bufferedText, setBufferedText] = useState<string>('');
 
   // Animation loop
   const animate = useCallback((timestamp: number) => {
@@ -64,6 +65,7 @@ export function useSmoothStream(options: UseSmoothStreamOptions = {}): UseSmooth
 
       // Continue animation if there's more to reveal
       if (visibleIndexRef.current < bufferLength) {
+        // eslint-disable-next-line react-hooks/immutability -- recursive animation requires self-reference
         animationFrameRef.current = requestAnimationFrame(animate);
       }
     } else {
@@ -77,6 +79,7 @@ export function useSmoothStream(options: UseSmoothStreamOptions = {}): UseSmooth
 
     const wasComplete = visibleIndexRef.current >= bufferRef.current.length;
     bufferRef.current += text;
+    setBufferedText(bufferRef.current);
     setIsComplete(false);
 
     // Start animation if it wasn't running
@@ -92,6 +95,7 @@ export function useSmoothStream(options: UseSmoothStreamOptions = {}): UseSmooth
     visibleIndexRef.current = 0;
     lastUpdateTimeRef.current = 0;
     setVisibleText('');
+    setBufferedText('');
     setIsComplete(true);
 
     if (animationFrameRef.current !== null) {
@@ -114,7 +118,7 @@ export function useSmoothStream(options: UseSmoothStreamOptions = {}): UseSmooth
     addText,
     reset,
     isComplete,
-    bufferedText: bufferRef.current,
+    bufferedText,
   };
 }
 

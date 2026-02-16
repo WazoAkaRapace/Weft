@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import type { ChatMessage, ToolCall, ThinkingBlock } from '../../hooks/useAIChat';
 import { StreamingText } from './StreamingText';
 
@@ -12,21 +12,20 @@ export function ChatMessages({ messages, isLoading, error }: ChatMessagesProps) 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [animatedIndices, setAnimatedIndices] = useState<Set<number>>(new Set());
   const prevMessagesLengthRef = useRef(0);
 
-  // Determine which messages should animate (only new messages since last render)
-  const animatedIndices = useMemo(() => {
-    const indices = new Set<number>();
-    for (let i = prevMessagesLengthRef.current; i < messages.length; i++) {
-      indices.add(i);
-    }
-    return indices;
-  }, [messages.length]);
-
-  // Update ref after determining animated indices
+  // Update animated indices when messages change
   useEffect(() => {
+    const newIndices = new Set<number>();
+    for (let i = prevMessagesLengthRef.current; i < messages.length; i++) {
+      newIndices.add(i);
+    }
+    if (newIndices.size > 0) {
+      setAnimatedIndices(newIndices);
+    }
     prevMessagesLengthRef.current = messages.length;
-  });
+  }, [messages.length]);
 
   // Check if user is near the bottom of the scroll container
   const isNearBottom = useCallback(() => {

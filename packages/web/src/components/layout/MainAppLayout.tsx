@@ -13,7 +13,11 @@ export function MainAppLayout() {
     noteId = match?.[1];
   }
 
-  const appLayout = <AppLayout><Outlet /></AppLayout>;
-
-  return isNotesRoute ? <NotesProvider initialNoteId={noteId}>{appLayout}</NotesProvider> : appLayout;
+  return (
+    <NotesProvider initialNoteId={noteId}>
+      <AppLayout>
+        <Outlet />
+      </AppLayout>
+    </NotesProvider>
+  );
 }

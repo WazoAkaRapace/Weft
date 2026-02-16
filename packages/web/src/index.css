@@ -726,3 +726,53 @@ body {
 [class*="rounded-2xl"] > .prose p:last-child {
   margin-bottom: 0;
 }
+
+/* ============================================
+   View Transitions for Sidebar
+   ============================================ */
+
+/* Disable default cross-fade for sidebar area */
+::view-transition-old(sidebar),
+::view-transition-new(sidebar) {
+  animation-duration: 0s;
+}
+
+/* Sidebar slide animations */
+@keyframes sidebar-slide-out-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+@keyframes sidebar-slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+/* Apply view-transition-name to sidebars */
+.sidebar-nav {
+  view-transition-name: sidebar-nav;
+}
+
+.sidebar-notes {
+  view-transition-name: sidebar-notes;
+}
+
+/* Animate the navigation sidebar exiting */
+::view-transition-old(sidebar-nav) {
+  animation: sidebar-slide-out-left 300ms ease-in-out forwards;
+}
+
+/* Animate the navigation sidebar entering */
+::view-transition-new(sidebar-nav) {
+  animation: sidebar-slide-in-left 300ms ease-in-out forwards;
+}
+
+/* Animate the notes sidebar exiting */
+::view-transition-old(sidebar-notes) {
+  animation: sidebar-slide-out-left 300ms ease-in-out forwards;
+}
+
+/* Animate the notes sidebar entering */
+::view-transition-new(sidebar-notes) {
+  animation: sidebar-slide-in-left 300ms ease-in-out forwards;
+}

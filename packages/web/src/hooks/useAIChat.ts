@@ -139,7 +139,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
 
     // Track state outside React
     let hasStructuredReasoning = false;
-    let thinkingBlocks: ThinkingBlock[] = [];
+    const thinkingBlocks: ThinkingBlock[] = [];
     const toolCallsMap = new Map<string, ToolCall>();
     let rawContent = '';
 
@@ -208,7 +208,6 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       }
 
       const decoder = new TextDecoder();
-      let isThinking = false;
       let buffer = '';
 
       while (true) {
@@ -236,7 +235,6 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
                 switch (chunk.type) {
                   case 'reasoning-start':
                     hasStructuredReasoning = true;
-                    isThinking = true;
                     lastMessage.isThinking = true;
                     thinkingBlocks.push({ content: '', isComplete: false });
                     lastMessage.thinkingBlocks = [...thinkingBlocks];
@@ -251,7 +249,6 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
                     break;
 
                   case 'reasoning-end':
-                    isThinking = false;
                     lastMessage.isThinking = false;
                     if (thinkingBlocks.length > 0) {
                       thinkingBlocks[thinkingBlocks.length - 1].isComplete = true;
@@ -259,12 +256,13 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
                     }
                     break;
 
-                  case 'text-delta':
+                  case 'text-delta': {
                     // Simply accumulate text - component handles animation
                     const text = chunk.payload?.text || '';
                     rawContent += text;
                     lastMessage.content = rawContent;
                     break;
+                  }
 
                   case 'tool-call':
                   case 'tool-call-input-streaming-start': {
