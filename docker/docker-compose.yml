@@ -145,6 +145,13 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@weft.local}
+      # Mastra AI Configuration
+      MASTRA_PROVIDER: ${MASTRA_PROVIDER:-ollama}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:30b}
+      MASTRA_DEFAULT_MODEL: ${MASTRA_DEFAULT_MODEL:-ollama/qwen3:30b}
+      OLLAMA_THINKING: ${OLLAMA_THINKING:-true}
+      OLLAMA_MAX_STEPS: ${OLLAMA_MAX_STEPS:-10}
     ports:
       - "${BACKEND_PORT:-3001}:3001"
     volumes:

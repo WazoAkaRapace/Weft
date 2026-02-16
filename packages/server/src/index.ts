@@ -70,6 +70,11 @@ import {
   handleGetNotificationTypes,
   handleSendTestNotification,
 } from './routes/notifications.js';
+import {
+  handleChatWithAgent,
+  handleMastraHealth,
+  handleGetModels,
+} from './routes/mastra.js';
 import { initializeVapid } from './services/vapidService.js';
 import { initializeScheduler, stopScheduler } from './services/notificationScheduler.js';
 
@@ -685,6 +690,22 @@ const server = createHttpServer(async (req, res) => {
     // Test notification endpoint
     if (url.pathname === '/api/notifications/test' && req.method === 'POST') {
       sendResponse(res, addCorsHeaders(await handleSendTestNotification(request), request));
+      return;
+    }
+
+    // Mastra AI endpoints
+    if (url.pathname === '/api/mastra/chat' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleChatWithAgent(request), request));
+      return;
+    }
+
+    if (url.pathname === '/api/mastra/health' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleMastraHealth(), request));
+      return;
+    }
+
+    if (url.pathname === '/api/mastra/models' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetModels(), request));
       return;
     }
 

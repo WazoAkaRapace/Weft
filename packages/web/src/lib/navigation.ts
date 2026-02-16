@@ -14,6 +14,7 @@ export const navigationStructure: (NavItem | NavGroup)[] = [
   // Top-level items
   { path: '/dashboard', label: 'Dashboard', icon: '🏠', description: 'Home' },
   { path: '/notes', label: 'Notes', icon: '📝', description: 'Your notes' },
+  { path: '/ai-chat', label: 'AI Chat', icon: '🤖', description: 'Chat with AI assistant' },
 
   // Journal group
   {

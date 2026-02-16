@@ -11,6 +11,7 @@ import { NotesPage } from './pages/NotesPage';
 import { TemplatesPage } from './pages/TemplatesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { MoodCalendarPage } from './pages/MoodCalendarPage';
+import { AIChatPage } from './pages/AIChatPage';
 import { MainAppLayout } from './components/layout/MainAppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { OnboardingGuard } from './components/OnboardingGuard';
@@ -92,6 +93,9 @@ export function App() {
           <Route path="notes/templates" element={<TemplatesPage />} />
           <Route path="notes/templates/new" element={<TemplatesPage />} />
           <Route path="notes/templates/:templateId" element={<TemplatesPage />} />
+
+          {/* AI Chat */}
+          <Route path="ai-chat" element={<AIChatPage />} />
         </Route>
 
         {/* Root route - redirects based on onboarding status */}

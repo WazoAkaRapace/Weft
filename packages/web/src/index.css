@@ -629,3 +629,100 @@ body {
   max-width: 100vw !important;
   min-width: 0 !important;
 }
+
+/* ============================================
+   AI Chat Streaming Animations
+   ============================================ */
+
+/* Smooth streaming cursor with soft blink animation */
+@keyframes softBlink {
+  0%, 40% {
+    opacity: 0.7;
+  }
+  50%, 90% {
+    opacity: 0.15;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+
+.streaming-cursor-smooth {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background-color: currentColor;
+  opacity: 0.6;
+  animation: softBlink 1.2s ease-in-out infinite;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+}
+
+/* Legacy cursor class for backward compatibility */
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: currentColor;
+  animation: softBlink 1.2s ease-in-out infinite;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+}
+
+/* ============================================
+   Chat Bubble Entrance Animations
+   ============================================ */
+
+@keyframes message-enter-user {
+  0% { opacity: 0; transform: translateX(20px) scale(0.95); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes message-enter-assistant {
+  0% { opacity: 0; transform: translateX(-20px) scale(0.95); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.animate-message-user {
+  animation: message-enter-user 200ms ease-out forwards;
+}
+
+.animate-message-assistant {
+  animation: message-enter-assistant 250ms ease-out forwards;
+}
+
+/* Welcome screen exit animation */
+@keyframes welcome-exit {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.95); }
+}
+
+.animate-welcome-exit {
+  animation: welcome-exit 300ms ease-in-out forwards;
+}
+
+/* Accessibility: respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-message-user,
+  .animate-message-assistant,
+  .animate-welcome-exit {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Remove prose padding inside chat bubbles (bubbles have their own padding) */
+[class*="rounded-2xl"] > .prose {
+  padding: 0;
+}
+
+[class*="rounded-2xl"] > .prose p {
+  margin-bottom: 0.5rem;
+}
+
+[class*="rounded-2xl"] > .prose p:last-child {
+  margin-bottom: 0;
+}
