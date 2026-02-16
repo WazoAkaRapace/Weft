@@ -4,6 +4,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigationContext } from '../../contexts/NavigationContext';
 import { navigationStructure, NavItem, NavGroup } from '../../lib/navigation';
 import { NoteTree } from '../notes/SortableNoteTree';
+import { ThemeIcon, type IconName } from '../ui/ThemeIcon';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -55,10 +56,10 @@ function NavigationSidebarContent({ isCollapsed, onClose, onToggleCollapse }: { 
     else setTheme('light');
   };
 
-  const getThemeIcon = () => {
-    if (theme === 'light') return '☀️';
-    if (theme === 'dark') return '🌙';
-    return '💻'; // system
+  const getThemeIconName = (): IconName => {
+    if (theme === 'light') return 'theme';
+    if (theme === 'dark') return 'theme';
+    return 'theme-system';
   };
 
   return (
@@ -120,7 +121,7 @@ function NavigationSidebarContent({ isCollapsed, onClose, onToggleCollapse }: { 
                     `}
                     title={groupItem.label}
                   >
-                    <span className="text-lg flex-shrink-0">{groupItem.icon}</span>
+                    <ThemeIcon name={groupItem.icon as IconName} alt={groupItem.label} size={34} />
                     <span
                       className={`text-neutral-700 dark:text-dark-200 transition-opacity duration-200 ${
                         isCollapsed ? 'opacity-0 group-hover:opacity-100 hidden group-hover:block whitespace-nowrap overflow-hidden' : ''
@@ -158,7 +159,7 @@ function NavigationSidebarContent({ isCollapsed, onClose, onToggleCollapse }: { 
               `}
               title={item.label}
             >
-              <span className="text-lg flex-shrink-0">{item.icon}</span>
+              <ThemeIcon name={item.icon as IconName} alt={item.label} size={34} />
               <span
                 className={`text-neutral-700 dark:text-dark-200 transition-opacity duration-200 ${
                   isCollapsed ? 'opacity-0 group-hover:opacity-100 hidden group-hover:block whitespace-nowrap overflow-hidden' : ''
@@ -180,7 +181,7 @@ function NavigationSidebarContent({ isCollapsed, onClose, onToggleCollapse }: { 
           }`}
           title={session?.user?.name || 'User'}
         >
-          <span className="text-lg flex-shrink-0">👤</span>
+          <ThemeIcon name="user" alt="User" size={34} />
           <span
             className={`text-neutral-700 dark:text-dark-200 font-medium transition-opacity duration-200 ${
               isCollapsed ? 'opacity-0 group-hover:opacity-100 hidden group-hover:block whitespace-nowrap overflow-hidden' : ''
@@ -199,7 +200,7 @@ function NavigationSidebarContent({ isCollapsed, onClose, onToggleCollapse }: { 
           `}
           title={`Current theme: ${theme}${theme === 'system' ? ` (${effectiveTheme})` : ''}`}
         >
-          <span className="text-lg flex-shrink-0">{getThemeIcon()}</span>
+          <ThemeIcon name={getThemeIconName()} alt="Theme" size={34} />
           <span
             className={`text-neutral-700 dark:text-dark-200 transition-opacity duration-200 ${
               isCollapsed ? 'opacity-0 group-hover:opacity-100 hidden group-hover:block whitespace-nowrap overflow-hidden' : ''
@@ -229,7 +230,7 @@ function NavigationSidebarContent({ isCollapsed, onClose, onToggleCollapse }: { 
           `}
           title="Settings"
         >
-          <span className="text-lg flex-shrink-0">⚙️</span>
+          <ThemeIcon name="settings" alt="Settings" size={34} />
           <span
             className={`text-neutral-700 dark:text-dark-200 transition-opacity duration-200 ${
               isCollapsed ? 'opacity-0 group-hover:opacity-100 hidden group-hover:block whitespace-nowrap overflow-hidden' : ''
@@ -248,7 +249,7 @@ function NavigationSidebarContent({ isCollapsed, onClose, onToggleCollapse }: { 
           `}
           title="Sign Out"
         >
-          <span className="text-lg flex-shrink-0">🚪</span>
+          <ThemeIcon name="logout" alt="Sign Out" size={34} />
           <span
             className={`transition-opacity duration-200 ${
               isCollapsed ? 'opacity-0 group-hover:opacity-100 hidden group-hover:block whitespace-nowrap overflow-hidden' : ''

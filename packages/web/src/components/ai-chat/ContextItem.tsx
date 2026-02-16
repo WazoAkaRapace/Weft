@@ -1,4 +1,5 @@
 import type { ContextItem } from '../../hooks/useAIChat';
+import { ThemeIcon } from '../ui/ThemeIcon';
 
 interface ContextItemProps {
   item: ContextItem;
@@ -35,9 +36,11 @@ export function ContextItemComponent({ item, onRemove }: ContextItemProps) {
     <div className="group flex items-start justify-between p-3 bg-neutral-50 dark:bg-dark-700 rounded-lg border border-neutral-200 dark:border-dark-600 hover:border-neutral-300 dark:hover:border-dark-500 transition-colors">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-lg flex-shrink-0">
-            {item.type === 'journal' ? '📹' : '📝'}
-          </span>
+          <ThemeIcon
+            name={item.type === 'journal' ? 'recording' : 'note'}
+            alt={item.type === 'journal' ? 'Journal' : 'Note'}
+            size={34}
+          />
           <span className="font-medium text-neutral-900 dark:text-dark-100 truncate">
             {item.title}
           </span>

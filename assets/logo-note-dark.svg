@@ -1,0 +1,26 @@
+<!-- WEFT Note Icon - Dark Mode -->
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="64" height="64" rx="12" fill="#27272A"/>
+  
+  <!-- Paper/document body -->
+  <rect x="20" y="16" width="24" height="32" rx="2" fill="#3DC9C9" opacity="0.15"/>
+  <rect x="20" y="16" width="24" height="32" rx="2" stroke="#3DC9C9" stroke-width="2"/>
+  
+  <!-- Folded corner (top right) -->
+  <path d="M44 16 L44 22 L38 22 Z" fill="#3DC9C9" opacity="0.3"/>
+  <path d="M44 16 L44 22 L38 22 Z" stroke="#3DC9C9" stroke-width="1.5"/>
+  
+  <!-- Note lines (woven threads) -->
+  <rect x="24" y="24" width="10" height="2.5" rx="1.25" fill="#3DC9C9"/>
+  <rect x="34" y="24" width="6" height="2.5" rx="1.25" fill="#3DC9C9" opacity="0.35"/>
+  
+  <rect x="24" y="29" width="6" height="2.5" rx="1.25" fill="#3DC9C9" opacity="0.35"/>
+  <rect x="30" y="29" width="10" height="2.5" rx="1.25" fill="#3DC9C9"/>
+  
+  <rect x="24" y="34" width="10" height="2.5" rx="1.25" fill="#3DC9C9"/>
+  <rect x="34" y="34" width="6" height="2.5" rx="1.25" fill="#3DC9C9" opacity="0.35"/>
+  
+  <rect x="24" y="39" width="8" height="2.5" rx="1.25" fill="#3DC9C9" opacity="0.35"/>
+  <rect x="32" y="39" width="8" height="2.5" rx="1.25" fill="#3DC9C9"/>
+</svg>

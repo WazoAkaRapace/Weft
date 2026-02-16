@@ -1,0 +1,18 @@
+<!-- Alternative: Simple Exit Arrow - Dark Mode -->
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="64" height="64" rx="12" fill="#27272A"/>
+  
+  <!-- Exit box/frame -->
+  <rect x="16" y="24" width="3" height="16" rx="1.5" fill="#3DC9C9" opacity="0.9"/>
+  <rect x="16" y="24" width="14" height="3" rx="1.5" fill="#3DC9C9" opacity="0.9"/>
+  <rect x="16" y="37" width="14" height="3" rx="1.5" fill="#3DC9C9" opacity="0.9"/>
+  
+  <!-- Arrow shaft -->
+  <rect x="26" y="30" width="18" height="4" rx="2" fill="#3DC9C9" opacity="0.9"/>
+  <rect x="27" y="30.5" width="16" height="3" rx="1.5" fill="#3DC9C9" opacity="0.35"/>
+  
+  <!-- Arrow head -->
+  <path d="M44 32 L50 32 L47 28 M50 32 L47 36" stroke="#3DC9C9" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+  <path d="M44 32 L50 32 L47 28.5 M50 32 L47 35.5" stroke="#3DC9C9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/>
+</svg>

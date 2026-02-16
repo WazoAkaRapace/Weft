@@ -1,0 +1,30 @@
+<!-- WEFT Calendar Icon -->
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="64" height="64" rx="12" fill="#1A9E9E"/>
+  
+  <!-- Calendar top binding -->
+  <rect x="24" y="16" width="3" height="6" rx="1.5" fill="white" opacity="0.9"/>
+  <rect x="37" y="16" width="3" height="6" rx="1.5" fill="white" opacity="0.9"/>
+  
+  <!-- Calendar body -->
+  <rect x="18" y="22" width="28" height="26" rx="3" fill="white" opacity="0.95"/>
+  
+  <!-- Calendar header bar -->
+  <rect x="20" y="26" width="10" height="3" rx="1.5" fill="#1A9E9E" opacity="0.9"/>
+  <rect x="30" y="26" width="6" height="3" rx="1.5" fill="#1A9E9E" opacity="0.4"/>
+  <rect x="36" y="26" width="8" height="3" rx="1.5" fill="#1A9E9E" opacity="0.9"/>
+  
+  <!-- Calendar date grid (woven threads as rows) -->
+  <rect x="20" y="32" width="8" height="2.5" rx="1.25" fill="#1A9E9E" opacity="0.4"/>
+  <rect x="28" y="32" width="8" height="2.5" rx="1.25" fill="#1A9E9E" opacity="0.9"/>
+  <rect x="36" y="32" width="6" height="2.5" rx="1.25" fill="#1A9E9E" opacity="0.4"/>
+  
+  <rect x="20" y="37" width="6" height="2.5" rx="1.25" fill="#1A9E9E" opacity="0.9"/>
+  <rect x="26" y="37" width="10" height="2.5" rx="1.25" fill="#1A9E9E" opacity="0.4"/>
+  <rect x="36" y="37" width="6" height="2.5" rx="1.25" fill="#1A9E9E" opacity="0.9"/>
+  
+  <rect x="20" y="42" width="8" height="2.5" rx="1.25" fill="#1A9E9E" opacity="0.4"/>
+  <rect x="28" y="42" width="8" height="2.5" rx="1.25" fill="#1A9E9E" opacity="0.9"/>
+  <rect x="36" y="42" width="6" height="2.5" rx="1.25" fill="#1A9E9E" opacity="0.4"/>
+</svg>

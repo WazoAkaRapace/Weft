@@ -4,6 +4,7 @@ import { useJournals } from '../../hooks/useJournals';
 import { useNotes } from '../../hooks/useNotes';
 import { ContextPickerModal } from './ContextPickerModal';
 import { ContextItemComponent } from './ContextItem';
+import { ThemeIcon } from '../ui/ThemeIcon';
 
 interface ContextSelectorProps {
   selected: ContextItem[];
@@ -36,7 +37,7 @@ export function ContextSelector({ selected, onChange, onClose }: ContextSelector
         <div className="p-4 border-b border-neutral-200 dark:border-dark-600 flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-neutral-900 dark:text-dark-100 flex items-center gap-2">
-              <span>📎</span>
+              <ThemeIcon name="note" alt="" size={34} />
               <span>Context</span>
             </h3>
             <p className="text-xs text-neutral-500 dark:text-dark-400 mt-1">

@@ -3,6 +3,7 @@ import type { ContextItem } from '../../hooks/useAIChat';
 import type { Journal } from '@weft/shared';
 import type { Note } from '@weft/shared';
 import type { NoteTreeNode } from '../../hooks/useNotes';
+import { ThemeIcon } from '../ui/ThemeIcon';
 
 interface ContextPickerModalProps {
   journals: Journal[];
@@ -347,23 +348,25 @@ export function ContextPickerModal({
         <div className="flex border-b border-neutral-200 dark:border-dark-600">
           <button
             onClick={() => setActiveTab('journals')}
-            className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
+            className={`flex-1 py-3 px-4 text-center font-medium transition-colors flex items-center justify-center gap-2 ${
               activeTab === 'journals'
                 ? 'text-primary border-b-2 border-primary bg-primary-50/50 dark:bg-primary-900/10'
                 : 'text-neutral-600 dark:text-dark-400 hover:text-neutral-900 dark:hover:text-dark-100'
             }`}
           >
-            📹 Journals ({journals.length})
+            <ThemeIcon name="recording" alt="" size={22} />
+            Journals ({journals.length})
           </button>
           <button
             onClick={() => setActiveTab('notes')}
-            className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
+            className={`flex-1 py-3 px-4 text-center font-medium transition-colors flex items-center justify-center gap-2 ${
               activeTab === 'notes'
                 ? 'text-primary border-b-2 border-primary bg-primary-50/50 dark:bg-primary-900/10'
                 : 'text-neutral-600 dark:text-dark-400 hover:text-neutral-900 dark:hover:text-dark-100'
             }`}
           >
-            📝 Notes ({notes.length})
+            <ThemeIcon name="note" alt="" size={22} />
+            Notes ({notes.length})
           </button>
         </div>
 

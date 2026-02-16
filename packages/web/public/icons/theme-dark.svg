@@ -1,0 +1,27 @@
+<!-- WEFT Theme Toggle Icon - Moon/Stars (Dark Mode State) -->
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="64" height="64" rx="12" fill="#27272A"/>
+  
+  <!-- Crescent moon -->
+  <circle cx="30" cy="32" r="12" fill="#3DC9C9" opacity="0.15"/>
+  <circle cx="30" cy="32" r="12" stroke="#3DC9C9" stroke-width="2"/>
+  <circle cx="34" cy="32" r="10" fill="#27272A"/>
+  
+  <!-- Moon weaving pattern -->
+  <rect x="25" y="29" width="5" height="2.5" rx="1.25" fill="#3DC9C9"/>
+  <rect x="25" y="32.5" width="5" height="2.5" rx="1.25" fill="#3DC9C9" opacity="0.35"/>
+  
+  <!-- Stars (small woven crosses) -->
+  <!-- Star 1 -->
+  <rect x="44" y="20" width="4" height="1.5" rx="0.75" fill="#3DC9C9" opacity="0.9"/>
+  <rect x="45.25" y="18.75" width="1.5" height="4" rx="0.75" fill="#3DC9C9" opacity="0.9"/>
+  
+  <!-- Star 2 -->
+  <rect x="48" y="34" width="3" height="1.5" rx="0.75" fill="#3DC9C9" opacity="0.7"/>
+  <rect x="49" y="33" width="1.5" height="3" rx="0.75" fill="#3DC9C9" opacity="0.7"/>
+  
+  <!-- Star 3 -->
+  <rect x="42" y="44" width="3.5" height="1.5" rx="0.75" fill="#3DC9C9" opacity="0.8"/>
+  <rect x="43.25" y="42.75" width="1.5" height="3.5" rx="0.75" fill="#3DC9C9" opacity="0.8"/>
+</svg>

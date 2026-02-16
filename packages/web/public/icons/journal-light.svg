@@ -1,0 +1,26 @@
+<!-- Alternative: WEFT Notepad Icon - Light Mode -->
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="64" height="64" rx="12" fill="#1A9E9E"/>
+  
+  <!-- Notepad spiral binding -->
+  <circle cx="24" cy="18" r="2" fill="white" opacity="0.8"/>
+  <circle cx="32" cy="18" r="2" fill="white" opacity="0.8"/>
+  <circle cx="40" cy="18" r="2" fill="white" opacity="0.8"/>
+  
+  <!-- Notepad body -->
+  <rect x="18" y="22" width="28" height="28" rx="2" fill="white" opacity="0.95"/>
+  
+  <!-- Note lines (woven threads) -->
+  <rect x="22" y="28" width="10" height="3" rx="1.5" fill="#1A9E9E" opacity="0.9"/>
+  <rect x="32" y="28" width="6" height="3" rx="1.5" fill="#1A9E9E" opacity="0.4"/>
+  <rect x="38" y="28" width="4" height="3" rx="1.5" fill="#1A9E9E" opacity="0.9"/>
+  
+  <rect x="22" y="34" width="6" height="3" rx="1.5" fill="#1A9E9E" opacity="0.4"/>
+  <rect x="28" y="34" width="10" height="3" rx="1.5" fill="#1A9E9E" opacity="0.9"/>
+  <rect x="38" y="34" width="4" height="3" rx="1.5" fill="#1A9E9E" opacity="0.4"/>
+  
+  <rect x="22" y="40" width="10" height="3" rx="1.5" fill="#1A9E9E" opacity="0.9"/>
+  <rect x="32" y="40" width="6" height="3" rx="1.5" fill="#1A9E9E" opacity="0.4"/>
+  <rect x="38" y="40" width="4" height="3" rx="1.5" fill="#1A9E9E" opacity="0.9"/>
+</svg>

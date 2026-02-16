@@ -1,0 +1,29 @@
+<!-- WEFT Home Icon - Light Mode -->
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="64" height="64" rx="12" fill="#1A9E9E"/>
+  
+  <!-- Roof - Left side angled threads -->
+  <rect x="18" y="20" width="18" height="3" rx="1.5" fill="white" opacity="0.9" transform="rotate(-30 27 21.5)"/>
+  <rect x="16" y="25" width="20" height="3" rx="1.5" fill="white" opacity="0.6" transform="rotate(-30 26 26.5)"/>
+  
+  <!-- Roof - Right side angled threads -->
+  <rect x="28" y="20" width="18" height="3" rx="1.5" fill="white" opacity="0.9" transform="rotate(30 37 21.5)"/>
+  <rect x="28" y="25" width="20" height="3" rx="1.5" fill="white" opacity="0.6" transform="rotate(30 38 26.5)"/>
+  
+  <!-- House body background -->
+  <rect x="20" y="32" width="24" height="18" fill="white" opacity="0.1"/>
+  
+  <!-- Body - Horizontal woven threads -->
+  <rect x="22" y="34" width="10" height="3" rx="1.5" fill="white" opacity="0.9"/>
+  <rect x="32" y="34" width="6" height="3" rx="1.5" fill="white" opacity="0.4"/>
+  <rect x="38" y="34" width="4" height="3" rx="1.5" fill="white" opacity="0.9"/>
+  
+  <rect x="22" y="39" width="6" height="3" rx="1.5" fill="white" opacity="0.4"/>
+  <rect x="28" y="39" width="10" height="3" rx="1.5" fill="white" opacity="0.9"/>
+  <rect x="38" y="39" width="4" height="3" rx="1.5" fill="white" opacity="0.4"/>
+  
+  <rect x="22" y="44" width="10" height="3" rx="1.5" fill="white" opacity="0.9"/>
+  <rect x="32" y="44" width="6" height="3" rx="1.5" fill="white" opacity="0.4"/>
+  <rect x="38" y="44" width="4" height="3" rx="1.5" fill="white" opacity="0.9"/>
+</svg>

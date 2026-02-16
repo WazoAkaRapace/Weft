@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { EMOTION_CONFIG, type EmotionLabel } from '../emotions/types';
+import { ThemeIcon } from '../ui/ThemeIcon';
 
 export interface MoodSelectorProps {
   value: EmotionLabel | null;
@@ -57,7 +58,7 @@ export function MoodSelector({ value, onChange, disabled = false, className = ''
           </>
         ) : (
           <>
-            <span className="text-base">🤖</span>
+            <ThemeIcon name="ai" alt="" size={20} />
             <span>Auto (Detected)</span>
           </>
         )}
@@ -112,7 +113,7 @@ export function MoodSelector({ value, onChange, disabled = false, className = ''
                     </>
                   ) : (
                     <>
-                      <span className="text-base">🤖</span>
+                      <ThemeIcon name="ai" alt="" size={20} />
                       <span>{option.label}</span>
                     </>
                   )}

@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import type { ChatMessage, ToolCall, ThinkingBlock } from '../../hooks/useAIChat';
 import { StreamingText } from './StreamingText';
+import { ThemeIcon } from '../ui/ThemeIcon';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -66,7 +67,7 @@ export function ChatMessages({ messages, isLoading, error }: ChatMessagesProps) 
     >
       {messages.length === 0 && !isLoading && (
         <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-          <div className="text-6xl">🤖</div>
+          <ThemeIcon name="ai" alt="AI" size={128} />
           <div className="space-y-2">
             <h2 className="text-xl font-semibold text-neutral-900 dark:text-dark-100">
               Welcome to AI Chat

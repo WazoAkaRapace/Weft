@@ -12,17 +12,17 @@ export interface NavGroup {
 
 export const navigationStructure: (NavItem | NavGroup)[] = [
   // Top-level items
-  { path: '/dashboard', label: 'Dashboard', icon: '🏠', description: 'Home' },
-  { path: '/notes', label: 'Notes', icon: '📝', description: 'Your notes' },
-  { path: '/ai-chat', label: 'AI Chat', icon: '🤖', description: 'Chat with AI assistant' },
+  { path: '/dashboard', label: 'Dashboard', icon: 'home', description: 'Home' },
+  { path: '/notes', label: 'Notes', icon: 'note', description: 'Your notes' },
+  { path: '/ai-chat', label: 'AI Chat', icon: 'ai', description: 'Chat with AI assistant' },
 
   // Journal group
   {
     title: 'Journal',
     items: [
-      { path: '/record', label: 'New Recording', icon: '🎥', description: 'Create a new journal entry' },
-      { path: '/history', label: 'History', icon: '📚', description: 'View past entries' },
-      { path: '/mood-calendar', label: 'Mood Calendar', icon: '📅', description: 'Track your mood over time' },
+      { path: '/record', label: 'New Recording', icon: 'recording', description: 'Create a new journal entry' },
+      { path: '/history', label: 'History', icon: 'journal', description: 'View past entries' },
+      { path: '/mood-calendar', label: 'Mood Calendar', icon: 'calendar', description: 'Track your mood over time' },
     ],
   },
 ];

@@ -1,4 +1,5 @@
 import { useState, FormEvent } from 'react';
+import { ThemeIcon } from '../ui/ThemeIcon';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -33,7 +34,7 @@ export function ChatInput({ onSend, disabled, onClear, hasContext, onOpenContext
       {hasContext && (
         <div className="px-4 py-2 bg-primary-50 dark:bg-primary-900/20 border-b border-primary-100 dark:border-primary-900/30">
           <p className="text-sm text-primary-700 dark:text-primary-300 flex items-center gap-2">
-            <span>📎</span>
+            <ThemeIcon name="note" alt="" size={20} />
             <span>Context is being used for this conversation</span>
           </p>
         </div>
