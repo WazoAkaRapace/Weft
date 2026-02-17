@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
 import { NotesProvider } from '../../contexts/NotesContext';
+import { TemplatesProvider } from '../../contexts/TemplatesContext';
 
 export function MainAppLayout() {
   const location = useLocation();
@@ -14,10 +15,12 @@ export function MainAppLayout() {
   }
 
   return (
-    <NotesProvider initialNoteId={noteId}>
-      <AppLayout>
-        <Outlet />
-      </AppLayout>
-    </NotesProvider>
+    <TemplatesProvider>
+      <NotesProvider initialNoteId={noteId}>
+        <AppLayout>
+          <Outlet />
+        </AppLayout>
+      </NotesProvider>
+    </TemplatesProvider>
   );
 }

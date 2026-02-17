@@ -1,5 +1,8 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useMemo, useEffect, useRef } from 'react';
-import { useNotes, type NoteTreeNode, type CreateNoteData, type UpdateNoteData } from '../hooks/useNotes';
+import { useNoteTitles, type NoteTitleTreeNode, type CreateNoteData, type UpdateNoteData } from '../hooks/useNoteTitles';
+
+// Use NoteTitleTreeNode as the tree node type - compatible with sidebar rendering
+type NoteTreeNode = NoteTitleTreeNode;
 
 interface NotesContextValue {
   // Data
@@ -39,7 +42,7 @@ interface NotesProviderProps {
 }
 
 export function NotesProvider({ children, initialNoteId = null }: NotesProviderProps) {
-  const { noteTree, isLoading, error, createNote: createNoteApi, updateNote: updateNoteApi, deleteNote: deleteNoteApi, reorderNotes, refresh } = useNotes();
+  const { noteTree, isLoading, error, createNote: createNoteApi, updateNote: updateNoteApi, deleteNote: deleteNoteApi, reorderNotes, refresh } = useNoteTitles();
 
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(initialNoteId);
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
@@ -48,9 +51,9 @@ export function NotesProvider({ children, initialNoteId = null }: NotesProviderP
   const lastExpandedNoteIdRef = useRef<string | null>(null);
 
   // Update selected note when initialNoteId changes (from URL)
-  // This is a legitimate use case - we need to sync URL state with component state
   useEffect(() => {
-    if (initialNoteId !== undefined && initialNoteId !== lastExpandedNoteIdRef.current && !isLoading && noteTree.length > 0) {
+    if (initialNoteId && initialNoteId !== lastExpandedNoteIdRef.current && !isLoading && noteTree.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Sync URL state to component state
       setSelectedNoteId(initialNoteId);
 
       // Expand parent nodes and the note itself if it has children

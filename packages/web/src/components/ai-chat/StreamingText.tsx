@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, memo } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import { useSmoothStream } from '../../hooks/useSmoothStream';
 
 interface StreamingTextProps {
@@ -25,7 +25,6 @@ export const StreamingText = memo(function StreamingText({
   const { visibleText, addText, reset, isComplete } = useSmoothStream();
   const lastMessageKeyRef = useRef<string | number | undefined>(messageKey);
   const lastTextLengthRef = useRef<number>(0);
-  const [showCursor, setShowCursor] = useState(false);
 
   // Reset when message changes
   useEffect(() => {
@@ -53,10 +52,8 @@ export const StreamingText = memo(function StreamingText({
     }
   }, [isStreaming, text, visibleText.length, addText]);
 
-  // Show cursor while streaming and animating
-  useEffect(() => {
-    setShowCursor(isStreaming && !isComplete);
-  }, [isStreaming, isComplete]);
+  // Show cursor while streaming and animating (derived state)
+  const showCursor = isStreaming && !isComplete;
 
   // Determine what to show
   // During streaming: show animated visibleText

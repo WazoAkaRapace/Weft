@@ -7,8 +7,8 @@ import { NotesEditor, type NotesEditorRef } from './NotesEditor';
 import { JournalLinker } from '../journal/JournalLinker';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { RagStatusIndicator } from '../rag';
-import type { UpdateNoteData } from '../../hooks/useNotes';
-import type { Journal } from '@weft/shared';
+import type { UpdateNoteData } from '../../hooks/useNoteTitles';
+import type { Journal, Note } from '@weft/shared';
 import { getApiUrl } from '../../lib/config';
 
 export function NoteEditorPanel() {
@@ -28,6 +28,10 @@ export function NoteEditorPanel() {
   const [isRagIndexing, setIsRagIndexing] = useState(false);
   const notesEditorRef = useRef<NotesEditorRef>(null);
   const colorButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Note content state - fetched separately from metadata
+  const [noteContent, setNoteContent] = useState<string | null>(null);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
 
   // Linked journals state
   const [linkedJournals, setLinkedJournals] = useState<Journal[]>([]);
@@ -53,6 +57,33 @@ export function NoteEditorPanel() {
     if (selectedNote) {
       setTitleInput(selectedNote.note.title);
     }
+  }, [selectedNote]);
+
+  // Fetch note content when selected note changes
+  useEffect(() => {
+    if (!selectedNote) {
+      setNoteContent(null);
+      return;
+    }
+
+    const fetchNoteContent = async () => {
+      setIsLoadingContent(true);
+      try {
+        const response = await fetch(`${getApiUrl()}/api/notes/${selectedNote.note.id}`, {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const note = await response.json() as Note;
+          setNoteContent(note.content);
+        }
+      } catch (err) {
+        console.error('Failed to fetch note content:', err);
+      } finally {
+        setIsLoadingContent(false);
+      }
+    };
+
+    fetchNoteContent();
   }, [selectedNote]);
 
   // Warn user when leaving page with unsaved changes
@@ -599,14 +630,20 @@ export function NoteEditorPanel() {
 
       {/* Content Editor */}
       <div className="flex-1 overflow-y-auto overflow-x-auto">
-        <NotesEditor
-          key={selectedNote.note.id}
-          ref={notesEditorRef}
-          notes={selectedNote.note.content}
-          onSave={handleSaveContent}
-          isEditing={isEditing}
-          isSaving={isSaving}
-        />
+        {isLoadingContent ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-neutral-500 dark:text-dark-400">Loading content...</div>
+          </div>
+        ) : (
+          <NotesEditor
+            key={selectedNote.note.id}
+            ref={notesEditorRef}
+            notes={noteContent}
+            onSave={handleSaveContent}
+            isEditing={isEditing}
+            isSaving={isSaving}
+          />
+        )}
       </div>
 
       {/* Linked Journals */}

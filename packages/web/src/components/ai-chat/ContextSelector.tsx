@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { ContextItem } from '../../hooks/useAIChat';
 import { useJournals } from '../../hooks/useJournals';
-import { useNotes } from '../../hooks/useNotes';
 import { ContextPickerModal } from './ContextPickerModal';
 import { ContextItemComponent } from './ContextItem';
 import { ThemeIcon } from '../ui/ThemeIcon';
@@ -15,9 +14,8 @@ interface ContextSelectorProps {
 export function ContextSelector({ selected, onChange, onClose }: ContextSelectorProps) {
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  // Fetch journals and notes for the picker
+  // Fetch journals for the picker (notes are lazy-loaded in the modal)
   const { journals } = useJournals({ limit: 20, page: 1 });
-  const { notes, noteTree } = useNotes();
 
   const handleRemoveItem = (id: string) => {
     onChange(selected.filter(item => item.id !== id));
@@ -115,8 +113,6 @@ export function ContextSelector({ selected, onChange, onClose }: ContextSelector
       {isPickerOpen && (
         <ContextPickerModal
           journals={journals}
-          notes={notes}
-          noteTree={noteTree}
           selected={selected}
           onSelect={handleAddItems}
           onClose={() => setIsPickerOpen(false)}

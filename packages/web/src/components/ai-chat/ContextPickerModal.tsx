@@ -1,13 +1,9 @@
 import type { ContextItem } from '../../hooks/useAIChat';
 import type { Journal } from '@weft/shared';
-import type { Note } from '@weft/shared';
-import type { NoteTreeNode } from '../../hooks/useNotes';
 import { NotePickerModal, type NotePickerSelection } from '../notes/shared';
 
 interface ContextPickerModalProps {
   journals: Journal[];
-  notes: Note[];
-  noteTree: NoteTreeNode[];
   selected: ContextItem[];
   onSelect: (items: ContextItem[]) => void;
   onClose: () => void;
@@ -15,8 +11,6 @@ interface ContextPickerModalProps {
 
 export function ContextPickerModal({
   journals,
-  notes,
-  noteTree,
   selected,
   onSelect,
   onClose,
@@ -37,8 +31,6 @@ export function ContextPickerModal({
     <NotePickerModal
       isOpen={true}
       onClose={onClose}
-      noteTree={noteTree}
-      notes={notes}
       journals={journals}
       selectedNoteIds={selectedNoteIds}
       selectedJournalIds={selectedJournalIds}
@@ -47,6 +39,7 @@ export function ContextPickerModal({
       variant="default"
       enableShiftSelect={true}
       showAddedBadge={true}
+      lazyLoad={true}
     />
   );
 }

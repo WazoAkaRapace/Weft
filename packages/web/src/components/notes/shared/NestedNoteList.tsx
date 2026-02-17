@@ -1,4 +1,4 @@
-import type { NoteTreeNode } from '../../../hooks/useNotes';
+import type { NoteTreeNode } from './noteTreeUtils';
 import { formatDate } from './noteTreeUtils';
 
 export interface NestedNoteListProps {
@@ -218,11 +218,6 @@ export function NestedNoteList({
                 {showDate && node.note.updatedAt && (
                   <p className="text-sm text-neutral-500 dark:text-dark-400">
                     {formatDate(node.note.updatedAt)}
-                  </p>
-                )}
-                {showPreview && node.note.content && (
-                  <p className="text-sm text-neutral-600 dark:text-dark-400 mt-1 line-clamp-2">
-                    {node.note.content}
                   </p>
                 )}
               </div>

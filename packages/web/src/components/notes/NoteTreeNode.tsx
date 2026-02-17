@@ -2,7 +2,7 @@ import { memo, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useNotesContext } from '../../contexts/NotesContext';
 import { useNavigationContext } from '../../contexts/NavigationContext';
-import { useTemplates } from '../../hooks/useTemplates';
+import { useTemplatesContext } from '../../contexts/TemplatesContext';
 import { NoteCreateForm } from './NoteCreateForm';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { DropdownMenu } from '../ui/DropdownMenu';
@@ -20,7 +20,7 @@ function NoteTreeNode({ nodeId, level, dragHandleProps, isDragging = false, isDr
   const navigate = useNavigate();
   const location = useLocation();
   const { navigateWithWarning } = useNavigationContext();
-  const { createTemplateFromNote } = useTemplates();
+  const { createTemplateFromNote } = useTemplatesContext();
   const {
     notes,
     selectedNoteId,

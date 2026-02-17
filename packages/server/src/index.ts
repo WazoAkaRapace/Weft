@@ -32,6 +32,8 @@ import {
   handleGetNoteJournals,
   handleLinkNoteToJournal,
   handleUnlinkNoteFromJournal,
+  handleGetNoteTitles,
+  handleGetNotesByIds,
 } from './routes/notes.js';
 import {
   handleGetTemplates,
@@ -526,6 +528,18 @@ const server = createHttpServer(async (req, res) => {
     }
 
     // Notes CRUD endpoints
+    // Note titles endpoint (must be before general /api/notes check)
+    if (url.pathname === '/api/notes/titles' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetNoteTitles(request), request));
+      return;
+    }
+
+    // Bulk notes fetch endpoint (must be before general /api/notes check)
+    if (url.pathname === '/api/notes/bulk' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleGetNotesByIds(request), request));
+      return;
+    }
+
     if (url.pathname === '/api/notes' && req.method === 'GET') {
       sendResponse(res, addCorsHeaders(await handleGetNotes(request), request));
       return;

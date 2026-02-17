@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useNotes } from '../hooks/useNotes';
+import { useNoteTitles } from '../hooks/useNoteTitles';
 import { useJournals } from '../hooks/useJournals';
 import { useMoodMutations } from '../hooks/useMoodMutations';
 import { FeedList } from '../components/feed/FeedList';
@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { notes, isLoading: isLoadingNotes } = useNotes();
+  const { notes, isLoading: isLoadingNotes } = useNoteTitles({ fetchOnMount: true });
   const { journals, isLoading: isLoadingJournals } = useJournals({ page: 1, limit: 10 });
   const { upsertMood } = useMoodMutations();
   const [moodsByDate, setMoodsByDate] = useState<Record<string, DailyMood[]>>({});
@@ -20,9 +20,8 @@ export function DashboardPage() {
   const [showMoodDialog, setShowMoodDialog] = useState(false);
   const [pendingTimeOfDay, setPendingTimeOfDay] = useState<TimeOfDay | null>(null);
 
-  // Filter out deleted notes and convert to FeedEntry format
+  // Convert note titles to FeedEntry format (dashboard only needs id, title, icon, date)
   const noteEntries: FeedEntry[] = useMemo(() => notes
-    .filter(note => !note.deletedAt)
     .map(note => ({
       id: note.id,
       type: 'note' as const,

@@ -212,9 +212,8 @@ export function SlashCommandMenu({ isOpen, position, query, isDoubleSlash, onSel
   });
 
   // Reset selected index when query changes
-  // This is a legitimate use case for setState in effect - we need to reset UI state
-  // when the search query changes to ensure the first item is always selected
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset selection to first item when filter changes
     setSelectedIndex(0);
   }, [query]);
 

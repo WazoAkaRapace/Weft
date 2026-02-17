@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useNotesContext } from '../../contexts/NotesContext';
-import { useTemplates } from '../../hooks/useTemplates';
+import { useTemplatesContext } from '../../contexts/TemplatesContext';
 import type { Template } from '@weft/shared';
 
 // Common emoji icons for notes
@@ -27,7 +27,7 @@ interface NoteCreateFormProps {
 export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
   const navigate = useNavigate();
   const { createNote, cancelCreating } = useNotesContext();
-  const { templates } = useTemplates();
+  const { templates, isLoading: isLoadingTemplates, ensureLoaded } = useTemplatesContext();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('📝');
@@ -45,6 +45,13 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
     // Auto-focus input when form appears
     inputRef.current?.focus();
   }, []);
+
+  // Ensure templates are loaded when picker opens
+  useEffect(() => {
+    if (showTemplatePicker) {
+      ensureLoaded();
+    }
+  }, [showTemplatePicker, ensureLoaded]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,7 +155,11 @@ export function NoteCreateForm({ parentId }: NoteCreateFormProps) {
                 width: `${templatePickerPosition.width}px`,
               }}
             >
-              {templates.length === 0 ? (
+              {isLoadingTemplates ? (
+                <div className="p-4 text-center text-neutral-500 dark:text-dark-400 text-sm">
+                  Loading templates...
+                </div>
+              ) : templates.length === 0 ? (
                 <div className="p-4 text-center text-neutral-500 dark:text-dark-400 text-sm">
                   No templates yet. Create one in Manage Templates.
                 </div>

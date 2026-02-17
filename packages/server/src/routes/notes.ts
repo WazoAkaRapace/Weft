@@ -932,3 +932,156 @@ export async function handleUnlinkNoteFromJournal(
     );
   }
 }
+
+/**
+ * Get note titles (metadata only, no content) for the current user
+ *
+ * GET /api/notes/titles
+ *
+ * Returns lightweight note metadata for pickers and lists that don't need full content.
+ * Same filtering as handleGetNotes but excludes the content field.
+ *
+ * @returns Response with list of note metadata or error
+ */
+export async function handleGetNoteTitles(request: Request): Promise<Response> {
+  try {
+    // Verify authentication
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get notes with only metadata fields (no content)
+    const userNotes = await db
+      .select({
+        id: notes.id,
+        title: notes.title,
+        icon: notes.icon,
+        color: notes.color,
+        parentId: notes.parentId,
+        position: notes.position,
+        updatedAt: notes.updatedAt,
+        createdAt: notes.createdAt,
+      })
+      .from(notes)
+      .where(and(eq(notes.userId, session.user.id), isNull(notes.deletedAt)))
+      .orderBy(notes.position, desc(notes.createdAt));
+
+    return new Response(
+      JSON.stringify({
+        notes: userNotes,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Get note titles error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+/**
+ * Get multiple notes by IDs (bulk fetch)
+ *
+ * POST /api/notes/bulk
+ *
+ * Body:
+ * - ids: string[] (required) - Array of note IDs to fetch
+ *
+ * Returns full note objects including content for the specified IDs.
+ * Used to fetch content only for selected notes after user confirms selection.
+ *
+ * @returns Response with list of notes or error
+ */
+export async function handleGetNotesByIds(request: Request): Promise<Response> {
+  try {
+    // Verify authentication
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          code: 'PERMISSION_DENIED',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse request body
+    const body = (await request.json().catch(() => ({}))) as {
+      ids?: string[];
+    };
+
+    const { ids } = body;
+
+    // Validate input
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return new Response(
+        JSON.stringify({
+          error: 'ids array is required',
+          code: 'VALIDATION_ERROR',
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Limit the number of IDs to prevent abuse
+    if (ids.length > 100) {
+      return new Response(
+        JSON.stringify({
+          error: 'Maximum 100 notes can be fetched at once',
+          code: 'VALIDATION_ERROR',
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get notes by IDs, only for the current user and not deleted
+    const userNotes = await db
+      .select()
+      .from(notes)
+      .where(
+        and(
+          eq(notes.userId, session.user.id),
+          isNull(notes.deletedAt)
+        )
+      );
+
+    // Filter to only the requested IDs
+    const requestedIdsSet = new Set(ids);
+    const filteredNotes = userNotes.filter(note => requestedIdsSet.has(note.id));
+
+    return new Response(
+      JSON.stringify({
+        notes: filteredNotes,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Get notes by IDs error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}

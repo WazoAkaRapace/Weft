@@ -7,7 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useState } from 'react';
 import NoteTreeNode from './NoteTreeNode';
 import { NoteCreateForm } from './NoteCreateForm';
-import type { NoteTreeNode as NoteTreeNodeType } from '../../hooks/useNotes';
+import type { NoteTitleTreeNode as NoteTreeNodeType } from '../../hooks/useNoteTitles';
 
 interface SortableNoteTreeProps {
   isCollapsed?: boolean;

@@ -1,44 +1,34 @@
-import { useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useMemo, useRef } from 'react';
 import type { Template } from '@weft/shared';
 import { getApiUrl } from '../lib/config';
 
-export interface CreateTemplateData {
-  title: string;
-  content?: string;
-  icon?: string;
-  color?: string;
-}
-
-export interface UpdateTemplateData {
-  title?: string;
-  content?: string;
-  icon?: string;
-  color?: string;
-}
-
-interface UseTemplatesOptions {
-  fetchOnMount?: boolean;
-}
-
-interface UseTemplatesReturn {
+interface TemplatesContextValue {
   templates: Template[];
   isLoading: boolean;
   error: Error | null;
-  createTemplate: (data: CreateTemplateData) => Promise<Template>;
-  updateTemplate: (id: string, data: UpdateTemplateData) => Promise<void>;
+  ensureLoaded: () => Promise<void>;
+  createTemplate: (data: { title: string; content?: string; icon?: string; color?: string }) => Promise<Template>;
+  updateTemplate: (id: string, data: { title?: string; content?: string; icon?: string; color?: string }) => Promise<void>;
   deleteTemplate: (id: string) => Promise<void>;
   createTemplateFromNote: (noteId: string) => Promise<Template>;
-  fetch: () => Promise<void>;
   refresh: () => void;
 }
 
-export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesReturn {
-  const { fetchOnMount = true } = options;
+const TemplatesContext = createContext<TemplatesContextValue | undefined>(undefined);
+
+interface TemplatesProviderProps {
+  children: ReactNode;
+}
+
+export function TemplatesProvider({ children }: TemplatesProviderProps) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const hasLoadedRef = useRef(false);
 
   const fetchTemplates = useCallback(async () => {
+    if (isLoading) return;
+
     setIsLoading(true);
     setError(null);
 
@@ -53,14 +43,23 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
 
       const result = await response.json() as { templates: Template[] };
       setTemplates(result.templates);
+      hasLoadedRef.current = true;
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isLoading]);
 
-  const createTemplate = useCallback(async (data: CreateTemplateData): Promise<Template> => {
+  // Don't fetch on mount - only fetch when explicitly requested via ensureLoaded()
+
+  const ensureLoaded = useCallback(async () => {
+    if (!hasLoadedRef.current && !isLoading) {
+      await fetchTemplates();
+    }
+  }, [fetchTemplates, isLoading]);
+
+  const createTemplate = useCallback(async (data: { title: string; content?: string; icon?: string; color?: string }): Promise<Template> => {
     const response = await fetch(`${getApiUrl()}/api/templates`, {
       method: 'POST',
       credentials: 'include',
@@ -75,14 +74,11 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
     }
 
     const createdTemplate = await response.json() as Template;
-
-    // Optimistically add to local state
     setTemplates(prev => [createdTemplate, ...prev]);
-
     return createdTemplate;
   }, []);
 
-  const updateTemplate = useCallback(async (id: string, data: UpdateTemplateData): Promise<void> => {
+  const updateTemplate = useCallback(async (id: string, data: { title?: string; content?: string; icon?: string; color?: string }): Promise<void> => {
     const response = await fetch(`${getApiUrl()}/api/templates/${id}`, {
       method: 'PUT',
       credentials: 'include',
@@ -97,8 +93,6 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
     }
 
     const updatedTemplate = await response.json() as Template;
-
-    // Update local state
     setTemplates(prev => prev.map(template =>
       template.id === id ? updatedTemplate : template
     ));
@@ -114,7 +108,6 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
       throw new Error(`Failed to delete template: ${response.statusText}`);
     }
 
-    // Remove from local state
     setTemplates(prev => prev.filter(template => template.id !== id));
   }, []);
 
@@ -132,32 +125,48 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
     }
 
     const createdTemplate = await response.json() as Template;
-
-    // Optimistically add to local state
     setTemplates(prev => [createdTemplate, ...prev]);
-
     return createdTemplate;
   }, []);
 
   const refresh = useCallback(() => {
+    hasLoadedRef.current = false;
     fetchTemplates();
   }, [fetchTemplates]);
 
-  useEffect(() => {
-    if (fetchOnMount) {
-      fetchTemplates();
-    }
-  }, [fetchOnMount, fetchTemplates]);
+  const value = useMemo<TemplatesContextValue>(
+    () => ({
+      templates,
+      isLoading,
+      error,
+      ensureLoaded,
+      createTemplate,
+      updateTemplate,
+      deleteTemplate,
+      createTemplateFromNote,
+      refresh,
+    }),
+    [
+      templates,
+      isLoading,
+      error,
+      ensureLoaded,
+      createTemplate,
+      updateTemplate,
+      deleteTemplate,
+      createTemplateFromNote,
+      refresh,
+    ]
+  );
 
-  return {
-    templates,
-    isLoading,
-    error,
-    createTemplate,
-    updateTemplate,
-    deleteTemplate,
-    createTemplateFromNote,
-    fetch: fetchTemplates,
-    refresh,
-  };
+  return <TemplatesContext.Provider value={value}>{children}</TemplatesContext.Provider>;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useTemplatesContext() {
+  const context = useContext(TemplatesContext);
+  if (!context) {
+    throw new Error('useTemplatesContext must be used within a TemplatesProvider');
+  }
+  return context;
 }

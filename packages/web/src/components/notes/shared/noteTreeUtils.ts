@@ -1,6 +1,9 @@
 import { useCallback } from 'react';
 import type { Note } from '@weft/shared';
-import type { NoteTreeNode } from '../../../hooks/useNotes';
+import type { NoteTitleTreeNode } from '../../../hooks/useNoteTitles';
+
+// Re-export for convenience
+export type NoteTreeNode = NoteTitleTreeNode;
 
 /**
  * Flatten the note tree in depth-first traversal order (parents before children)
@@ -8,7 +11,7 @@ import type { NoteTreeNode } from '../../../hooks/useNotes';
 export function flattenNoteTree(nodes: NoteTreeNode[]): Note[] {
   const result: Note[] = [];
   for (const node of nodes) {
-    result.push(node.note);
+    result.push(node.note as Note);
     result.push(...flattenNoteTree(node.children));
   }
   return result;
@@ -39,6 +42,7 @@ export function findNodeInTree(nodes: NoteTreeNode[], id: string): NoteTreeNode 
 
 /**
  * Filter the note tree by search query
+ * Note: Only searches in title since content is not available in NoteTitleTreeNode
  */
 export function filterTreeBySearch(nodes: NoteTreeNode[], query: string): NoteTreeNode[] {
   if (!query) return nodes;
@@ -46,9 +50,8 @@ export function filterTreeBySearch(nodes: NoteTreeNode[], query: string): NoteTr
   const lowerQuery = query.toLowerCase();
 
   const filterNode = (node: NoteTreeNode): NoteTreeNode | null => {
-    const matchesSearch =
-      node.note.title.toLowerCase().includes(lowerQuery) ||
-      (node.note.content && node.note.content.toLowerCase().includes(lowerQuery));
+    // Only search in title since content is not available in lightweight tree
+    const matchesSearch = node.note.title.toLowerCase().includes(lowerQuery);
 
     const filteredChildren = node.children
       .map(filterNode)
@@ -127,7 +130,7 @@ export function toISOString(date: Date | string | undefined | null): string | un
  */
 export function useNoteTreeSelection(
   noteTree: NoteTreeNode[],
-  selectedItems: Set<string>,
+  _selectedItems: Set<string>,
   setSelectedItems: React.Dispatch<React.SetStateAction<Set<string>>>,
   preSelectedIds: Set<string> = new Set()
 ) {

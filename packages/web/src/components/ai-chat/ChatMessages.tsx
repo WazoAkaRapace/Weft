@@ -16,13 +16,16 @@ export function ChatMessages({ messages, isLoading, error }: ChatMessagesProps) 
   const [animatedIndices, setAnimatedIndices] = useState<Set<number>>(new Set());
   const prevMessagesLengthRef = useRef(0);
 
-  // Update animated indices when messages change
+  // Track which messages should be animated (new messages)
+  // This is a valid pattern for tracking animation state - the ref tracks previous length
+  // and we update animation state when new messages arrive
   useEffect(() => {
     const newIndices = new Set<number>();
     for (let i = prevMessagesLengthRef.current; i < messages.length; i++) {
       newIndices.add(i);
     }
     if (newIndices.size > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Animation tracking needs to update state when messages change
       setAnimatedIndices(newIndices);
     }
     prevMessagesLengthRef.current = messages.length;
@@ -152,8 +155,10 @@ function MessageBubble({ message, formatTime, shouldAnimate = false }: MessageBu
   const activeToolCalls = message.toolCalls?.filter(t => t.status === 'calling' || t.status === 'executing') || [];
   const hasActiveToolCalls = activeToolCalls.length > 0;
 
+  // Auto-expand tool calls section when there are active tool calls
   useEffect(() => {
     if (hasActiveToolCalls) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Auto-expand UI when tools are actively running
       setShowToolCalls(true);
     }
   }, [hasActiveToolCalls]);
@@ -186,13 +191,13 @@ function MessageBubble({ message, formatTime, shouldAnimate = false }: MessageBu
             {showThinking && (
               <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
                 {hasThinkingBlocks && message.thinkingBlocks ? (
-                  message.thinkingBlocks.map((block, index) => (
+                  message.thinkingBlocks.map((block, index, blocks) => (
                     <ThinkingBlockDisplay
                       key={index}
                       block={block}
                       index={index}
-                      isLast={index === message.thinkingBlocks!.length - 1}
-                      isActive={message.isThinking && index === message.thinkingBlocks!.length - 1}
+                      isLast={index === blocks.length - 1}
+                      isActive={message.isThinking && index === blocks.length - 1}
                     />
                   ))
                 ) : (

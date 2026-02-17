@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { Journal, Note } from '@weft/shared';
-import type { NoteTreeNode } from '../../../hooks/useNotes';
+import type { NoteTreeNode } from './noteTreeUtils';
 import type { ContextItem } from '../../../hooks/useAIChat';
+import { useNoteTitles, toNote } from '../../../hooks/useNoteTitles';
 import { NestedNoteList } from './NestedNoteList';
 import {
   flattenNoteTree,
@@ -16,7 +17,7 @@ export interface NotePickerSelection {
   notes: Array<{ id: string; title: string; content?: string; date?: string }>;
   journals?: Array<{ id: string; title: string; content?: string; date?: string }>;
   noteIds: string[];
-  journalIds: string[];
+  journalIds?: string[];
   contextItems?: ContextItem[];
 }
 
@@ -24,9 +25,9 @@ export interface NotePickerModalProps {
   isOpen: boolean;
   onClose: () => void;
 
-  // Data (passed in from hooks)
-  noteTree: NoteTreeNode[];
-  notes: Note[];
+  // Data - now optional, component fetches its own if not provided
+  noteTree?: NoteTreeNode[];
+  notes?: Note[];
   journals?: Journal[]; // Omit for notes-only mode
 
   // Selection
@@ -44,6 +45,9 @@ export interface NotePickerModalProps {
   enableSearch?: boolean;
   enableShiftSelect?: boolean;
   showAddedBadge?: boolean;
+
+  // Lazy loading control
+  lazyLoad?: boolean; // If true, fetches note titles internally when opened
 }
 
 type TabType = 'journals' | 'notes';
@@ -51,8 +55,8 @@ type TabType = 'journals' | 'notes';
 export function NotePickerModal({
   isOpen,
   onClose,
-  noteTree,
-  notes,
+  noteTree: externalNoteTree,
+  notes: externalNotes,
   journals = [],
   selectedNoteIds = new Set(),
   selectedJournalIds = new Set(),
@@ -62,14 +66,47 @@ export function NotePickerModal({
   enableSearch = false,
   enableShiftSelect = false,
   showAddedBadge = true,
+  lazyLoad = false,
 }: NotePickerModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('journals');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Lazy loading hook - fetches when modal opens
+  const {
+    notes: lazyNotes,
+    noteTree: lazyNoteTree,
+    isLoading: isLazyLoading,
+    fetch: fetchLazyNotes,
+  } = useNoteTitles({ fetchOnMount: false });
+
   // Track previous isOpen state to detect when modal opens
-  const prevIsOpenRef = useRef(isOpen);
+  // Initialize to false so we detect the first open
+  const prevIsOpenRef = useRef(false);
+  // Track if we've started fetching in lazy mode (to show loading state correctly)
+  const hasStartedLazyFetchRef = useRef(false);
+
+  // Use external data if provided, otherwise use lazy-loaded data
+  const noteTree = (externalNoteTree ?? lazyNoteTree) as NoteTreeNode[];
+  const notes = externalNotes ?? lazyNotes.map(toNote);
+  // Show loading if: lazy loading is enabled AND (currently fetching OR haven't started fetching yet with no data)
+  const isLoading = lazyLoad && (isLazyLoading || (!hasStartedLazyFetchRef.current && notes.length === 0));
+
+  // Fetch data when modal opens in lazy mode
+  useEffect(() => {
+    if (isOpen && lazyLoad && !prevIsOpenRef.current) {
+      hasStartedLazyFetchRef.current = true;
+      fetchLazyNotes();
+    }
+  }, [isOpen, lazyLoad, fetchLazyNotes]);
+
+  // Reset lazy fetch tracking when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      hasStartedLazyFetchRef.current = false;
+    }
+  }, [isOpen]);
 
   // Initialize state when modal opens (transitions from closed to open)
   useEffect(() => {
@@ -239,7 +276,11 @@ export function NotePickerModal({
 
           {/* Note List */}
           <div className="flex-1 overflow-y-auto p-2">
-            {notes.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-4 text-text-secondary dark:text-text-dark-secondary text-sm">
+                Loading notes...
+              </div>
+            ) : notes.length === 0 ? (
               <div className="text-center py-4 text-text-secondary dark:text-text-dark-secondary text-sm">
                 No notes available
               </div>
@@ -438,7 +479,11 @@ export function NotePickerModal({
 
           {(mode === 'notes-only' || (mode === 'full' && activeTab === 'notes')) && (
             <div className="space-y-2">
-              {notes.length === 0 ? (
+              {isLoading ? (
+                <div className="text-center py-8 text-neutral-400 dark:text-dark-500">
+                  <p>Loading notes...</p>
+                </div>
+              ) : notes.length === 0 ? (
                 <div className="text-center py-8 text-neutral-400 dark:text-dark-500">
                   <p>{searchQuery ? 'No notes match your search.' : 'No notes found'}</p>
                 </div>

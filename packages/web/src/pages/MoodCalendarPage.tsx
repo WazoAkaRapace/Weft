@@ -129,7 +129,7 @@ export function MoodCalendarPage() {
     for (const mood of allMoods) {
       moodTransitions.set(mood, new Map<DailyMood, number>());
       for (const afternoonMood of allMoods) {
-        moodTransitions.get(mood)!.set(afternoonMood, 0);
+        moodTransitions.get(mood)?.set(afternoonMood, 0);
       }
     }
 

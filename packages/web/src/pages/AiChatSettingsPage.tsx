@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { getApiUrl } from '../lib/config';
@@ -56,18 +56,7 @@ export function AiChatSettingsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<Memory | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Fetch memories on mount
-  useEffect(() => {
-    fetchMemories();
-    fetchCategoryCounts();
-  }, []);
-
-  // Fetch memories when filter changes
-  useEffect(() => {
-    fetchMemories();
-  }, [activeCategory, searchQuery]);
-
-  const fetchMemories = async () => {
+  const fetchMemories = useCallback(async () => {
     setIsLoading(true);
     setError('');
 
@@ -95,9 +84,9 @@ export function AiChatSettingsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeCategory, searchQuery]);
 
-  const fetchCategoryCounts = async () => {
+  const fetchCategoryCounts = useCallback(async () => {
     try {
       const response = await fetch(`${getApiUrl()}/api/memories/categories`, {
         credentials: 'include',
@@ -110,7 +99,18 @@ export function AiChatSettingsPage() {
     } catch (err) {
       console.error('Failed to fetch category counts:', err);
     }
-  };
+  }, []);
+
+  // Fetch memories on mount
+  useEffect(() => {
+    fetchMemories();
+    fetchCategoryCounts();
+  }, [fetchMemories, fetchCategoryCounts]);
+
+  // Fetch memories when filter changes
+  useEffect(() => {
+    fetchMemories();
+  }, [fetchMemories]);
 
   const openCreateForm = () => {
     setEditingMemory(null);

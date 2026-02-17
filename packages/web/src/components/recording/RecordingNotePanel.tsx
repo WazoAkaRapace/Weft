@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { useNotes } from '../../hooks/useNotes';
+import { useState, useEffect } from 'react';
 import { NotePickerModal, type NotePickerSelection } from '../notes/shared';
+import { useNotesByIds } from '../../hooks/useNotesByIds';
 
 interface RecordingNotePanelProps {
   selectedNoteIds: string[];
@@ -15,11 +15,17 @@ export function RecordingNotePanel({
   isCollapsed = false,
   onToggleCollapse,
 }: RecordingNotePanelProps) {
-  const { notes, noteTree } = useNotes();
   const [showSelector, setShowSelector] = useState(false);
 
-  // Get selected note objects
-  const selectedNotes = notes.filter((note) => selectedNoteIds.includes(note.id));
+  // Fetch full note content only for selected notes
+  const { notes: selectedNotes, fetch: fetchSelectedNotes } = useNotesByIds();
+
+  // Fetch selected notes when selection changes
+  useEffect(() => {
+    if (selectedNoteIds.length > 0) {
+      fetchSelectedNotes(selectedNoteIds);
+    }
+  }, [selectedNoteIds, fetchSelectedNotes]);
 
   const handleConfirm = (selection: NotePickerSelection) => {
     onSelectionChange(selection.noteIds);
@@ -40,20 +46,19 @@ export function RecordingNotePanel({
             <polyline points="10 9 9 9 8 9" />
           </svg>
           <span className="text-sm font-medium text-text-default dark:text-text-dark-default">
-            {selectedNotes.length} Notes
+            {selectedNoteIds.length} Notes
           </span>
         </button>
 
         <NotePickerModal
           isOpen={showSelector}
           onClose={() => setShowSelector(false)}
-          noteTree={noteTree}
-          notes={notes}
           selectedNoteIds={new Set(selectedNoteIds)}
           onConfirm={handleConfirm}
           mode="notes-only"
           variant="compact"
           showAddedBadge={false}
+          lazyLoad={true}
         />
       </>
     );
@@ -74,7 +79,7 @@ export function RecordingNotePanel({
                 <polyline points="10 9 9 9 8 9" />
               </svg>
               <span className="text-sm font-medium text-text-default dark:text-text-dark-default">
-                Linked Notes ({selectedNotes.length})
+                Linked Notes ({selectedNoteIds.length})
               </span>
             </div>
             <div className="flex items-center gap-1">
@@ -102,7 +107,7 @@ export function RecordingNotePanel({
 
           {/* Note List */}
           <div className="max-h-48 overflow-y-auto p-2 space-y-1">
-            {selectedNotes.length === 0 ? (
+            {selectedNoteIds.length === 0 ? (
               <p className="text-xs text-text-secondary dark:text-text-dark-secondary text-center py-4">
                 No notes selected. Click edit to add notes.
               </p>
@@ -144,13 +149,12 @@ export function RecordingNotePanel({
       <NotePickerModal
         isOpen={showSelector}
         onClose={() => setShowSelector(false)}
-        noteTree={noteTree}
-        notes={notes}
         selectedNoteIds={new Set(selectedNoteIds)}
         onConfirm={handleConfirm}
         mode="notes-only"
         variant="compact"
         showAddedBadge={false}
+        lazyLoad={true}
       />
     </>
   );

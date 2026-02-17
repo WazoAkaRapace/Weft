@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useTemplates } from '../hooks/useTemplates';
+import { useTemplatesContext } from '../contexts/TemplatesContext';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { TemplateEditorPanel } from '../components/notes/TemplateEditorPanel';
 import type { Template } from '@weft/shared';
@@ -8,7 +8,12 @@ import type { Template } from '@weft/shared';
 export function TemplatesPage() {
   const navigate = useNavigate();
   const { templateId } = useParams<{ templateId?: string }>();
-  const { templates, isLoading, error, deleteTemplate, createTemplate, updateTemplate } = useTemplates();
+  const { templates, isLoading, error, deleteTemplate, createTemplate, updateTemplate, ensureLoaded } = useTemplatesContext();
+
+  // Load templates when page mounts
+  useEffect(() => {
+    ensureLoaded();
+  }, [ensureLoaded]);
   const [templateToDelete, setTemplateToDelete] = useState<Template | null>(null);
 
   // Derive state from URL parameter

@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useVideoStreamer } from '../hooks/useVideoStreamer';
-import { useNotes } from '../hooks/useNotes';
+import { useNotesByIds } from '../hooks/useNotesByIds';
 import { RecordingNotePanel } from './recording/RecordingNotePanel';
 import { NoteSelector } from './notes/NoteSelector';
 import { MDXEditor } from '@mdxeditor/editor';
@@ -49,9 +49,15 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
   const [notePanelCollapsed, setNotePanelCollapsed] = useState(true);
   const [showNoteSelector, setShowNoteSelector] = useState(false);
 
-  // Get full note objects for display
-  const { notes } = useNotes();
-  const selectedNotes = notes.filter((note) => selectedNoteIds.includes(note.id));
+  // Get full note content only for selected notes (lazy loading)
+  const { notes: selectedNotes, fetch: fetchSelectedNotes } = useNotesByIds();
+
+  // Fetch selected notes when selection changes
+  useEffect(() => {
+    if (selectedNoteIds.length > 0) {
+      fetchSelectedNotes(selectedNoteIds);
+    }
+  }, [selectedNoteIds, fetchSelectedNotes]);
 
   // Ref for title input auto-focus
   const titleInputRef = useRef<HTMLInputElement>(null);
