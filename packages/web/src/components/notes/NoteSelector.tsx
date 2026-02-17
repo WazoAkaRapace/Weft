@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useNotes } from '../../hooks/useNotes';
+import { NestedNoteList } from './shared';
+import { filterTreeBySearch, countNotesInTree } from './shared/noteTreeUtils';
 
 interface NoteSelectorProps {
   selectedNoteIds: string[];
@@ -20,6 +22,28 @@ export function NoteSelector({
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
 
+  // Internal selection state - initialized from prop when modal opens
+  const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set());
+
+  const excludeIdsSet = useMemo(() => new Set(excludeIds), [excludeIds]);
+
+  // Track previous isOpen state to detect when modal opens
+  const prevIsOpenRef = useRef(isOpen);
+
+  // Initialize internal state when modal opens (transitions from closed to open)
+  // Start with selectedNoteIds but exclude any that are in excludeIds (already linked)
+  useEffect(() => {
+    if (isOpen && !prevIsOpenRef.current) {
+      const initialSelected = new Set(
+        selectedNoteIds.filter((id) => !excludeIds.includes(id))
+      );
+      setInternalSelectedIds(initialSelected);
+      setSearchQuery('');
+      setExpandedNodeIds(new Set());
+    }
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen, selectedNoteIds, excludeIds]);
+
   // Handle escape key
   useEffect(() => {
     if (!isOpen) return;
@@ -34,41 +58,19 @@ export function NoteSelector({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
-  // Close handler that also resets search
+  // Close handler
   const handleClose = useCallback(() => {
-    setSearchQuery('');
     onClose();
   }, [onClose]);
 
   // Filter notes by search query
   const filteredTree = useMemo(() => {
-    if (!searchQuery) return noteTree;
-
-    const query = searchQuery.toLowerCase();
-    const filterNode = (node: typeof noteTree[0]): typeof noteTree[0] | null => {
-      const matchesSearch = node.note.title.toLowerCase().includes(query) ||
-        (node.note.content && node.note.content.toLowerCase().includes(query));
-
-      const filteredChildren = node.children
-        .map(filterNode)
-        .filter((child): child is typeof node => child !== null);
-
-      if (matchesSearch || filteredChildren.length > 0) {
-        return {
-          ...node,
-          children: filteredChildren,
-        };
-      }
-
-      return null;
-    };
-
-    return noteTree.map(filterNode).filter((node): node is typeof noteTree[0] => node !== null);
+    return filterTreeBySearch(noteTree, searchQuery);
   }, [noteTree, searchQuery]);
 
   // Toggle expand/collapse
   const toggleNode = useCallback((nodeId: string) => {
-    setExpandedNodeIds(prev => {
+    setExpandedNodeIds((prev) => {
       const next = new Set(prev);
       if (next.has(nodeId)) {
         next.delete(nodeId);
@@ -80,28 +82,38 @@ export function NoteSelector({
   }, []);
 
   // Toggle note selection
-  const toggleNote = useCallback((noteId: string) => {
-    if (selectedNoteIds.includes(noteId)) {
-      onSelectionChange(selectedNoteIds.filter(id => id !== noteId));
-    } else {
-      onSelectionChange([...selectedNoteIds, noteId]);
-    }
-  }, [selectedNoteIds, onSelectionChange]);
+  const toggleNote = useCallback(
+    (noteId: string, _shiftKey: boolean) => {
+      if (excludeIds.includes(noteId)) return;
+
+      setInternalSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(noteId)) {
+          next.delete(noteId);
+        } else {
+          next.add(noteId);
+        }
+        return next;
+      });
+    },
+    [excludeIds]
+  );
+
+  // Handle confirm - pass selection to parent
+  const handleConfirm = useCallback(() => {
+    onSelectionChange(Array.from(internalSelectedIds));
+    onClose();
+  }, [internalSelectedIds, onSelectionChange, onClose]);
+
+  // Handle clear - clear only internal selections
+  const handleClear = useCallback(() => {
+    setInternalSelectedIds(new Set());
+  }, []);
 
   // Count total notes (excluding excluded)
   const availableCount = useMemo(() => {
-    const countNotes = (nodes: typeof noteTree): number => {
-      let count = 0;
-      for (const node of nodes) {
-        if (!excludeIds.includes(node.note.id)) {
-          count++;
-        }
-        count += countNotes(node.children);
-      }
-      return count;
-    };
-    return countNotes(noteTree);
-  }, [noteTree, excludeIds]);
+    return countNotesInTree(noteTree, excludeIdsSet);
+  }, [noteTree, excludeIdsSet]);
 
   if (!isOpen) return null;
 
@@ -151,10 +163,16 @@ export function NoteSelector({
               nodes={filteredTree}
               level={0}
               expandedNodeIds={expandedNodeIds}
-              selectedNoteIds={selectedNoteIds}
-              excludeIds={excludeIds}
+              selectedIds={internalSelectedIds}
+              disabledIds={excludeIdsSet}
               onToggleNode={toggleNode}
-              onToggleNote={toggleNote}
+              onToggleItem={toggleNote}
+              variant="full"
+              showDate={false}
+              showPreview={false}
+              showChildCount={false}
+              showAddedBadge={true}
+              enableShiftSelect={false}
             />
           )}
         </div>
@@ -162,20 +180,20 @@ export function NoteSelector({
         {/* Footer */}
         <div className="flex items-center justify-between p-4 border-t border-neutral-200 dark:border-dark-600">
           <span className="text-sm text-text-secondary dark:text-text-dark-secondary">
-            {selectedNoteIds.length} selected
-            {selectedNoteIds.length > 0 && ` of ${availableCount} available`}
+            {internalSelectedIds.size} selected
+            {availableCount > 0 && ` of ${availableCount} available`}
           </span>
           <div className="flex gap-2">
-            {selectedNoteIds.length > 0 && (
+            {internalSelectedIds.size > 0 && (
               <button
-                onClick={() => onSelectionChange([])}
+                onClick={handleClear}
                 className="px-3 py-1.5 text-sm border border-neutral-200 dark:border-dark-600 rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors"
               >
                 Clear
               </button>
             )}
             <button
-              onClick={handleClose}
+              onClick={handleConfirm}
               className="px-4 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
             >
               Done
@@ -184,108 +202,5 @@ export function NoteSelector({
         </div>
       </div>
     </div>
-  );
-}
-
-interface NestedNoteListProps {
-  nodes: typeof noteTree;
-  level: number;
-  expandedNodeIds: Set<string>;
-  selectedNoteIds: string[];
-  excludeIds: string[];
-  onToggleNode: (nodeId: string) => void;
-  onToggleNote: (noteId: string) => void;
-}
-
-function NestedNoteList({
-  nodes,
-  level,
-  expandedNodeIds,
-  selectedNoteIds,
-  excludeIds,
-  onToggleNode,
-  onToggleNote,
-}: NestedNoteListProps) {
-  return (
-    <>
-      {nodes.map(node => {
-        const isExcluded = excludeIds.includes(node.note.id);
-        const isSelected = selectedNoteIds.includes(node.note.id);
-        const isExpanded = expandedNodeIds.has(node.note.id);
-        const hasChildren = node.children.length > 0;
-
-        return (
-          <div key={node.note.id}>
-            <div
-              className={`flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors ${
-                isExcluded ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-              }`}
-              style={{ paddingLeft: `${level * 16 + 8}px` }}
-              onClick={() => !isExcluded && onToggleNote(node.note.id)}
-            >
-              {/* Expand/Collapse Chevron */}
-              {hasChildren ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleNode(node.note.id);
-                  }}
-                  className="p-0.5 hover:bg-neutral-200 dark:hover:bg-dark-600 rounded transition-colors flex-shrink-0"
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                  >
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </button>
-              ) : (
-                <span className="w-5 flex-shrink-0" />
-              )}
-
-              {/* Checkbox */}
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={() => !isExcluded && onToggleNote(node.note.id)}
-                disabled={isExcluded}
-                className="w-4 h-4 rounded border-neutral-300 dark:border-dark-600 text-primary focus:ring-primary-500 flex-shrink-0"
-                onClick={(e) => e.stopPropagation()}
-              />
-
-              {/* Note Icon */}
-              <span className="text-base flex-shrink-0">{node.note.icon}</span>
-
-              {/* Note Title */}
-              <span className={`flex-1 truncate text-sm ${
-                isSelected
-                  ? 'text-text-default dark:text-text-dark-default font-medium'
-                  : 'text-text-secondary dark:text-text-dark-secondary'
-              }`}>
-                {node.note.title}
-              </span>
-            </div>
-
-            {/* Render children if expanded */}
-            {hasChildren && isExpanded && (
-              <NestedNoteList
-                nodes={node.children}
-                level={level + 1}
-                expandedNodeIds={expandedNodeIds}
-                selectedNoteIds={selectedNoteIds}
-                excludeIds={excludeIds}
-                onToggleNode={onToggleNode}
-                onToggleNote={onToggleNote}
-              />
-            )}
-          </div>
-        );
-      })}
-    </>
   );
 }
