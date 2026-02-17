@@ -18,6 +18,7 @@ import { notes, journalNotes, journals } from '../db/schema.js';
 import { randomUUID } from 'node:crypto';
 import { eq, and, isNull, or, ilike, desc } from 'drizzle-orm';
 import { withTransaction } from '../lib/db-utils.js';
+import { indexNote, deleteVectorsBySource } from '../mastra/vector/indexer.js';
 
 /**
  * Get all notes for the current user
@@ -275,6 +276,9 @@ export async function handleCreateNote(request: Request): Promise<Response> {
       .where(eq(notes.id, noteId))
       .limit(1);
 
+    // Trigger RAG indexing (fire-and-forget)
+    void indexNote(noteId, session.user.id);
+
     return new Response(
       JSON.stringify(createdNotes[0]),
       { status: 201, headers: { 'Content-Type': 'application/json' } }
@@ -420,6 +424,9 @@ export async function handleUpdateNote(request: Request, noteId: string): Promis
       .where(eq(notes.id, noteId))
       .limit(1);
 
+    // Trigger RAG indexing (fire-and-forget)
+    void indexNote(noteId, session.user.id);
+
     return new Response(
       JSON.stringify(updatedList[0]),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -495,6 +502,9 @@ export async function handleDeleteNote(request: Request, noteId: string): Promis
       .update(notes)
       .set({ deletedAt: new Date() })
       .where(eq(notes.id, noteId));
+
+    // Delete vectors from RAG index (fire-and-forget)
+    void deleteVectorsBySource('note', noteId, session.user.id);
 
     return new Response(
       JSON.stringify({

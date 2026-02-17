@@ -400,6 +400,35 @@ export const vapidConfig = pgTable(
 );
 
 /**
+ * Memories table
+ * Stores long-term memories for AI agent context
+ */
+export const memories = pgTable(
+  'memories',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    category: text('category').notNull().default('general'), // general | preference | fact | reminder | goal
+    importance: integer('importance').notNull().default(5), // 1-10 scale
+    sourceType: text('source_type').notNull().default('manual'), // manual | automatic | conversation
+    sourceConversationId: text('source_conversation_id'),
+    lastAccessedAt: timestamp('last_accessed_at').defaultNow(),
+    accessCount: integer('access_count').notNull().default(0),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('memories_user_id_idx').on(table.userId),
+    categoryIdx: index('memories_category_idx').on(table.category),
+    importanceIdx: index('memories_importance_idx').on(table.importance),
+    createdAtIdx: index('memories_created_at_idx').on(table.createdAt),
+  })
+);
+
+/**
  * Type exports
  */
 export type User = typeof users.$inferSelect;
@@ -433,3 +462,6 @@ export type NotificationHistory = typeof notificationHistory.$inferSelect;
 export type NewNotificationHistory = typeof notificationHistory.$inferInsert;
 export type VapidConfig = typeof vapidConfig.$inferSelect;
 export type NewVapidConfig = typeof vapidConfig.$inferInsert;
+// Memory types
+export type Memory = typeof memories.$inferSelect;
+export type NewMemory = typeof memories.$inferInsert;

@@ -74,9 +74,29 @@ import {
   handleChatWithAgent,
   handleMastraHealth,
   handleGetModels,
+  handleListThreads,
+  handleGetThreadMessages,
 } from './routes/mastra.js';
 import { initializeVapid } from './services/vapidService.js';
 import { initializeScheduler, stopScheduler } from './services/notificationScheduler.js';
+import {
+  handleIndexJournal,
+  handleIndexNote,
+  handleIndexAll,
+  handleDeleteJournalIndex,
+  handleDeleteNoteIndex,
+  handleGetRagStatus,
+} from './routes/rag.js';
+import {
+  handleGetMemories,
+  handleCreateMemory,
+  handleGetMemory,
+  handleUpdateMemory,
+  handleDeleteMemory,
+  handleGetMemoryCategories,
+  handleReindexMemories,
+} from './routes/memories.js';
+import { initializeVectorStore } from './mastra/vector/index.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -125,6 +145,7 @@ function addCorsHeaders(response: Response, request: Request): Response {
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Stream-ID, X-Chunk-Index, X-Is-Last',
       'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Expose-Headers': 'X-Conversation-ID, X-Agent-ID',
       'Vary': 'Origin',
     },
   });
@@ -347,6 +368,18 @@ try {
   console.log('Notification scheduler started');
 } catch (error) {
   console.warn('⚠ Notification scheduler failed to start. Scheduled notifications will be disabled:', error);
+}
+
+// Initialize RAG vector store for semantic search
+try {
+  const vectorStoreReady = await initializeVectorStore();
+  if (vectorStoreReady) {
+    console.log('RAG vector store initialized');
+  } else {
+    console.warn('⚠ RAG vector store initialization skipped (DATABASE_URL not set)');
+  }
+} catch (error) {
+  console.warn('⚠ RAG vector store initialization failed. Semantic search will be disabled:', error);
 }
 
 // Main HTTP server using Node.js (compatible with Transformers.js)
@@ -706,6 +739,97 @@ const server = createHttpServer(async (req, res) => {
 
     if (url.pathname === '/api/mastra/models' && req.method === 'GET') {
       sendResponse(res, addCorsHeaders(await handleGetModels(), request));
+      return;
+    }
+
+    // Thread endpoints for chat persistence
+    if (url.pathname === '/api/mastra/threads' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleListThreads(request), request));
+      return;
+    }
+
+    // Thread messages endpoint (must be before general thread check)
+    if (url.pathname.match(/\/api\/mastra\/threads\/[^/]+\/messages$/) && req.method === 'GET') {
+      const threadId = url.pathname.split('/').slice(-2, -1)[0];
+      sendResponse(res, addCorsHeaders(await handleGetThreadMessages(request, threadId), request));
+      return;
+    }
+
+    // RAG (Semantic Search) endpoints
+    if (url.pathname === '/api/rag/index/all' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleIndexAll(request), request));
+      return;
+    }
+
+    if (url.pathname === '/api/rag/status' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetRagStatus(request), request));
+      return;
+    }
+
+    // RAG journal endpoints
+    if (url.pathname.match(/\/api\/rag\/index\/journal\/[^/]+$/) && req.method === 'POST') {
+      const journalId = url.pathname.split('/').slice(-1)[0];
+      sendResponse(res, addCorsHeaders(await handleIndexJournal(request, journalId), request));
+      return;
+    }
+
+    if (url.pathname.match(/\/api\/rag\/index\/journal\/[^/]+$/) && req.method === 'DELETE') {
+      const journalId = url.pathname.split('/').slice(-1)[0];
+      sendResponse(res, addCorsHeaders(await handleDeleteJournalIndex(request, journalId), request));
+      return;
+    }
+
+    // RAG note endpoints
+    if (url.pathname.match(/\/api\/rag\/index\/note\/[^/]+$/) && req.method === 'POST') {
+      const noteId = url.pathname.split('/').slice(-1)[0];
+      sendResponse(res, addCorsHeaders(await handleIndexNote(request, noteId), request));
+      return;
+    }
+
+    if (url.pathname.match(/\/api\/rag\/index\/note\/[^/]+$/) && req.method === 'DELETE') {
+      const noteId = url.pathname.split('/').slice(-1)[0];
+      sendResponse(res, addCorsHeaders(await handleDeleteNoteIndex(request, noteId), request));
+      return;
+    }
+
+    // Memory API endpoints
+    // Memory categories endpoint (must be before general /api/memories check)
+    if (url.pathname === '/api/memories/categories' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetMemoryCategories(request), request));
+      return;
+    }
+
+    // Memory reindex endpoint
+    if (url.pathname === '/api/memories/reindex' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleReindexMemories(request), request));
+      return;
+    }
+
+    if (url.pathname === '/api/memories' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetMemories(request), request));
+      return;
+    }
+
+    if (url.pathname === '/api/memories' && req.method === 'POST') {
+      sendResponse(res, addCorsHeaders(await handleCreateMemory(request), request));
+      return;
+    }
+
+    if (url.pathname.match(/\/api\/memories\/[^/]+$/) && req.method === 'GET') {
+      const memoryId = url.pathname.split('/').slice(-1)[0];
+      sendResponse(res, addCorsHeaders(await handleGetMemory(request, memoryId), request));
+      return;
+    }
+
+    if (url.pathname.match(/\/api\/memories\/[^/]+$/) && req.method === 'PUT') {
+      const memoryId = url.pathname.split('/').slice(-1)[0];
+      sendResponse(res, addCorsHeaders(await handleUpdateMemory(request, memoryId), request));
+      return;
+    }
+
+    if (url.pathname.match(/\/api\/memories\/[^/]+$/) && req.method === 'DELETE') {
+      const memoryId = url.pathname.split('/').slice(-1)[0];
+      sendResponse(res, addCorsHeaders(await handleDeleteMemory(request, memoryId), request));
       return;
     }
 

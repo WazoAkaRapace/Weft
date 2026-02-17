@@ -157,6 +157,21 @@ export function SettingsPage() {
   const [showReplaceWarning, setShowReplaceWarning] = useState(false);
   const restorePollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // RAG states
+  const [ragStatus, setRagStatus] = useState<{
+    available: boolean;
+    indexName: string;
+    vectorCount?: number;
+    embeddingModel?: string;
+  } | null>(null);
+  const [ragLoading, setRagLoading] = useState(false);
+  const [indexingStatus, setIndexingStatus] = useState<'idle' | 'indexing' | 'success' | 'error'>('idle');
+  const [indexingResult, setIndexingResult] = useState<{
+    journals: { total: number; success: number; failed: number };
+    notes: { total: number; success: number; failed: number };
+  } | null>(null);
+  const [indexingError, setIndexingError] = useState<string | null>(null);
+
   // Fetch current settings on mount
   useEffect(() => {
     const fetchSettings = async () => {
@@ -185,6 +200,62 @@ export function SettingsPage() {
 
     fetchSettings();
   }, []);
+
+  // Fetch RAG status
+  const fetchRagStatus = async () => {
+    setRagLoading(true);
+    try {
+      const response = await fetch(`${getApiUrl()}/api/rag/status`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch RAG status');
+      }
+
+      const data = await response.json();
+      setRagStatus(data);
+    } catch (err) {
+      console.error('Failed to fetch RAG status:', err);
+      setRagStatus(null);
+    } finally {
+      setRagLoading(false);
+    }
+  };
+
+  // Fetch RAG status on mount
+  useEffect(() => {
+    fetchRagStatus();
+  }, []);
+
+  // Handle indexing all content
+  const handleIndexAll = async () => {
+    setIndexingStatus('indexing');
+    setIndexingResult(null);
+    setIndexingError(null);
+
+    try {
+      const response = await fetch(`${getApiUrl()}/api/rag/index/all`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to index content');
+      }
+
+      const data = await response.json();
+      setIndexingResult(data.result);
+      setIndexingStatus('success');
+
+      // Refresh RAG status after indexing
+      await fetchRagStatus();
+    } catch (err) {
+      setIndexingError(err instanceof Error ? err.message : 'Failed to index content');
+      setIndexingStatus('error');
+    }
+  };
 
   const handleSettingsSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -940,6 +1011,134 @@ export function SettingsPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Debug Section - RAG Status */}
+        <section className="bg-white dark:bg-dark-800 rounded-lg p-6 border border-neutral-200 dark:border-dark-600">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-dark-50 mb-4">
+            Debug: Semantic Search (RAG)
+          </h2>
+          <p className="text-sm text-neutral-600 dark:text-dark-400 mb-6">
+            Semantic search enables the AI assistant to find content by meaning/concept rather than exact keywords. Index your content to enable this feature.
+          </p>
+
+          <div className="space-y-6">
+            {/* RAG Status Display */}
+            <div>
+              <h3 className="text-md font-medium text-neutral-900 dark:text-dark-50 mb-3">
+                Index Status
+              </h3>
+
+              {ragLoading ? (
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary-500 border-t-transparent"></div>
+                  <span className="text-sm text-neutral-600 dark:text-dark-400">Loading status...</span>
+                </div>
+              ) : ragStatus ? (
+                <div className="bg-neutral-50 dark:bg-dark-700 rounded-lg p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-neutral-600 dark:text-dark-400">Status:</span>
+                    <span className={`font-medium ${ragStatus.available ? 'text-success' : 'text-error'}`}>
+                      {ragStatus.available ? 'Available' : 'Not Available'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-600 dark:text-dark-400">Index Name:</span>
+                    <span className="text-neutral-900 dark:text-dark-50 font-mono text-xs">{ragStatus.indexName}</span>
+                  </div>
+                  {ragStatus.vectorCount !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-neutral-600 dark:text-dark-400">Indexed Vectors:</span>
+                      <span className="text-neutral-900 dark:text-dark-50 font-medium">{ragStatus.vectorCount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {ragStatus.embeddingModel && (
+                    <div className="flex justify-between">
+                      <span className="text-neutral-600 dark:text-dark-400">Embedding Model:</span>
+                      <span className="text-neutral-900 dark:text-dark-50 font-mono text-xs">{ragStatus.embeddingModel}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm text-neutral-500 dark:text-dark-400">
+                  Unable to load RAG status
+                </div>
+              )}
+
+              <button
+                onClick={fetchRagStatus}
+                disabled={ragLoading}
+                className="mt-3 text-sm text-primary-500 hover:text-primary-600 disabled:opacity-60"
+              >
+                Refresh Status
+              </button>
+            </div>
+
+            <div className="border-t border-neutral-200 dark:border-dark-600"></div>
+
+            {/* Index All Section */}
+            <div>
+              <h3 className="text-md font-medium text-neutral-900 dark:text-dark-50 mb-3">
+                Reindex All Content
+              </h3>
+              <p className="text-sm text-neutral-600 dark:text-dark-400 mb-4">
+                Reindex all your journals and notes for semantic search. This may take a few minutes depending on the amount of content.
+              </p>
+
+              {indexingStatus === 'idle' && (
+                <button
+                  onClick={handleIndexAll}
+                  disabled={!ragStatus?.available}
+                  className="px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Index All Content
+                </button>
+              )}
+
+              {indexingStatus === 'indexing' && (
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary-500 border-t-transparent"></div>
+                  <span className="text-sm text-neutral-600 dark:text-dark-400">Indexing content...</span>
+                </div>
+              )}
+
+              {indexingStatus === 'success' && indexingResult && (
+                <div className="bg-success-light dark:bg-success/20 border border-success dark:border-success/50 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-success-dark text-sm font-medium">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Indexing Complete
+                  </div>
+                  <div className="text-sm text-neutral-700 dark:text-dark-200 space-y-1">
+                    <div>Journals: {indexingResult.journals.success}/{indexingResult.journals.total} indexed {indexingResult.journals.failed > 0 && `(${indexingResult.journals.failed} failed)`}</div>
+                    <div>Notes: {indexingResult.notes.success}/{indexingResult.notes.total} indexed {indexingResult.notes.failed > 0 && `(${indexingResult.notes.failed} failed)`}</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIndexingStatus('idle');
+                      setIndexingResult(null);
+                    }}
+                    className="mt-2 text-sm text-primary-500 hover:text-primary-600"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+
+              {indexingStatus === 'error' && (
+                <div className="space-y-3">
+                  <div className="text-error text-sm">{indexingError}</div>
+                  <button
+                    onClick={handleIndexAll}
+                    className="px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </section>

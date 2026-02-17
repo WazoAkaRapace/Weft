@@ -8,7 +8,17 @@
 import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
 import { createOllama } from "ollama-ai-provider-v2";
-import { getJournalsTool, getNotesTool, getTranscriptsTool, getDailyMoodsTool, searchNotesTool } from "../tools/index.js";
+import {
+  getJournalsTool,
+  getNotesTool,
+  getTranscriptsTool,
+  getDailyMoodsTool,
+  searchRagTool,
+  storeMemoryTool,
+  listMemoriesTool,
+  updateMemoryTool,
+  deleteMemoryTool,
+} from "../tools/index.js";
 
 // Create Ollama provider with custom base URL
 // Note: ollama-ai-provider-v2 expects baseURL to include /api suffix
@@ -29,7 +39,8 @@ const maxSteps = parseInt(process.env.OLLAMA_MAX_STEPS || '10', 10);
 /**
  * Journal Agent - A helpful assistant for journaling and self-reflection
  */
-export const journalAgent = new Agent({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const journalAgent: any = new Agent({
   id: "journal-agent",
   name: "Journal Assistant",
   description: "A compassionate and thoughtful journaling assistant who helps users reflect on their personal growth, emotional patterns, and life experiences.",
@@ -99,23 +110,28 @@ For complex queries (patterns, summaries, insights):
 - If information is not available, respond: "I don't have any entries about that in your journals."
 - When uncertain, state confidence level: "Based on your entry from [date], it seems that..."
 - Never merge or conflate information from different time periods
-- Always use the provided User ID when fetching data with tools
 
-# Available Data
+# Available Tools
 
-You have access to tools that can fetch:
-- **Journals**: Video journal entries with emotion analysis
-- **Notes**: Text notes the user has created
-- **Transcripts**: Text transcripts of spoken journal content
-- **Daily Moods**: Morning/afternoon mood logs
-- **Search Notes**: Search for specific text in note titles and content with relevance ranking
+- **search-rag**: Semantic search across journals, notes, and memories. Use this to find content by meaning/concept.
+  - type: "journal", "note", "memory", or "all"
+  - category: for memories, filter by category (general, preference, fact, reminder, goal)
+  - minImportance: for memories, filter by minimum importance (1-10)
+- **get-journals**: Fetch video journal entries with emotion analysis
+- **get-notes**: Browse notes by hierarchy
+- **get-transcripts**: Get text content of spoken journals
+- **get-daily-moods**: Get mood tracking data
+- **store-memory**: Store important information about the user
+- **list-memories**: View stored memories
+- **update-memory**: Modify existing memories
+- **delete-memory**: Remove memories
 
 # Tool Selection Guide
 
-- Use search-notes when looking for specific information, keywords, or topics in notes
-- Use get-notes when browsing or listing notes by hierarchy
-- Use get-journals for video journal entries with emotions
-- Use get-transcripts for text content of spoken journals
+- Use search-rag for finding content by topic, feeling, or concept
+- Use get-journals when you need specific journal entries with emotions
+- Use get-notes when browsing notes by parent/child relationship
+- Use get-transcripts for detailed text content of journals
 - Use get-daily-moods for mood tracking data
 
 # Emotional Intelligence
@@ -125,7 +141,28 @@ You have access to tools that can fetch:
 - Focus on growth and patterns over time
 - Celebrate progress, no matter how small
 
-# Important
+# IMPORTANT: Always Search First
+
+Before responding to ANY user message, use search-rag to check for relevant information:
+1. Search memories first to recall user preferences and context
+2. Search journals/notes for content related to the query
+3. Use the results to provide personalized responses
+
+Example: If user asks "What should I journal about today?", first search-rag with type="memory" for "journal preferences".
+
+# Memory System
+
+Store a memory when:
+1. User explicitly asks you to "remember this" or "keep this in mind"
+2. User shares important personal information (preferences, goals, relationships)
+3. User mentions something they want you to recall in future conversations
+
+Categories: general, preference, fact, reminder, goal
+Importance: 1-10 (10 = critical)
+
+Always ask before storing sensitive personal information.
+
+# Note
 
 You are a companion on the user's self-reflection journey, not a therapist. For serious concerns, suggest seeking professional help when appropriate.`;
   },
@@ -138,6 +175,10 @@ You are a companion on the user's self-reflection journey, not a therapist. For 
     getNotesTool,
     getTranscriptsTool,
     getDailyMoodsTool,
-    searchNotesTool,
+    searchRagTool,
+    storeMemoryTool,
+    listMemoriesTool,
+    updateMemoryTool,
+    deleteMemoryTool,
   },
 });

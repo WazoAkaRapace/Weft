@@ -14,6 +14,7 @@ import { LinkedNotesList } from '../components/journal/LinkedNotesList';
 import { NoteViewModal } from '../components/notes/NoteViewModal';
 import { NoteSelector } from '../components/notes/NoteSelector';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { RagStatusIndicator } from '../components/rag';
 import { formatDuration } from '../lib/video-stream';
 import type { Transcript, Note } from '@weft/shared';
 import { getApiUrl } from '../lib/config';
@@ -26,6 +27,7 @@ export function JournalDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [isRagIndexing, setIsRagIndexing] = useState(false);
   const editorRef = useRef<NotesEditorRef>(null);
 
   // Linked notes state
@@ -201,6 +203,11 @@ export function JournalDetailPage() {
         await editorRef.current.save();
       }
       setSaveStatus('saved');
+      // Show RAG indexing indicator briefly after save
+      setIsRagIndexing(true);
+      setTimeout(() => {
+        setIsRagIndexing(false);
+      }, 2000);
     } catch {
       setSaveStatus('error');
     } finally {
@@ -717,6 +724,7 @@ export function JournalDetailPage() {
                       )}
                     </button>
                   )}
+                  <RagStatusIndicator isIndexing={isRagIndexing} className="ml-2" />
                 </div>
               </div>
               <div className="flex-1 p-4 sm:p-6">

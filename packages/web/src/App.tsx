@@ -12,6 +12,7 @@ import { TemplatesPage } from './pages/TemplatesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { MoodCalendarPage } from './pages/MoodCalendarPage';
 import { AIChatPage } from './pages/AIChatPage';
+import { AiChatSettingsPage } from './pages/AiChatSettingsPage';
 import { MainAppLayout } from './components/layout/MainAppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { OnboardingGuard } from './components/OnboardingGuard';
@@ -96,6 +97,7 @@ export function App() {
 
           {/* AI Chat */}
           <Route path="ai-chat" element={<AIChatPage />} />
+          <Route path="ai-chat/settings" element={<AiChatSettingsPage />} />
         </Route>
 
         {/* Root route - redirects based on onboarding status */}

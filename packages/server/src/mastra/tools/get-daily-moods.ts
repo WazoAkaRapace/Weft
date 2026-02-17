@@ -10,22 +10,31 @@ import { z } from "zod";
 import { db } from "../../db/index.js";
 import { dailyMoods } from "../../db/schema.js";
 import { eq, gte, lte, and, desc } from "drizzle-orm";
+import { getAuthenticatedUserId } from "../../lib/request-context.js";
 
 /**
  * Tool to fetch user's daily mood entries
  */
 export const getDailyMoodsTool = createTool({
   id: "get-daily-moods",
-  description: "Fetch user's daily mood logs with optional date range filtering. Returns mood entries with time of day (morning/afternoon) and optional notes for tracking emotional patterns over time.",
+  description: `Fetch user's daily mood logs.
+
+USAGE: Call when user asks about mood patterns, trends, or emotional history.
+
+PARAMETER GUIDELINES:
+- startDate/endDate: Use YYYY-MM-DD format. Leave empty for recent moods.
+- limit: USE 14 (default) for 2 weeks. Use 30 for monthly analysis. Use 90+ for long-term patterns. Maximum: 365.`,
   inputSchema: z.object({
-    userId: z.string().uuid().describe("The user ID to fetch moods for (required for security)"),
-    startDate: z.string().optional().describe("Filter moods on or after this date (ISO 8601 format)"),
-    endDate: z.string().optional().describe("Filter moods on or before this date (ISO 8601 format)"),
-    limit: z.number().min(1).max(365).default(30).describe("Maximum number of mood entries to return (default: 30, max: 365)"),
+    startDate: z.string().optional().describe("Filter moods on/after this date (YYYY-MM-DD). Leave empty for recent."),
+    endDate: z.string().optional().describe("Filter moods on/before this date (YYYY-MM-DD). Leave empty for current."),
+    limit: z.number().min(1).max(365).default(14).describe('USE 14 (default) for 2 weeks. Use 30 for monthly, 90+ for long-term. Maximum: 365.'),
   }),
-  execute: async ({ userId, startDate, endDate, limit }) => {
+  execute: async ({ startDate, endDate, limit }) => {
 
     try {
+      // Get the authenticated user ID from the request context (secure - agent cannot override)
+      const userId = getAuthenticatedUserId();
+
       // Build query conditions
       const conditions = [eq(dailyMoods.userId, userId)];
 

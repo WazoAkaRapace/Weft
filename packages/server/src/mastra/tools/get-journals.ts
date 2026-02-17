@@ -10,26 +10,39 @@ import { z } from "zod";
 import { db } from "../../db/index.js";
 import { journals, transcripts } from "../../db/schema.js";
 import { eq, desc, and, or, ilike, gte, lte, inArray } from "drizzle-orm";
+import { getAuthenticatedUserId } from "../../lib/request-context.js";
 
 /**
  * Tool to fetch user's journal entries with optional filters
  */
 export const getJournalsTool = createTool({
   id: "get-journals",
-  description: "Fetch user's journal entries with optional filtering by date range, emotion, or search term. Returns journal metadata including title, date, duration, emotion, and notes.",
+  description: `Fetch user's journal entries with optional filtering.
+
+USAGE: Call when you need specific journal entries with emotion data.
+
+PARAMETER GUIDELINES:
+- limit: USE 10 (default). Use 20-50 for date range queries. Maximum: 100.
+- offset: USE 0 (default). Only change for pagination.
+- startDate/endDate: Use ISO 8601 format (YYYY-MM-DD). Leave empty for all time.
+- emotion: Only use when user asks for specific emotion (happy, sad, angry, fear, surprise, disgust, neutral).
+- search: Use for keyword search in titles and notes.
+- includeTranscripts: USE false (default). Only set true when user needs full spoken content.`,
   inputSchema: z.object({
-    userId: z.string().uuid().describe("The user ID to fetch journals for (required for security)"),
-    limit: z.number().min(1).max(100).default(10).describe("Maximum number of journals to return (default: 10, max: 100)"),
-    offset: z.number().min(0).default(0).describe("Number of journals to skip (for pagination)"),
-    startDate: z.string().optional().describe("Filter journals created on or after this date (ISO 8601 format)"),
-    endDate: z.string().optional().describe("Filter journals created on or before this date (ISO 8601 format)"),
-    emotion: z.enum(["happy", "sad", "angry", "fear", "surprise", "disgust", "neutral"]).optional().describe("Filter by dominant emotion"),
-    search: z.string().optional().describe("Search in journal titles and notes"),
-    includeTranscripts: z.boolean().default(false).describe("Whether to include transcript text in results"),
+    limit: z.number().min(1).max(100).default(10).describe('USE 10 (default). Use 20-50 for date ranges. Maximum: 100.'),
+    offset: z.number().min(0).default(0).describe('USE 0 (default). For pagination only.'),
+    startDate: z.string().optional().describe("Filter journals on/after this date (YYYY-MM-DD). Leave empty for all time."),
+    endDate: z.string().optional().describe("Filter journals on/before this date (YYYY-MM-DD). Leave empty for all time."),
+    emotion: z.enum(["happy", "sad", "angry", "fear", "surprise", "disgust", "neutral"]).optional().describe("ONLY use when user asks for specific emotion."),
+    search: z.string().optional().describe("Keyword search in titles and notes."),
+    includeTranscripts: z.boolean().default(false).describe('USE false (default). Set true only when full spoken content needed.'),
   }),
-  execute: async ({ userId, limit, offset, startDate, endDate, emotion, search, includeTranscripts }) => {
+  execute: async ({ limit, offset, startDate, endDate, emotion, search, includeTranscripts }) => {
 
     try {
+      // Get the authenticated user ID from the request context (secure - agent cannot override)
+      const userId = getAuthenticatedUserId();
+
       // Build query conditions
       const conditions = [eq(journals.userId, userId)];
 

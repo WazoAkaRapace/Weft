@@ -6,17 +6,27 @@
  */
 
 import { Mastra } from "@mastra/core";
-import { PostgresStore } from "@mastra/pg";
+import { PostgresStore, PgVector } from "@mastra/pg";
 import { journalAgent } from "./agents/journal-agent.js";
 import { assistantAgent } from "./agents/assistant-agent.js";
 
 // Get database URL from environment
 const databaseUrl = process.env.DATABASE_URL;
 
+// Vector store for RAG (semantic search)
+let pgVector: PgVector | undefined;
+if (databaseUrl) {
+  pgVector = new PgVector({
+    id: "weft-vector-store",
+    connectionString: databaseUrl,
+  });
+}
+
 /**
  * Mastra instance with all configured agents and storage
  */
-export const mastra = new Mastra({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const mastra: any = new Mastra({
   agents: { journalAgent, assistantAgent },
   // Configure PostgreSQL storage for memory persistence
   ...(databaseUrl && {
@@ -25,4 +35,11 @@ export const mastra = new Mastra({
       connectionString: databaseUrl,
     }),
   }),
+  // Configure vector store for RAG
+  ...(pgVector && {
+    vectors: { pgVector },
+  }),
 });
+
+// Export vector store for use in other modules
+export { pgVector };

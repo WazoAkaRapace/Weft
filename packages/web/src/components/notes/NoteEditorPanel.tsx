@@ -6,6 +6,7 @@ import { useNavigationContext } from '../../contexts/NavigationContext';
 import { NotesEditor, type NotesEditorRef } from './NotesEditor';
 import { JournalLinker } from '../journal/JournalLinker';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { RagStatusIndicator } from '../rag';
 import type { UpdateNoteData } from '../../hooks/useNotes';
 import type { Journal } from '@weft/shared';
 import { getApiUrl } from '../../lib/config';
@@ -24,6 +25,7 @@ export function NoteEditorPanel() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [isRagIndexing, setIsRagIndexing] = useState(false);
   const notesEditorRef = useRef<NotesEditorRef>(null);
   const colorButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -217,6 +219,11 @@ export function NoteEditorPanel() {
         await notesEditorRef.current.save();
       }
       setSaveStatus('saved');
+      // Show RAG indexing indicator briefly after save
+      setIsRagIndexing(true);
+      setTimeout(() => {
+        setIsRagIndexing(false);
+      }, 2000);
     } catch {
       setSaveStatus('error');
     } finally {
@@ -416,6 +423,7 @@ export function NoteEditorPanel() {
                   )}
                 </button>
               )}
+              <RagStatusIndicator isIndexing={isRagIndexing} className="ml-1" />
             </div>
           </div>
 
@@ -581,6 +589,7 @@ export function NoteEditorPanel() {
                   )}
                 </button>
               )}
+              <RagStatusIndicator isIndexing={isRagIndexing} className="ml-2" />
             </div>
             </div>
           </div>

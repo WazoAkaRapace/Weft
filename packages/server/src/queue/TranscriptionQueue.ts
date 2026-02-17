@@ -4,6 +4,7 @@
  */
 
 import { TranscriptionService, type TranscriptionJob } from '../services/transcription.js';
+import { indexJournal } from '../mastra/vector/indexer.js';
 
 export interface QueuedJob extends TranscriptionJob {
   id: string;
@@ -161,6 +162,9 @@ export class TranscriptionQueue {
 
       // Save to database
       await this.service.saveTranscription(job.journalId, result);
+
+      // Trigger RAG indexing (fire-and-forget)
+      void indexJournal(job.journalId, job.userId);
 
       // Mark as completed
       job.status = 'completed';

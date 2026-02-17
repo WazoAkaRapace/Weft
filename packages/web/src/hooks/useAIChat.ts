@@ -1,6 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getApiUrl } from '../lib/config';
 
+// Storage keys for thread persistence
+const STORAGE_KEY_THREAD_ID = 'weft_ai_chat_thread_id';
+const STORAGE_KEY_AGENT_ID = 'weft_ai_chat_agent_id';
+
 export interface ContextItem {
   type: 'journal' | 'note';
   id: string;
@@ -32,6 +36,67 @@ export interface ChatMessage {
   isStreaming?: boolean;
   toolCalls?: ToolCall[];
   timestamp: Date;
+}
+
+/**
+ * Convert Mastra message format to ChatMessage format
+ */
+function convertMastraMessagesToChat(mastraMessages: MastraMessage[]): ChatMessage[] {
+  return mastraMessages.map(msg => {
+    // Extract content from message parts or content field
+    let content = '';
+    const toolCalls: ToolCall[] = [];
+
+    if (msg.content != null) {
+      if (typeof msg.content === 'string') {
+        content = msg.content;
+      } else if (Array.isArray(msg.content)) {
+        // Handle array content (AI SDK format)
+        for (const part of msg.content) {
+          if (part.type === 'text' && part.text) {
+            content += part.text;
+          } else if (part.type === 'tool-call') {
+            toolCalls.push({
+              toolCallId: part.toolCallId || '',
+              toolName: part.toolName || '',
+              status: 'completed',
+              args: part.args,
+            });
+          } else if (part.type === 'tool-result') {
+            // Tool results don't need to be displayed separately
+          }
+        }
+        // If no text parts found but content array exists, try to extract text from unknown formats
+        if (!content && msg.content.length > 0) {
+          const firstPart = msg.content[0] as Record<string, unknown>;
+          if (typeof firstPart === 'object' && firstPart !== null) {
+            // Try common text field names
+            content = String(firstPart.text || firstPart.content || '');
+          }
+        }
+      } else if (typeof msg.content === 'object') {
+        // Handle object content (some providers return this)
+        const contentObj = msg.content as Record<string, unknown>;
+        content = String(contentObj.text || contentObj.content || JSON.stringify(msg.content));
+      }
+    }
+
+    return {
+      role: msg.role as 'user' | 'assistant',
+      content,
+      timestamp: new Date(msg.createdAt || Date.now()),
+    };
+  }).filter(msg => msg.content || msg.role === 'user'); // Keep user messages even if empty, filter out empty assistant messages
+}
+
+/**
+ * Mastra message format from API
+ */
+interface MastraMessage {
+  id: string;
+  role: string;
+  content: string | Array<{ type: string; text?: string; toolCallId?: string; toolName?: string; args?: Record<string, unknown> }> | Record<string, unknown>;
+  createdAt?: string;
 }
 
 /**
@@ -89,6 +154,7 @@ interface UseAIChatOptions {
 interface UseAIChatReturn {
   messages: ChatMessage[];
   isLoading: boolean;
+  isInitializing: boolean;
   error: string | null;
   conversationId: string;
   sendMessage: (message: string, context?: ContextItem[]) => Promise<void>;
@@ -100,12 +166,68 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [conversationId, setConversationId] = useState(
-    initialConversationId || `conv-${Date.now()}`
-  );
+  const [conversationId, setConversationId] = useState(() => {
+    // Initialize from localStorage if agent matches
+    const storedAgentId = localStorage.getItem(STORAGE_KEY_AGENT_ID);
+    const storedThreadId = localStorage.getItem(STORAGE_KEY_THREAD_ID);
+
+    if (storedAgentId === agentId && storedThreadId) {
+      return storedThreadId;
+    }
+
+    // Agent changed or no stored thread, generate new ID
+    return initialConversationId || `conv-${Date.now()}`;
+  });
 
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Load existing thread messages on mount
+  useEffect(() => {
+    async function loadThread() {
+      const storedAgentId = localStorage.getItem(STORAGE_KEY_AGENT_ID);
+      const storedThreadId = localStorage.getItem(STORAGE_KEY_THREAD_ID);
+
+      // Only load if agent matches and we have a stored thread ID
+      if (storedAgentId === agentId && storedThreadId) {
+        try {
+          const response = await fetch(`${getApiUrl()}/api/mastra/threads/${storedThreadId}/messages`, {
+            credentials: 'include',
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log('[AI Chat] Loaded thread data:', data);
+            if (data.messages && data.messages.length > 0) {
+              console.log('[AI Chat] Raw message sample:', data.messages[0]);
+              const convertedMessages = convertMastraMessagesToChat(data.messages);
+              console.log('[AI Chat] Converted messages:', convertedMessages);
+              setMessages(convertedMessages);
+            }
+            // Update conversation ID to the stored one
+            setConversationId(storedThreadId);
+          } else {
+            // Thread not found or not accessible, clear localStorage
+            console.log('[AI Chat] Thread not found, clearing storage');
+            localStorage.removeItem(STORAGE_KEY_THREAD_ID);
+            setConversationId(`conv-${Date.now()}`);
+          }
+        } catch (err) {
+          // Network error or other issue, just start fresh
+          console.warn('[AI Chat] Failed to load thread messages:', err);
+          localStorage.removeItem(STORAGE_KEY_THREAD_ID);
+          setConversationId(`conv-${Date.now()}`);
+        }
+      }
+
+      // Store the current agent ID
+      localStorage.setItem(STORAGE_KEY_AGENT_ID, agentId);
+      setIsInitializing(false);
+    }
+
+    loadThread();
+  }, [agentId]);
 
   useEffect(() => {
     return () => {
@@ -200,6 +322,9 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
       const responseConversationId = response.headers.get('X-Conversation-ID');
       if (responseConversationId) {
         setConversationId(responseConversationId);
+        // Persist thread ID to localStorage for session recovery
+        localStorage.setItem(STORAGE_KEY_THREAD_ID, responseConversationId);
+        localStorage.setItem(STORAGE_KEY_AGENT_ID, agentId);
       }
 
       const reader = response.body?.getReader();
@@ -379,12 +504,15 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
   const clearConversation = useCallback(() => {
     setMessages([]);
     setError(null);
+    // Clear localStorage thread ID
+    localStorage.removeItem(STORAGE_KEY_THREAD_ID);
     setConversationId(`conv-${Date.now()}`);
   }, []);
 
   return {
     messages,
     isLoading,
+    isInitializing,
     error,
     conversationId,
     sendMessage,

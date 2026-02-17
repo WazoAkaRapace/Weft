@@ -19,6 +19,7 @@ import { getEmotionQueue } from '../queue/EmotionQueue.js';
 import { getHLSQueue } from '../queue/HLSQueue.js';
 import { generateThumbnailForVideo } from '../lib/thumbnail.js';
 import { cleanupHLSFiles } from '../lib/hls.js';
+import { indexJournal, deleteVectorsBySource } from '../mastra/vector/indexer.js';
 
 // Upload directory configuration
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
@@ -909,6 +910,9 @@ export async function handleDeleteJournal(request: Request, journalId: string): 
       console.warn(`[Journals] Failed to clean up HLS files:`, error);
     }
 
+    // Delete vectors from RAG index (fire-and-forget)
+    void deleteVectorsBySource('journal', journalId, session.user.id);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -1016,6 +1020,9 @@ export async function handleUpdateJournal(
       .from(journals)
       .where(eq(journals.id, journalId))
       .limit(1);
+
+    // Trigger RAG indexing (fire-and-forget)
+    void indexJournal(journalId, session.user.id);
 
     return new Response(
       JSON.stringify(updatedList[0]),

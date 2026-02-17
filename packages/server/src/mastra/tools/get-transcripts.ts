@@ -10,21 +10,30 @@ import { z } from "zod";
 import { db } from "../../db/index.js";
 import { transcripts, journals } from "../../db/schema.js";
 import { eq, and, inArray } from "drizzle-orm";
+import { getAuthenticatedUserId } from "../../lib/request-context.js";
 
 /**
  * Tool to fetch transcripts for specific journal entries
  */
 export const getTranscriptsTool = createTool({
   id: "get-transcripts",
-  description: "Fetch transcripts for specific journal entries. Returns the full transcript text and optional timestamped segments for detailed analysis of spoken content in journals.",
+  description: `Fetch transcripts for specific journal entries.
+
+USAGE: Call when you have journal IDs and need the full spoken content.
+
+PARAMETER GUIDELINES:
+- journalIds: REQUIRED. Array of journal UUIDs to fetch transcripts for.
+- includeSegments: USE false (default). Only set true for word-by-word timing analysis.`,
   inputSchema: z.object({
-    userId: z.string().uuid().describe("The user ID to fetch transcripts for (required for security)"),
-    journalIds: z.array(z.string().uuid()).describe("Array of journal IDs to fetch transcripts for"),
-    includeSegments: z.boolean().default(false).describe("Whether to include timestamped segments (for word-by-word timing)"),
+    journalIds: z.array(z.string().uuid()).describe("REQUIRED: Array of journal UUIDs to fetch transcripts for."),
+    includeSegments: z.boolean().default(false).describe('USE false (default). Set true only for word-by-word timing analysis.'),
   }),
-  execute: async ({ userId, journalIds, includeSegments }) => {
+  execute: async ({ journalIds, includeSegments }) => {
 
     try {
+      // Get the authenticated user ID from the request context (secure - agent cannot override)
+      const userId = getAuthenticatedUserId();
+
       // First verify that all journals belong to the user
       const userJournals = await db
         .select({ id: journals.id })
