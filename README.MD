@@ -19,6 +19,7 @@
 ![Recording](screenshots/03-recording.png)
 ![Mood Calendar](screenshots/06-mood-calendar.png)
 ![Journal Detail](screenshots/05-journal-detail.png)
+![AI Chat](screenshots/08-ai-chat.png)
 
 ## Features
 
@@ -27,6 +28,7 @@
 - **Emotion Detection** - Multimodal (facial + vocal) analysis with real-time timeline visualization
 - **Mood Tracking** - Daily mood calendar with morning/afternoon tracking, 11 emotion options, notes, and statistics
 - **Notes System** - Hierarchical organization, templates, slash commands, markdown editing
+- **AI Chat** - Context-aware assistant with tool access to notes, journals, moods, and transcripts
 - **HLS Video Playback** - With transcript sync and emotion analysis per entry
 - **Authentication** - BetterAuth with database session management
 
@@ -38,6 +40,7 @@
 | TypeScript 5.7 | Drizzle ORM | face-api.js | pnpm |
 | Vite 6 | PostgreSQL 16 | SpeechBrain | Docker |
 | HLS.js | BetterAuth | FFmpeg | |
+| | | Mastra | |
 
 ## Quick Start
 
@@ -117,6 +120,11 @@ DATABASE_URL=postgresql://user:password@host:5432/weft
 BETTER_AUTH_SECRET=your-secret-key
 BETTER_AUTH_URL=http://localhost:3001
 FRONTEND_URL=http://localhost:3000
+MASTRA_PROVIDER=ollama
+OLLAMA_BASE_URL=http://192.168.5.104:11434
+MASTRA_DEFAULT_MODEL=ollama/qwen3:30b
+OLLAMA_THINKING=true
+OLLAMA_MAX_STEPS=10
 ```
 
 For Docker deployments, see [spec/DOCKER.md](./spec/DOCKER.md) for the full list of environment variables.
