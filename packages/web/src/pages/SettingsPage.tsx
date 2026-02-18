@@ -7,6 +7,12 @@ import type {
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { NotificationSettings } from '../components/notifications/NotificationSettings';
 import { getApiUrl } from '../lib/config';
+import {
+  getWhisperModels,
+  downloadWhisperModel,
+  cancelModelDownload,
+  type WhisperModel,
+} from '../api/whisper-models';
 
 interface UserSettings {
   preferredLanguage: string;
@@ -172,6 +178,12 @@ export function SettingsPage() {
   } | null>(null);
   const [indexingError, setIndexingError] = useState<string | null>(null);
 
+  // Whisper models states
+  const [whisperModels, setWhisperModels] = useState<WhisperModel[]>([]);
+  const [whisperModelsLoading, setWhisperModelsLoading] = useState(false);
+  const [whisperModelsError, setWhisperModelsError] = useState<string | null>(null);
+  const whisperPollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // Fetch current settings on mount
   useEffect(() => {
     const fetchSettings = async () => {
@@ -199,6 +211,85 @@ export function SettingsPage() {
     };
 
     fetchSettings();
+  }, []);
+
+  // Fetch Whisper models status
+  const fetchWhisperModels = async () => {
+    setWhisperModelsLoading(true);
+    setWhisperModelsError(null);
+    try {
+      const data = await getWhisperModels();
+      setWhisperModels(data.models);
+
+      // Start polling if any model is downloading
+      const hasDownloading = data.models.some(m => m.downloading);
+      if (hasDownloading && !whisperPollIntervalRef.current) {
+        startWhisperPolling();
+      } else if (!hasDownloading && whisperPollIntervalRef.current) {
+        stopWhisperPolling();
+      }
+    } catch (err) {
+      console.error('Failed to fetch Whisper models:', err);
+      setWhisperModelsError(err instanceof Error ? err.message : 'Failed to load models');
+    } finally {
+      setWhisperModelsLoading(false);
+    }
+  };
+
+  // Poll Whisper models for download progress
+  const startWhisperPolling = () => {
+    if (whisperPollIntervalRef.current) return;
+
+    whisperPollIntervalRef.current = setInterval(async () => {
+      try {
+        const data = await getWhisperModels();
+        setWhisperModels(data.models);
+
+        // Stop polling if no models are downloading
+        const hasDownloading = data.models.some(m => m.downloading);
+        if (!hasDownloading) {
+          stopWhisperPolling();
+        }
+      } catch (err) {
+        console.error('Failed to poll Whisper models:', err);
+      }
+    }, 1000);
+  };
+
+  const stopWhisperPolling = () => {
+    if (whisperPollIntervalRef.current) {
+      clearInterval(whisperPollIntervalRef.current);
+      whisperPollIntervalRef.current = null;
+    }
+  };
+
+  // Handle model download
+  const handleDownloadModel = async (modelId: string) => {
+    try {
+      await downloadWhisperModel(modelId);
+      // Start polling for progress
+      startWhisperPolling();
+      // Immediately refresh to show downloading state
+      await fetchWhisperModels();
+    } catch (err) {
+      setWhisperModelsError(err instanceof Error ? err.message : 'Failed to start download');
+    }
+  };
+
+  // Handle cancel download
+  const handleCancelDownload = async (modelId: string) => {
+    try {
+      await cancelModelDownload(modelId);
+      await fetchWhisperModels();
+    } catch (err) {
+      setWhisperModelsError(err instanceof Error ? err.message : 'Failed to cancel download');
+    }
+  };
+
+  // Fetch Whisper models on mount
+  useEffect(() => {
+    fetchWhisperModels();
+    return () => stopWhisperPolling();
   }, []);
 
   // Fetch RAG status
@@ -545,6 +636,7 @@ export function SettingsPage() {
     return () => {
       stopBackupPolling();
       stopRestorePolling();
+      stopWhisperPolling();
     };
   }, []);
 
@@ -620,45 +712,130 @@ export function SettingsPage() {
               <p className="text-xs text-neutral-500 dark:text-dark-400">
                 Powered by whisper.cpp. Larger models are more accurate but require more RAM. Large V3 (~4GB RAM) offers the best quality. First-time download may take several minutes for larger models.
               </p>
-              <div className="grid grid-cols-1 gap-3">
-                {WHISPER_MODELS.map((model) => (
-                  <label
-                    key={model.id}
-                    className={`
-                      flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors
-                      ${settings.transcriptionModel === model.id
-                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30'
-                        : 'border-neutral-200 dark:border-dark-600 hover:border-neutral-300 dark:hover:border-dark-500'
-                      }
-                    `}
+
+              {/* Model loading/error states */}
+              {whisperModelsLoading && whisperModels.length === 0 && (
+                <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-dark-400">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-500 border-t-transparent"></div>
+                  Loading model status...
+                </div>
+              )}
+              {whisperModelsError && (
+                <div className="text-sm text-error mb-2">
+                  {whisperModelsError}
+                  <button
+                    onClick={() => fetchWhisperModels()}
+                    className="ml-2 text-primary-500 hover:text-primary-600"
                   >
-                    <input
-                      type="radio"
-                      name="transcriptionModel"
-                      value={model.id}
-                      checked={settings.transcriptionModel === model.id}
-                      onChange={(e) => setSettings({ ...settings, transcriptionModel: e.target.value })}
-                      disabled={isSaving}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <span className="font-medium text-neutral-900 dark:text-dark-50">
-                        {model.name}
-                      </span>
-                      <p className="text-sm text-neutral-600 dark:text-dark-400 mt-1 mb-1">
-                        {model.description}
-                      </p>
-                      <p className="text-xs text-neutral-500 dark:text-dark-500">
-                        Size: {model.size}
-                      </p>
-                      {model.warning && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
-                          ⚠️ Requires significant memory and may timeout on first download
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-3">
+                {WHISPER_MODELS.map((model) => {
+                  // Get download status from API response
+                  const modelStatus = whisperModels.find(m => m.id === model.id);
+                  const isDownloaded = modelStatus?.downloaded ?? false;
+                  const isDownloading = modelStatus?.downloading ?? false;
+                  const downloadProgress = modelStatus?.progress ?? null;
+                  const canSelect = isDownloaded || isDownloading;
+
+                  return (
+                    <div
+                      key={model.id}
+                      className={`
+                        flex items-start gap-3 p-4 rounded-lg border-2 transition-colors
+                        ${settings.transcriptionModel === model.id
+                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30'
+                          : 'border-neutral-200 dark:border-dark-600 hover:border-neutral-300 dark:hover:border-dark-500'
+                        }
+                        ${!canSelect ? 'opacity-70' : ''}
+                      `}
+                    >
+                      <input
+                        type="radio"
+                        name="transcriptionModel"
+                        value={model.id}
+                        checked={settings.transcriptionModel === model.id}
+                        onChange={(e) => setSettings({ ...settings, transcriptionModel: e.target.value })}
+                        disabled={isSaving || !canSelect}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-neutral-900 dark:text-dark-50">
+                            {model.name}
+                          </span>
+                          {/* Download status badge */}
+                          {isDownloaded && (
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-success/20 text-success-dark dark:text-success">
+                              Downloaded
+                            </span>
+                          )}
+                          {isDownloading && (
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300">
+                              Downloading {downloadProgress !== null ? `${downloadProgress}%` : '...'}
+                            </span>
+                          )}
+                          {!isDownloaded && !isDownloading && (
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-neutral-100 dark:bg-dark-600 text-neutral-600 dark:text-dark-300">
+                              Not Downloaded
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-neutral-600 dark:text-dark-400 mt-1 mb-1">
+                          {model.description}
                         </p>
-                      )}
+                        <p className="text-xs text-neutral-500 dark:text-dark-500">
+                          Size: {model.size}
+                        </p>
+                        {model.warning && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                            Requires significant memory and may timeout on first download
+                          </p>
+                        )}
+
+                        {/* Download button / progress bar */}
+                        {!isDownloaded && (
+                          <div className="mt-3">
+                            {isDownloading ? (
+                              <div className="space-y-2">
+                                <div className="w-full bg-neutral-200 dark:bg-dark-600 rounded-full h-2">
+                                  <div
+                                    className="bg-primary-500 h-2 rounded-full transition-all duration-300"
+                                    style={{ width: `${downloadProgress ?? 0}%` }}
+                                  ></div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleCancelDownload(model.id);
+                                  }}
+                                  className="text-xs text-error hover:text-error/80"
+                                >
+                                  Cancel Download
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleDownloadModel(model.id);
+                                }}
+                                className="px-3 py-1.5 text-xs bg-primary-500 hover:bg-primary-600 text-white rounded-md transition-colors"
+                              >
+                                Download ({model.size.split(' / ')[0]})
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </label>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

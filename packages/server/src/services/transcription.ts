@@ -11,9 +11,10 @@ import { nodewhisper } from 'nodejs-whisper';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
+import { getModelById, isModelDownloaded, downloadModel } from './whisper-models.js';
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
-const MODELS_DIR = path.join(UPLOAD_DIR, 'whisper-models');
+const MODELS_DIR = process.env.WHISPER_MODELS_DIR || path.join(UPLOAD_DIR, 'whisper-models');
 
 // Ensure models directory exists
 await mkdir(MODELS_DIR, { recursive: true });
@@ -62,8 +63,14 @@ export async function extractAudio(videoPath: string): Promise<string> {
 
 // Convert user's model selection from Xenova format to nodejs-whisper format
 function convertModelName(xenovaModel: string): string {
-  // Map Xenova format to nodejs-whisper format
-  // nodejs-whisper uses names without "ggml-" prefix and ".bin" extension
+  // Use the whisper-models service to get model info
+  const model = getModelById(xenovaModel);
+  if (model) {
+    // Extract the model name from filename (ggml-small.bin -> small)
+    return model.filename.replace('ggml-', '').replace('.bin', '');
+  }
+
+  // Fallback mapping for backwards compatibility
   const modelMap: Record<string, string> = {
     'Xenova/whisper-tiny': 'tiny',
     'Xenova/whisper-tiny.en': 'tiny.en',
@@ -75,7 +82,7 @@ function convertModelName(xenovaModel: string): string {
     'Xenova/whisper-medium.en': 'medium.en',
     'Xenova/whisper-large': 'large',
     'Xenova/whisper-large-v2': 'large-v2',
-    'Xenova/whisper-large-v3': 'large-v3-turbo', // nodejs-whisper uses large-v3-turbo
+    'Xenova/whisper-large-v3': 'large-v3-turbo',
   };
 
   // Default to small if not found
@@ -148,6 +155,23 @@ export class TranscriptionService {
       console.log(`[Transcription] Using model: ${modelName} for user ${job.userId}`);
       console.log(`[Transcription] Using language: ${language} for user ${job.userId}`);
 
+      // Check if model is downloaded, and download if needed
+      const model = getModelById(userModel);
+      if (model) {
+        if (!isModelDownloaded(model.filename)) {
+          console.log(`[Transcription] Model ${userModel} not downloaded, starting download...`);
+          try {
+            await downloadModel(userModel);
+            console.log(`[Transcription] Model ${userModel} downloaded successfully`);
+          } catch (downloadError) {
+            throw new Error(
+              `Model "${model.name}" is not downloaded. Please download it in Settings before transcribing. ` +
+              `Error: ${downloadError instanceof Error ? downloadError.message : 'Unknown error'}`
+            );
+          }
+        }
+      }
+
       // Log memory before transcription
       const memBefore = process.memoryUsage();
       console.log(`[Transcription] Memory before transcription:`, {
@@ -166,14 +190,11 @@ export class TranscriptionService {
 
       const inferenceStart = Date.now();
 
-      // Call nodejs-whisper
+      // Call nodejs-whisper with custom models directory
       // nodejs-whisper handles audio conversion automatically
-      // Models are pre-downloaded during Docker build, so we skip autoDownloadModelName
-      // nodejs-whisper returns the transcription result as stdout (text with timestamps)
+      // We use WHISPER_MODELS_DIR to store downloaded models
       const transcriptOutput = await nodewhisper(job.videoPath, {
         modelName: modelName,
-        // Skip autoDownloadModelName since models are pre-downloaded during Docker build
-        // This prevents permission errors when running as non-root user
         removeWavFileAfterTranscription: true, // Clean up converted audio
         whisperOptions: {
           outputInJson: false,    // JSON saved to file, not needed for stdout

@@ -98,6 +98,13 @@ import {
   handleGetMemoryCategories,
   handleReindexMemories,
 } from './routes/memories.js';
+import {
+  handleGetWhisperModels,
+  handleGetModelStatus,
+  handleDownloadModel,
+  handleCancelDownload,
+  handleDeleteModel,
+} from './routes/whisper-models.js';
 import { initializeVectorStore } from './mastra/vector/index.js';
 
 const PORT = process.env.PORT || 3001;
@@ -844,6 +851,41 @@ const server = createHttpServer(async (req, res) => {
     if (url.pathname.match(/\/api\/memories\/[^/]+$/) && req.method === 'DELETE') {
       const memoryId = url.pathname.split('/').slice(-1)[0];
       sendResponse(res, addCorsHeaders(await handleDeleteMemory(request, memoryId), request));
+      return;
+    }
+
+    // Whisper Models API endpoints
+    // Model download cancel endpoint (must be before general model check)
+    if (url.pathname.match(/\/api\/whisper-models\/[^/]+\/download$/) && req.method === 'DELETE') {
+      const modelId = url.pathname.split('/').slice(-2, -1)[0];
+      sendResponse(res, addCorsHeaders(await handleCancelDownload(request, modelId), request));
+      return;
+    }
+
+    // Model download endpoint (must be before general model check)
+    if (url.pathname.match(/\/api\/whisper-models\/[^/]+\/download$/) && req.method === 'POST') {
+      const modelId = url.pathname.split('/').slice(-2, -1)[0];
+      sendResponse(res, addCorsHeaders(await handleDownloadModel(request, modelId), request));
+      return;
+    }
+
+    // Model status endpoint (must be before general model check)
+    if (url.pathname.match(/\/api\/whisper-models\/[^/]+\/status$/) && req.method === 'GET') {
+      const modelId = url.pathname.split('/').slice(-2, -1)[0];
+      sendResponse(res, addCorsHeaders(await handleGetModelStatus(request, modelId), request));
+      return;
+    }
+
+    // List all models
+    if (url.pathname === '/api/whisper-models' && req.method === 'GET') {
+      sendResponse(res, addCorsHeaders(await handleGetWhisperModels(), request));
+      return;
+    }
+
+    // Delete a model
+    if (url.pathname.match(/\/api\/whisper-models\/[^/]+$/) && req.method === 'DELETE') {
+      const modelId = url.pathname.split('/').slice(-1)[0];
+      sendResponse(res, addCorsHeaders(await handleDeleteModel(request, modelId), request));
       return;
     }
 
