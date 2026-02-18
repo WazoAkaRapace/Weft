@@ -152,10 +152,10 @@ RUN cd /app/node_modules/.pnpm && \
     cmake --build build --config Release -j$(nproc) && \
     chmod +x build/bin/whisper-cli
 
-# Make whisper models directory writable by nodejs user for auto-downloads
+# Make entire whisper.cpp directory writable by nodejs user for auto-downloads and rebuilds
 RUN WHISPER_DIR=$(find /app/node_modules/.pnpm -maxdepth 1 -type d -name "nodejs-whisper@*" | head -1) && \
-    chown -R nodejs:nodejs "$WHISPER_DIR/node_modules/nodejs-whisper/cpp/whisper.cpp/models" && \
-    chmod -R 775 "$WHISPER_DIR/node_modules/nodejs-whisper/cpp/whisper.cpp/models"
+    chown -R nodejs:nodejs "$WHISPER_DIR/node_modules/nodejs-whisper/cpp/whisper.cpp" && \
+    chmod -R 775 "$WHISPER_DIR/node_modules/nodejs-whisper/cpp/whisper.cpp"
 
 # Set production environment after dependencies are installed
 ENV NODE_ENV=production
