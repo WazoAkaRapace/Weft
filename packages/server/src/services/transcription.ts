@@ -32,6 +32,7 @@ export async function extractAudio(videoPath: string): Promise<string> {
     const ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
     const ffmpeg = spawn(ffmpegPath, [
       '-i', videoPath,
+      '-map', '0:a:0', // Explicitly select first audio stream (avoid picking subtitle/data tracks)
       '-vn', // No video
       '-acodec', 'pcm_s16le', // 16-bit PCM
       '-ar', '16000', // 16kHz sample rate (Whisper requirement)
