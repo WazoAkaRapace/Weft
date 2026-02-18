@@ -40,6 +40,16 @@ export interface UseVideoStreamerOptions extends Partial<SharedVideoStreamerOpti
   preferredCodec?: VideoCodec;
 
   /**
+   * Specific video input device ID
+   */
+  videoDeviceId?: string;
+
+  /**
+   * Specific audio input device ID
+   */
+  audioDeviceId?: string;
+
+  /**
    * Chunk size for streaming in bytes (default: 64KB)
    */
   chunkSize?: number;
@@ -121,6 +131,8 @@ export interface UseVideoStreamerReturn {
 export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVideoStreamerReturn {
   const {
     preferredCodec,
+    videoDeviceId,
+    audioDeviceId,
     durationUpdateInterval = DEFAULT_DURATION_INTERVAL,
     onProgress,
     onStateChange,
@@ -365,14 +377,27 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
     try {
       setError(null);
 
+      // Build video constraints with optional device ID
+      const videoConstraints: MediaTrackConstraints = {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      };
+
+      if (videoDeviceId) {
+        videoConstraints.deviceId = { exact: videoDeviceId };
+      } else {
+        videoConstraints.facingMode = 'user';
+      }
+
+      // Build audio constraints with optional device ID
+      const audioConstraints: MediaTrackConstraints | boolean = audioDeviceId
+        ? { deviceId: { exact: audioDeviceId } }
+        : true;
+
       // Request camera/microphone permissions
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'user',
-        },
-        audio: true,
+        video: videoConstraints,
+        audio: audioConstraints,
       });
 
       mediaStreamRef.current = mediaStream;
@@ -476,6 +501,8 @@ export function useVideoStreamer(options: UseVideoStreamerOptions = {}): UseVide
     }
   }, [
     preferredCodec,
+    videoDeviceId,
+    audioDeviceId,
     setState,
     handleError,
     cleanup,

@@ -10,6 +10,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useVideoStreamer } from '../hooks/useVideoStreamer';
 import { useNotesByIds } from '../hooks/useNotesByIds';
+import { useAudioLevel } from '../hooks/useAudioLevel';
+import { useMediaDevices } from '../hooks/useMediaDevices';
 import { RecordingNotePanel } from './recording/RecordingNotePanel';
 import { NoteSelector } from './notes/NoteSelector';
 import { MDXEditor } from '@mdxeditor/editor';
@@ -62,6 +64,18 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
   // Ref for title input auto-focus
   const titleInputRef = useRef<HTMLInputElement>(null);
 
+  // Media Devices Hook
+  const {
+    videoDevices,
+    audioDevices,
+    selectedVideoDevice,
+    selectedAudioDevice,
+    setSelectedVideoDevice,
+    setSelectedAudioDevice,
+    permissionStatus,
+    requestPermissions,
+  } = useMediaDevices();
+
   // Video Streamer Hook
   const {
     isRecording,
@@ -78,6 +92,8 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
     formatDuration,
     formatBytes,
   } = useVideoStreamer({
+    videoDeviceId: selectedVideoDevice,
+    audioDeviceId: selectedAudioDevice,
     onComplete: (result: StreamCompleteResponse) => {
       setJournalId(result.journalId);
       setUiState('complete');
@@ -85,6 +101,12 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
     onError: (error) => {
       console.error('Recording error:', error);
     },
+  });
+
+  // Audio Level Hook - active only when recording and not paused
+  const { audioLevel } = useAudioLevel({
+    mediaStream,
+    isActive: isRecording && !isPaused,
   });
 
   // Auto-focus title input when entering complete state
@@ -242,12 +264,73 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
         <div className="min-h-screen flex items-center justify-center p-4 bg-background dark:bg-background-dark">
           <div className="bg-white dark:bg-background-card-dark rounded-lg p-8 w-full max-w-md shadow-lg text-center">
             <h2 className="text-xl text-text-default dark:text-text-dark-default mb-2">New Journal Entry</h2>
-            <p className="text-text-secondary dark:text-text-dark-secondary mb-4">Record a video to add a new entry to your journal</p>
+            <p className="text-text-secondary dark:text-text-dark-secondary mb-6">Record a video to add a new entry to your journal</p>
+
+            {/* Device Selection */}
+            <div className="mb-6 space-y-3">
+              {/* Video Device Selector */}
+              <div className="text-left">
+                <label htmlFor="video-device" className="block text-sm font-medium text-text-muted dark:text-text-dark-muted mb-1">
+                  Camera
+                </label>
+                <select
+                  id="video-device"
+                  value={selectedVideoDevice}
+                  onChange={(e) => setSelectedVideoDevice(e.target.value)}
+                  disabled={videoDevices.length === 0}
+                  className="w-full px-3 py-2 border border-border dark:border-border-dark rounded-lg bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default text-sm focus:outline-none focus:border-border-focus disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {videoDevices.length === 0 ? (
+                    <option value="">No cameras available</option>
+                  ) : (
+                    videoDevices.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>
+                        {device.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {/* Audio Device Selector */}
+              <div className="text-left">
+                <label htmlFor="audio-device" className="block text-sm font-medium text-text-muted dark:text-text-dark-muted mb-1">
+                  Microphone
+                </label>
+                <select
+                  id="audio-device"
+                  value={selectedAudioDevice}
+                  onChange={(e) => setSelectedAudioDevice(e.target.value)}
+                  disabled={audioDevices.length === 0}
+                  className="w-full px-3 py-2 border border-border dark:border-border-dark rounded-lg bg-white dark:bg-dark-700 text-text-default dark:text-text-dark-default text-sm focus:outline-none focus:border-border-focus disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {audioDevices.length === 0 ? (
+                    <option value="">No microphones available</option>
+                  ) : (
+                    audioDevices.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>
+                        {device.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {/* Permission prompt if not granted */}
+              {permissionStatus !== 'granted' && (
+                <button
+                  onClick={requestPermissions}
+                  className="w-full px-3 py-2 text-sm border border-primary text-primary rounded-lg hover:bg-primary/10 transition-colors"
+                >
+                  Grant Camera & Microphone Access
+                </button>
+              )}
+            </div>
 
             {/* Note selection */}
             <button
               onClick={() => setShowNoteSelector(true)}
-              className="mb-6 px-4 py-2 text-sm border border-border dark:border-border-dark rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors"
+              className="mb-6 px-4 py-2 text-sm border border-border dark:border-border-dark rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-700 transition-colors w-full"
             >
               {selectedNoteIds.length > 0
                 ? `${selectedNoteIds.length} note${selectedNoteIds.length > 1 ? 's' : ''} selected`
@@ -255,8 +338,9 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
             </button>
 
             <button
-              className="px-6 py-3 bg-primary text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-primary-hover"
+              className="w-full px-6 py-3 bg-primary text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleStartRecording}
+              disabled={videoDevices.length === 0 || audioDevices.length === 0}
               aria-label="Start recording video"
             >
               Start Recording
@@ -286,25 +370,42 @@ export function VideoRecorder({ onSaveComplete, onCancel }: VideoRecorderProps) 
               </div>
             )}
 
-            <div className="bg-white dark:bg-background-card-dark rounded-lg shadow-lg overflow-hidden">
+            <div
+              className="relative bg-white dark:bg-background-card-dark rounded-lg shadow-lg overflow-hidden"
+              style={{
+                boxShadow: isRecording && !isPaused
+                  ? `0 0 ${Math.round(audioLevel * 15)}px rgba(26, 158, 158, ${0.3 + audioLevel * 0.5}), 0 10px 15px -3px rgba(0, 0, 0, 0.1)`
+                  : undefined,
+                transition: 'box-shadow 100ms ease',
+              }}
+            >
               {mediaStream && (
-                <video
-                  className="w-full bg-black"
-                  autoPlay
-                  muted
-                  playsInline
-                  ref={(videoElement) => {
-                    if (videoElement && videoElement.srcObject !== mediaStream) {
-                      videoElement.srcObject = mediaStream;
-                    }
-                  }}
-                />
+                <div className="relative">
+                  <video
+                    className="w-full bg-black"
+                    autoPlay
+                    muted
+                    playsInline
+                    ref={(videoElement) => {
+                      if (videoElement && videoElement.srcObject !== mediaStream) {
+                        videoElement.srcObject = mediaStream;
+                      }
+                    }}
+                  />
+                </div>
               )}
 
               {isRecording && !isPaused && (
                 <div role="status" aria-live="polite" className="absolute top-4 right-4 flex items-center gap-2 bg-black/70 text-white px-3 py-1.5 rounded-full">
                   <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" aria-hidden="true"></span>
                   <span className="text-sm font-medium">STREAMING</span>
+                  {/* Audio level indicator bars */}
+                  <div className="flex items-end gap-0.5 ml-1" aria-label="Audio level">
+                    <div className={`audio-bar w-0.5 h-2 rounded-sm ${audioLevel >= 0.15 ? 'active' : 'bg-white/30'}`} />
+                    <div className={`audio-bar w-0.5 h-3 rounded-sm ${audioLevel >= 0.35 ? 'active' : 'bg-white/30'}`} />
+                    <div className={`audio-bar w-0.5 h-2.5 rounded-sm ${audioLevel >= 0.55 ? 'active' : 'bg-white/30'}`} />
+                    <div className={`audio-bar w-0.5 h-3 rounded-sm ${audioLevel >= 0.75 ? 'active' : 'bg-white/30'}`} />
+                  </div>
                 </div>
               )}
 

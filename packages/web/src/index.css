@@ -776,3 +776,27 @@ body {
 ::view-transition-new(sidebar-notes) {
   animation: sidebar-slide-in-left 300ms ease-in-out forwards;
 }
+
+/* ============================================
+   Audio Level Indicator Bars
+   ============================================ */
+
+.audio-bar {
+  transition: opacity 50ms, background-color 50ms;
+}
+
+.audio-bar.active {
+  background-color: #1A9E9E;
+  opacity: 1;
+}
+
+.dark .audio-bar.active {
+  background-color: #3DC9C9;
+}
+
+/* Accessibility: respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .audio-bar {
+    transition: none;
+  }
+}
