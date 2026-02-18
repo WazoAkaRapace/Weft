@@ -190,10 +190,15 @@ export class TranscriptionService {
 
       const inferenceStart = Date.now();
 
-      // Call nodejs-whisper with custom models directory
-      // nodejs-whisper handles audio conversion automatically
+      // Pre-extract audio using our own FFmpeg settings to ensure proper audio stream selection
+      // This avoids nodejs-whisper's generic conversion which may pick wrong audio tracks
+      console.log(`[Transcription] Extracting audio from video...`);
+      const audioPath = await extractAudio(job.videoPath);
+      console.log(`[Transcription] Audio extracted to: ${audioPath}`);
+
+      // Call nodejs-whisper with the pre-extracted audio file
       // We use WHISPER_MODELS_DIR to store downloaded models
-      const transcriptOutput = await nodewhisper(job.videoPath, {
+      const transcriptOutput = await nodewhisper(audioPath, {
         modelName: modelName,
         removeWavFileAfterTranscription: true, // Clean up converted audio
         whisperOptions: {
