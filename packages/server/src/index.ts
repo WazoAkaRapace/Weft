@@ -102,8 +102,6 @@ import {
   handleGetWhisperModels,
   handleGetModelStatus,
   handleDownloadModel,
-  handleCancelDownload,
-  handleDeleteModel,
 } from './routes/whisper-models.js';
 import { initializeVectorStore } from './mastra/vector/index.js';
 
@@ -855,13 +853,6 @@ const server = createHttpServer(async (req, res) => {
     }
 
     // Whisper Models API endpoints
-    // Model download cancel endpoint (must be before general model check)
-    if (url.pathname.match(/\/api\/whisper-models\/[^/]+\/download$/) && req.method === 'DELETE') {
-      const modelId = url.pathname.split('/').slice(-2, -1)[0];
-      sendResponse(res, addCorsHeaders(await handleCancelDownload(request, modelId), request));
-      return;
-    }
-
     // Model download endpoint (must be before general model check)
     if (url.pathname.match(/\/api\/whisper-models\/[^/]+\/download$/) && req.method === 'POST') {
       const modelId = url.pathname.split('/').slice(-2, -1)[0];
@@ -879,13 +870,6 @@ const server = createHttpServer(async (req, res) => {
     // List all models
     if (url.pathname === '/api/whisper-models' && req.method === 'GET') {
       sendResponse(res, addCorsHeaders(await handleGetWhisperModels(), request));
-      return;
-    }
-
-    // Delete a model
-    if (url.pathname.match(/\/api\/whisper-models\/[^/]+$/) && req.method === 'DELETE') {
-      const modelId = url.pathname.split('/').slice(-1)[0];
-      sendResponse(res, addCorsHeaders(await handleDeleteModel(request, modelId), request));
       return;
     }
 

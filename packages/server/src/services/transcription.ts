@@ -11,13 +11,9 @@ import { nodewhisper } from 'nodejs-whisper';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
-import { getModelById, isModelDownloaded, downloadModel } from './whisper-models.js';
+import { getModelById } from './whisper-models.js';
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
-const MODELS_DIR = process.env.WHISPER_MODELS_DIR || path.join(UPLOAD_DIR, 'whisper-models');
-
-// Ensure models directory exists
-await mkdir(MODELS_DIR, { recursive: true });
 
 /**
  * Extract audio from video using FFmpeg
@@ -156,23 +152,6 @@ export class TranscriptionService {
       console.log(`[Transcription] Using model: ${modelName} for user ${job.userId}`);
       console.log(`[Transcription] Using language: ${language} for user ${job.userId}`);
 
-      // Check if model is downloaded, and download if needed
-      const model = getModelById(userModel);
-      if (model) {
-        if (!isModelDownloaded(model.filename)) {
-          console.log(`[Transcription] Model ${userModel} not downloaded, starting download...`);
-          try {
-            await downloadModel(userModel);
-            console.log(`[Transcription] Model ${userModel} downloaded successfully`);
-          } catch (downloadError) {
-            throw new Error(
-              `Model "${model.name}" is not downloaded. Please download it in Settings before transcribing. ` +
-              `Error: ${downloadError instanceof Error ? downloadError.message : 'Unknown error'}`
-            );
-          }
-        }
-      }
-
       // Log memory before transcription
       const memBefore = process.memoryUsage();
       console.log(`[Transcription] Memory before transcription:`, {
@@ -198,9 +177,10 @@ export class TranscriptionService {
       console.log(`[Transcription] Audio extracted to: ${audioPath}`);
 
       // Call nodejs-whisper with the pre-extracted audio file
-      // We use WHISPER_MODELS_DIR to store downloaded models
+      // autoDownloadModelName will download the model if not present
       const transcriptOutput = await nodewhisper(audioPath, {
         modelName: modelName,
+        autoDownloadModelName: modelName, // Auto-download model if not present
         removeWavFileAfterTranscription: true, // Clean up converted audio
         whisperOptions: {
           outputInJson: false,    // JSON saved to file, not needed for stdout

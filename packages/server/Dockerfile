@@ -141,21 +141,21 @@ RUN pnpm install --no-frozen-lockfile
 # Fix permissions for tfjs-node-stub for non-root user
 RUN chown -R nodejs:nodejs /app/packages/tfjs-node-stub
 
-# Download and setup whisper.cpp models for nodejs-whisper
-# Find the nodejs-whisper directory dynamically and set up models
-# Download large-v3-turbo model for best quality transcription
+# Build whisper.cpp for nodejs-whisper
+# Models are downloaded on-demand when first used for transcription
 RUN cd /app/node_modules/.pnpm && \
     WHISPER_DIR=$(find . -maxdepth 1 -type d -name "nodejs-whisper@*" | head -1) && \
     echo "Found whisper directory: $WHISPER_DIR" && \
     cd "$WHISPER_DIR/node_modules/nodejs-whisper/cpp/whisper.cpp" && \
     chmod +x models/download-ggml-model.sh && \
-    cd models && \
-    ./download-ggml-model.sh large-v3-turbo && \
-    cd .. && \
     cmake -B build -DWHISPER_BUILD_TESTS=OFF && \
     cmake --build build --config Release -j$(nproc) && \
-    chmod +x build/bin/whisper-cli && \
-    ls -la models/
+    chmod +x build/bin/whisper-cli
+
+# Make whisper models directory writable by nodejs user for auto-downloads
+RUN WHISPER_DIR=$(find /app/node_modules/.pnpm -maxdepth 1 -type d -name "nodejs-whisper@*" | head -1) && \
+    chown -R nodejs:nodejs "$WHISPER_DIR/node_modules/nodejs-whisper/cpp/whisper.cpp/models" && \
+    chmod -R 775 "$WHISPER_DIR/node_modules/nodejs-whisper/cpp/whisper.cpp/models"
 
 # Set production environment after dependencies are installed
 ENV NODE_ENV=production

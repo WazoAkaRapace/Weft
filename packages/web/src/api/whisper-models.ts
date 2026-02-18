@@ -1,6 +1,7 @@
 /**
  * Whisper Models API Client
- * Handles fetching model status and triggering downloads
+ * Handles fetching model status
+ * Note: Models are auto-downloaded by nodejs-whisper on first transcription
  */
 
 import { getApiUrl } from '../lib/config';
@@ -12,14 +13,10 @@ export interface WhisperModel {
   sizeBytes: number;
   sizeFormatted: string;
   downloaded: boolean;
-  downloading: boolean;
-  progress: number | null;
 }
 
 export interface WhisperModelsResponse {
   models: WhisperModel[];
-  totalDownloadedSize: number;
-  totalDownloadedSizeFormatted: string;
 }
 
 /**
@@ -52,66 +49,6 @@ export async function getModelStatus(modelId: string): Promise<WhisperModel> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.error || 'Failed to get model status');
-  }
-
-  return response.json();
-}
-
-/**
- * Start downloading a model
- */
-export async function downloadWhisperModel(modelId: string): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(
-    `${getApiUrl()}/api/whisper-models/${encodeURIComponent(modelId)}/download`,
-    {
-      method: 'POST',
-      credentials: 'include',
-    }
-  );
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || 'Failed to start download');
-  }
-
-  return response.json();
-}
-
-/**
- * Cancel an active model download
- */
-export async function cancelModelDownload(modelId: string): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(
-    `${getApiUrl()}/api/whisper-models/${encodeURIComponent(modelId)}/download`,
-    {
-      method: 'DELETE',
-      credentials: 'include',
-    }
-  );
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || 'Failed to cancel download');
-  }
-
-  return response.json();
-}
-
-/**
- * Delete a downloaded model
- */
-export async function deleteWhisperModel(modelId: string): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(
-    `${getApiUrl()}/api/whisper-models/${encodeURIComponent(modelId)}`,
-    {
-      method: 'DELETE',
-      credentials: 'include',
-    }
-  );
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || 'Failed to delete model');
   }
 
   return response.json();

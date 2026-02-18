@@ -1,19 +1,35 @@
 /**
  * Whisper Models API Routes
- * Handles model listing, download status, and model downloads
+ * Handles model listing (downloads are automatic via nodejs-whisper)
  */
 
-import {
-  getAllModelStatuses,
-  getModelById,
-  downloadModel,
-  isModelDownloaded,
-  isModelDownloading,
-  getDownloadProgress,
-  cancelDownload,
-  deleteModel,
-  getTotalDownloadedSize,
-} from '../services/whisper-models.js';
+import { getAllModels, getModelById } from '../services/whisper-models.js';
+import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+
+// Find the nodejs-whisper package's models directory
+function getNodejsWhisperModelsDir(): string {
+  try {
+    const nodejsWhisperPath = require.resolve('nodejs-whisper/package.json');
+    const packageDir = path.dirname(nodejsWhisperPath);
+    return path.join(packageDir, 'cpp', 'whisper.cpp', 'models');
+  } catch {
+    return path.join(process.cwd(), 'node_modules', 'nodejs-whisper', 'cpp', 'whisper.cpp', 'models');
+  }
+}
+
+import path from 'node:path';
+
+const MODELS_DIR = getNodejsWhisperModelsDir();
+
+/**
+ * Check if a model is downloaded (exists in nodejs-whisper's models directory)
+ */
+function isModelDownloaded(filename: string): boolean {
+  return existsSync(path.join(MODELS_DIR, filename));
+}
 
 /**
  * Get all available models with their download status
@@ -21,8 +37,7 @@ import {
  */
 export async function handleGetWhisperModels(): Promise<Response> {
   try {
-    const models = getAllModelStatuses();
-    const totalSize = await getTotalDownloadedSize();
+    const models = getAllModels();
 
     return Response.json({
       models: models.map(m => ({
@@ -31,12 +46,8 @@ export async function handleGetWhisperModels(): Promise<Response> {
         description: m.description,
         sizeBytes: m.sizeBytes,
         sizeFormatted: formatBytes(m.sizeBytes),
-        downloaded: m.downloaded,
-        downloading: m.downloading,
-        progress: m.progress,
+        downloaded: isModelDownloaded(m.filename),
       })),
-      totalDownloadedSize: totalSize,
-      totalDownloadedSizeFormatted: formatBytes(totalSize),
     });
   } catch (error) {
     console.error('[WhisperModels] Error getting models:', error);
@@ -53,7 +64,6 @@ export async function handleGetWhisperModels(): Promise<Response> {
  */
 export async function handleGetModelStatus(_request: Request, modelId: string): Promise<Response> {
   try {
-    // Decode the modelId (it may be URL-encoded)
     const decodedModelId = decodeURIComponent(modelId);
 
     const model = getModelById(decodedModelId);
@@ -71,8 +81,6 @@ export async function handleGetModelStatus(_request: Request, modelId: string): 
       sizeBytes: model.sizeBytes,
       sizeFormatted: formatBytes(model.sizeBytes),
       downloaded: isModelDownloaded(model.filename),
-      downloading: isModelDownloading(model.id),
-      progress: getDownloadProgress(model.id),
     });
   } catch (error) {
     console.error('[WhisperModels] Error getting model status:', error);
@@ -86,10 +94,12 @@ export async function handleGetModelStatus(_request: Request, modelId: string): 
 /**
  * Download a model
  * POST /api/whisper-models/:modelId/download
+ *
+ * Note: With nodejs-whisper's autoDownloadModelName, models are downloaded
+ * automatically on first use. This endpoint is kept for manual pre-fetching.
  */
 export async function handleDownloadModel(_request: Request, modelId: string): Promise<Response> {
   try {
-    // Decode the modelId (it may be URL-encoded)
     const decodedModelId = decodeURIComponent(modelId);
 
     const model = getModelById(decodedModelId);
@@ -112,99 +122,21 @@ export async function handleDownloadModel(_request: Request, modelId: string): P
       });
     }
 
-    // Check if already downloading
-    if (isModelDownloading(model.id)) {
-      return Response.json({
-        success: true,
-        message: 'Model is already being downloaded',
-        model: {
-          id: model.id,
-          downloading: true,
-          progress: getDownloadProgress(model.id),
-        },
-      });
-    }
-
-    // Start download in background
-    downloadModel(model.id).catch(error => {
-      console.error(`[WhisperModels] Background download failed for ${model.id}:`, error);
-    });
-
+    // Models are now auto-downloaded by nodejs-whisper on first transcription
+    // Inform the user to trigger a transcription to download the model
     return Response.json({
       success: true,
-      message: 'Download started',
+      message: 'Model will be downloaded automatically when you first use it for transcription',
       model: {
         id: model.id,
-        downloading: true,
-        progress: 0,
+        downloaded: false,
+        autoDownload: true,
       },
     });
   } catch (error) {
-    console.error('[WhisperModels] Error starting download:', error);
+    console.error('[WhisperModels] Error with download request:', error);
     return Response.json(
-      { error: 'Failed to start download', message: (error as Error).message },
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * Cancel a model download
- * DELETE /api/whisper-models/:modelId/download
- */
-export async function handleCancelDownload(_request: Request, modelId: string): Promise<Response> {
-  try {
-    const decodedModelId = decodeURIComponent(modelId);
-
-    const model = getModelById(decodedModelId);
-    if (!model) {
-      return Response.json(
-        { error: 'Model not found', message: `Unknown model: ${decodedModelId}` },
-        { status: 404 }
-      );
-    }
-
-    const cancelled = cancelDownload(model.id);
-
-    return Response.json({
-      success: cancelled,
-      message: cancelled ? 'Download cancelled' : 'No active download to cancel',
-    });
-  } catch (error) {
-    console.error('[WhisperModels] Error cancelling download:', error);
-    return Response.json(
-      { error: 'Failed to cancel download', message: (error as Error).message },
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * Delete a downloaded model
- * DELETE /api/whisper-models/:modelId
- */
-export async function handleDeleteModel(_request: Request, modelId: string): Promise<Response> {
-  try {
-    const decodedModelId = decodeURIComponent(modelId);
-
-    const model = getModelById(decodedModelId);
-    if (!model) {
-      return Response.json(
-        { error: 'Model not found', message: `Unknown model: ${decodedModelId}` },
-        { status: 404 }
-      );
-    }
-
-    const deleted = await deleteModel(model.id);
-
-    return Response.json({
-      success: deleted,
-      message: deleted ? 'Model deleted' : 'Model was not downloaded',
-    });
-  } catch (error) {
-    console.error('[WhisperModels] Error deleting model:', error);
-    return Response.json(
-      { error: 'Failed to delete model', message: (error as Error).message },
+      { error: 'Failed to process download request', message: (error as Error).message },
       { status: 500 }
     );
   }
