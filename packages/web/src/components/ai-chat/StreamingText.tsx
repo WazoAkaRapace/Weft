@@ -1,4 +1,4 @@
-import { useEffect, useRef, memo } from 'react';
+import { useEffect, useRef, memo, useLayoutEffect, useState } from 'react';
 import { useSmoothStream } from '../../hooks/useSmoothStream';
 
 interface StreamingTextProps {
@@ -14,7 +14,9 @@ interface StreamingTextProps {
 
 /**
  * Component that displays text with smooth character-by-character animation during streaming.
- * Once streaming is complete, shows the full text immediately.
+ * During streaming, displays plain text to avoid flickering from partial markdown.
+ * After streaming completes, renders the full markdown formatting.
+ * The container height is locked to prevent shrinking when transitioning to markdown.
  */
 export const StreamingText = memo(function StreamingText({
   text,
@@ -25,6 +27,17 @@ export const StreamingText = memo(function StreamingText({
   const { visibleText, addText, reset, isComplete } = useSmoothStream();
   const lastMessageKeyRef = useRef<string | number | undefined>(messageKey);
   const lastTextLengthRef = useRef<number>(0);
+  const containerRef = useRef<HTMLSpanElement>(null);
+  const [lockedHeight, setLockedHeight] = useState<number | null>(null);
+  // Track if we've ever been streaming (to know if we need height locking)
+  const wasStreamingRef = useRef(false);
+
+  // Update wasStreamingRef when streaming changes
+  useEffect(() => {
+    if (isStreaming) {
+      wasStreamingRef.current = true;
+    }
+  }, [isStreaming]);
 
   // Reset when message changes
   useEffect(() => {
@@ -32,6 +45,9 @@ export const StreamingText = memo(function StreamingText({
       reset();
       lastMessageKeyRef.current = messageKey;
       lastTextLengthRef.current = 0;
+      wasStreamingRef.current = false;
+      // Reset height via requestAnimationFrame to avoid sync setState warning
+      requestAnimationFrame(() => setLockedHeight(null));
     }
   }, [messageKey, reset]);
 
@@ -47,25 +63,39 @@ export const StreamingText = memo(function StreamingText({
   // When streaming ends, skip to show all content immediately
   useEffect(() => {
     if (!isStreaming && text.length > visibleText.length) {
-      // Streaming ended but animation hasn't caught up - skip to end
       addText(text.slice(visibleText.length));
     }
   }, [isStreaming, text, visibleText.length, addText]);
 
-  // Show cursor while streaming and animating (derived state)
+  // Lock height when transitioning from streaming to non-streaming
+  useLayoutEffect(() => {
+    // Only lock height if we were streaming and now we're not
+    if (!isStreaming && wasStreamingRef.current && lockedHeight === null && containerRef.current) {
+      setLockedHeight(containerRef.current.offsetHeight);
+    }
+  }, [isStreaming, lockedHeight]);
+
+  // Show cursor while streaming and animating
   const showCursor = isStreaming && !isComplete;
 
   // Determine what to show
-  // During streaming: show animated visibleText
-  // After streaming ends: show full text immediately
   const displayText = isComplete || !isStreaming ? text : visibleText;
 
-  // Format the display text
-  const formattedContent = formatMarkdown(displayText);
+  // Show plain text during streaming, markdown otherwise
+  const shouldShowMarkdown = !isStreaming;
+
+  // Apply locked height as min-height to prevent shrinking
+  const style = lockedHeight !== null
+    ? { display: 'inline-block', minHeight: `${lockedHeight}px` }
+    : undefined;
 
   return (
-    <span>
-      <span dangerouslySetInnerHTML={{ __html: formattedContent }} />
+    <span ref={containerRef} style={style}>
+      {shouldShowMarkdown ? (
+        <span dangerouslySetInnerHTML={{ __html: formatMarkdown(displayText) }} />
+      ) : (
+        <span style={{ whiteSpace: 'pre-wrap' }}>{displayText}</span>
+      )}
       {showCursor && <span className="streaming-cursor-smooth" />}
     </span>
   );

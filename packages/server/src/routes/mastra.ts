@@ -9,6 +9,9 @@
 import { auth } from "../lib/auth.js";
 import { withRequestContext } from "../lib/request-context.js";
 import { mastra } from "../mastra/index.js";
+import { db } from "../db/index.js";
+import { memories } from "../db/schema.js";
+import { eq, and, inArray, desc } from "drizzle-orm";
 
 interface ContextItem {
   type: 'journal' | 'note';
@@ -25,7 +28,65 @@ interface ChatRequestBody {
   context?: {
     selectedItems?: ContextItem[];
   };
+  isNewChat?: boolean;
   // Note: History is now managed by Mastra memory on the backend
+}
+
+/**
+ * Fetch user preferences and goals from the memories table
+ */
+async function getPreferencesAndGoals(userId: string): Promise<{
+  preferences: string[];
+  goals: string[];
+}> {
+  try {
+    const stored = await db
+      .select({ content: memories.content, category: memories.category })
+      .from(memories)
+      .where(and(
+        eq(memories.userId, userId),
+        inArray(memories.category, ['preference', 'goal'])
+      ))
+      .orderBy(desc(memories.importance));
+
+    const preferences: string[] = [];
+    const goals: string[] = [];
+
+    for (const memory of stored) {
+      if (memory.category === 'preference') {
+        preferences.push(memory.content);
+      } else if (memory.category === 'goal') {
+        goals.push(memory.content);
+      }
+    }
+
+    return { preferences, goals };
+  } catch (error) {
+    console.error("[Mastra] Failed to fetch preferences/goals:", error);
+    return { preferences: [], goals: [] };
+  }
+}
+
+/**
+ * Build memory context string for new chats
+ * Returns null if no preferences or goals exist
+ */
+function buildMemoryContextString(preferences: string[], goals: string[]): string | null {
+  if (preferences.length === 0 && goals.length === 0) {
+    return null;
+  }
+
+  const sections: string[] = [];
+
+  if (preferences.length > 0) {
+    sections.push(`## User Preferences\n${preferences.map(p => `- ${p}`).join('\n')}`);
+  }
+
+  if (goals.length > 0) {
+    sections.push(`## User Goals\n${goals.map(g => `- ${g}`).join('\n')}`);
+  }
+
+  return sections.join('\n\n');
 }
 
 /**
@@ -65,7 +126,7 @@ export async function handleChatWithAgent(request: Request): Promise<Response> {
     // Parse request body
     const body = (await request.json().catch(() => ({}))) as ChatRequestBody;
 
-    const { message, conversationId, agentId = 'assistantAgent', context } = body;
+    const { message, conversationId, agentId = 'assistantAgent', context, isNewChat } = body;
 
     // Validate message
     if (!message || typeof message !== "string" || message.trim().length === 0) {
@@ -110,6 +171,19 @@ export async function handleChatWithAgent(request: Request): Promise<Response> {
       if (context?.selectedItems && context.selectedItems.length > 0) {
         const contextInfo = buildContextString(context.selectedItems);
         currentMessage = `Context from user's selected items:\n${contextInfo}\n\nUser message: ${message}`;
+      }
+
+      // For new chats, inject user preferences and goals silently
+      if (isNewChat) {
+        const { preferences, goals } = await getPreferencesAndGoals(session.user.id);
+        const memoryContext = buildMemoryContextString(preferences, goals);
+
+        if (memoryContext) {
+          currentMessage = `User Context (preferences and goals for this new conversation):
+${memoryContext}
+
+User message: ${currentMessage}`;
+        }
       }
 
       // Use the provided conversation ID or generate a new one
