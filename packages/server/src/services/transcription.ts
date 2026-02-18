@@ -205,6 +205,7 @@ export class TranscriptionService {
           outputInJsonFull: false,
           wordTimestamps: false,  // Disable word-level timestamps for sentence-level output
           splitOnWord: false,     // Disable word-level splitting
+          ...(language !== 'auto' && { language }),
         },
       });
 
