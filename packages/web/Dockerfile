@@ -32,6 +32,16 @@ RUN pnpm install --no-frozen-lockfile
 FROM node:20-bullseye-slim AS builder
 WORKDIR /app
 
+# Build arguments for version info
+ARG BUILD_VERSION
+ARG GIT_COMMIT
+ARG BUILD_DATE
+
+# Pass build args as environment variables for Vite
+ENV VITE_BUILD_VERSION=$BUILD_VERSION
+ENV VITE_GIT_COMMIT=$GIT_COMMIT
+ENV VITE_BUILD_DATE=$BUILD_DATE
+
 # Copy node_modules from dependencies stage
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --from=dependencies /app/packages/web/node_modules ./packages/web/node_modules

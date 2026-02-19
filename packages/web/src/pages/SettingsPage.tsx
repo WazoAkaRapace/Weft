@@ -1211,6 +1211,40 @@ export function SettingsPage() {
           </div>
         </section>
 
+        {/* About Section */}
+        <section className="bg-white dark:bg-dark-800 rounded-lg p-6 border border-neutral-200 dark:border-dark-600">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-dark-50 mb-4">
+            About
+          </h2>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-neutral-600 dark:text-dark-400">Version:</span>
+              <span className="text-neutral-900 dark:text-dark-50 font-medium">{__BUILD_VERSION__}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-neutral-600 dark:text-dark-400">Commit:</span>
+              {__GIT_COMMIT__ && __GIT_COMMIT__ !== 'unknown' ? (
+                <a
+                  href={`https://github.com/WazoAkaRapace/Weft/commit/${__GIT_COMMIT__}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-500 hover:text-primary-600 font-mono"
+                >
+                  {__GIT_COMMIT__}
+                </a>
+              ) : (
+                <span className="text-neutral-900 dark:text-dark-50 font-mono">{__GIT_COMMIT__}</span>
+              )}
+            </div>
+            <div className="flex justify-between">
+              <span className="text-neutral-600 dark:text-dark-400">Build Date:</span>
+              <span className="text-neutral-900 dark:text-dark-50">
+                {__BUILD_DATE__ ? new Date(__BUILD_DATE__).toLocaleString() : '-'}
+              </span>
+            </div>
+          </div>
+        </section>
+
         {/* Replace Warning Dialog */}
         <ConfirmDialog
           isOpen={showReplaceWarning}
