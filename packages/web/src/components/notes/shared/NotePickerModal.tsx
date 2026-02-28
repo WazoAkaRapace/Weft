@@ -206,7 +206,8 @@ export function NotePickerModal({
         });
 
         if (response.ok) {
-          const fullNotes = await response.json() as Note[];
+          const result = await response.json() as { notes: Note[] };
+          const fullNotes = result.notes;
           // Create a map for quick lookup
           const notesMap = new Map(fullNotes.map(n => [n.id, n]));
           // Use full notes for selected ones, original notes for others
