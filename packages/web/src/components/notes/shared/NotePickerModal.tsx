@@ -12,6 +12,7 @@ import {
   useNoteTreeSelection,
 } from './noteTreeUtils';
 import { ThemeIcon } from '../../ui/ThemeIcon';
+import { getApiUrl } from '../../../lib/config';
 
 export interface NotePickerSelection {
   notes: Array<{ id: string; title: string; content?: string; date?: string }>;
@@ -198,7 +199,7 @@ export function NotePickerModal({
     // If we have selected notes and they lack content (from lazy loading), fetch them
     if (selectedNoteIdsList.length > 0 && lazyLoad && notes.length > 0 && !notes[0].content) {
       try {
-        const response = await fetch(`/api/notes/bulk`, {
+        const response = await fetch(`${getApiUrl()}/api/notes/bulk`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
