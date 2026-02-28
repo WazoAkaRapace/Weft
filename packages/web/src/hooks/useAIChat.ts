@@ -319,9 +319,6 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
     setIsLoading(true);
     setError(null);
 
-    // Track if this is a new chat (before adding the user message)
-    const isNewChat = messages.length === 0;
-
     const userMessage: ChatMessage = {
       role: 'user',
       content: message,
@@ -381,7 +378,6 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
           conversationId,
           agentId,
           context: { selectedItems: context },
-          isNewChat,
         }),
         signal: abortController.signal,
       });

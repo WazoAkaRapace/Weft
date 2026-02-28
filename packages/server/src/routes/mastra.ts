@@ -28,7 +28,6 @@ interface ChatRequestBody {
   context?: {
     selectedItems?: ContextItem[];
   };
-  isNewChat?: boolean;
   // Note: History is now managed by Mastra memory on the backend
 }
 
@@ -90,6 +89,47 @@ function buildMemoryContextString(preferences: string[], goals: string[]): strin
 }
 
 /**
+ * Check if a thread is empty (has no messages yet)
+ * This determines if we should inject user preferences on the first message
+ */
+async function checkThreadIsEmpty(agent: any, threadId: string, userId: string): Promise<boolean> {
+  try {
+    const memory = await agent.getMemory();
+    if (!memory) {
+      // No memory configured, treat as new chat
+      return true;
+    }
+
+    // Try to get the thread
+    const thread = await memory.getThreadById({ threadId });
+    if (!thread) {
+      // Thread doesn't exist yet, this is the first message
+      return true;
+    }
+
+    // Verify thread ownership
+    if (thread.resourceId !== userId) {
+      // Thread belongs to different user, shouldn't happen but treat as new chat
+      return true;
+    }
+
+    // Thread exists - check if it has any messages
+    // A new thread might have metadata but no messages yet
+    const result = await memory.recall({
+      threadId,
+      resourceId: userId,
+      perPage: 1, // Only need to check if at least one message exists
+    });
+
+    return !result?.messages || result.messages.length === 0;
+  } catch (error) {
+    console.error("[Mastra] Failed to check thread state:", error);
+    // On error, assume it's a new chat to be safe (preferences will be injected)
+    return true;
+  }
+}
+
+/**
  * Chat with AI Agent
  *
  * POST /api/mastra/chat
@@ -126,7 +166,7 @@ export async function handleChatWithAgent(request: Request): Promise<Response> {
     // Parse request body
     const body = (await request.json().catch(() => ({}))) as ChatRequestBody;
 
-    const { message, conversationId, agentId = 'assistantAgent', context, isNewChat } = body;
+    const { message, conversationId, agentId = 'assistantAgent', context } = body;
 
     // Validate message
     if (!message || typeof message !== "string" || message.trim().length === 0) {
@@ -164,6 +204,9 @@ export async function handleChatWithAgent(request: Request): Promise<Response> {
         );
       }
 
+      // Use the provided conversation ID or generate a new one
+      const threadId = conversationId || crypto.randomUUID();
+
       // Build current message with context
       let currentMessage = message;
 
@@ -173,7 +216,10 @@ export async function handleChatWithAgent(request: Request): Promise<Response> {
         currentMessage = `Context from user's selected items:\n${contextInfo}\n\nUser message: ${message}`;
       }
 
-      // For new chats, inject user preferences and goals silently
+      // For new chats (empty thread), inject user preferences and goals silently
+      // Check if this thread already has messages by querying memory
+      const isNewChat = await checkThreadIsEmpty(agent, threadId, session.user.id);
+
       if (isNewChat) {
         const { preferences, goals } = await getPreferencesAndGoals(session.user.id);
         const memoryContext = buildMemoryContextString(preferences, goals);
@@ -185,9 +231,6 @@ ${memoryContext}
 User message: ${currentMessage}`;
         }
       }
-
-      // Use the provided conversation ID or generate a new one
-      const threadId = conversationId || crypto.randomUUID();
 
       // Check if thinking mode is enabled (default: true for models like Qwen3)
       const enableThinking = process.env.OLLAMA_THINKING !== 'false';
