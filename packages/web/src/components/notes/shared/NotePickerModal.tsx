@@ -181,11 +181,44 @@ export function NotePickerModal({
   }, [noteTree, searchQuery]);
 
   // Handle confirm
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const orderedNotes = flattenNoteTree(noteTree);
     const selectedNotes: NotePickerSelection['notes'] = [];
     const selectedJournals: NotePickerSelection['journals'] = [];
     const contextItems: ContextItem[] = [];
+
+    // Get selected note IDs (excluding journal IDs)
+    const selectedNoteIdsList = Array.from(selectedItems).filter(id =>
+      !journals.some(j => j.id === id) // Exclude journal IDs
+    );
+
+    // Use external notes or lazy-loaded notes
+    let notesWithContent: Note[] = notes;
+
+    // If we have selected notes and they lack content (from lazy loading), fetch them
+    if (selectedNoteIdsList.length > 0 && lazyLoad && notes.length > 0 && !notes[0].content) {
+      try {
+        const response = await fetch(`/api/notes/bulk`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: selectedNoteIdsList }),
+        });
+
+        if (response.ok) {
+          const fullNotes = await response.json() as Note[];
+          // Create a map for quick lookup
+          const notesMap = new Map(fullNotes.map(n => [n.id, n]));
+          // Use full notes for selected ones, original notes for others
+          notesWithContent = flattenNoteTree(noteTree).map(note =>
+            notesMap.get(note.id) || note
+          );
+        }
+      } catch (error) {
+        console.error('Failed to fetch full note content:', error);
+        // Fall back to using notes without content
+      }
+    }
 
     // Add journals first (in their original order)
     if (mode === 'full') {
@@ -211,17 +244,19 @@ export function NotePickerModal({
     // Add notes in tree order (parents before children)
     orderedNotes.forEach((note) => {
       if (selectedItems.has(note.id)) {
+        // Find the note with content from notesWithContent
+        const noteWithContent = notesWithContent.find(n => n.id === note.id) || note;
         selectedNotes.push({
           id: note.id,
           title: note.title,
-          content: note.content ?? undefined,
+          content: noteWithContent.content ?? undefined,
           date: toISOString(note.updatedAt),
         });
         contextItems.push({
           type: 'note',
           id: note.id,
           title: note.title,
-          content: note.content ?? undefined,
+          content: noteWithContent.content ?? undefined,
           date: toISOString(note.updatedAt),
         });
       }
