@@ -197,28 +197,43 @@ export function NotePickerModal({
     let notesWithContent: Note[] = notes;
 
     // If we have selected notes and they lack content (from lazy loading), fetch them
-    if (selectedNoteIdsList.length > 0 && lazyLoad && notes.length > 0 && !notes[0].content) {
-      try {
-        const response = await fetch(`${getApiUrl()}/api/notes/bulk`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: selectedNoteIdsList }),
-        });
+    if (selectedNoteIdsList.length > 0 && lazyLoad && notes.length > 0) {
+      // Check if any selected note lacks content
+      const needsContent = selectedNoteIdsList.some(id => {
+        const note = notes.find(n => n.id === id);
+        return !note || !note.content;
+      });
 
-        if (response.ok) {
-          const result = await response.json() as { notes: Note[] };
-          const fullNotes = result.notes;
-          // Create a map for quick lookup
-          const notesMap = new Map(fullNotes.map(n => [n.id, n]));
-          // Use full notes for selected ones, original notes for others
-          notesWithContent = flattenNoteTree(noteTree).map(note =>
-            notesMap.get(note.id) || note
-          );
+      if (needsContent) {
+        try {
+          const response = await fetch(`${getApiUrl()}/api/notes/bulk`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: selectedNoteIdsList }),
+          });
+
+          if (response.ok) {
+            const result = await response.json() as { notes: Note[] };
+            const fullNotes = result.notes;
+
+            if (fullNotes.length === 0) {
+              console.warn('[NotePickerModal] Bulk fetch returned empty result for IDs:', selectedNoteIdsList);
+            }
+
+            // Create a map for quick lookup
+            const notesMap = new Map(fullNotes.map(n => [n.id, n]));
+            // Use full notes for selected ones, original notes for others
+            notesWithContent = flattenNoteTree(noteTree).map(note =>
+              notesMap.get(note.id) || note
+            );
+          } else {
+            console.error('[NotePickerModal] Bulk fetch failed:', response.status, response.statusText);
+          }
+        } catch (error) {
+          console.error('[NotePickerModal] Failed to fetch full note content:', error);
+          // Fall back to using notes without content
         }
-      } catch (error) {
-        console.error('Failed to fetch full note content:', error);
-        // Fall back to using notes without content
       }
     }
 

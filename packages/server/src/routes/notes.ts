@@ -16,7 +16,7 @@ import { auth } from '../lib/auth.js';
 import { db } from '../db/index.js';
 import { notes, journalNotes, journals } from '../db/schema.js';
 import { randomUUID } from 'node:crypto';
-import { eq, and, isNull, or, ilike, desc } from 'drizzle-orm';
+import { eq, and, isNull, or, ilike, desc, inArray } from 'drizzle-orm';
 import { withTransaction } from '../lib/db-utils.js';
 import { indexNote, deleteVectorsBySource } from '../mastra/vector/indexer.js';
 
@@ -1054,19 +1054,16 @@ export async function handleGetNotesByIds(request: Request): Promise<Response> {
     }
 
     // Get notes by IDs, only for the current user and not deleted
-    const userNotes = await db
+    const filteredNotes = await db
       .select()
       .from(notes)
       .where(
         and(
           eq(notes.userId, session.user.id),
-          isNull(notes.deletedAt)
+          isNull(notes.deletedAt),
+          inArray(notes.id, ids)
         )
       );
-
-    // Filter to only the requested IDs
-    const requestedIdsSet = new Set(ids);
-    const filteredNotes = userNotes.filter(note => requestedIdsSet.has(note.id));
 
     return new Response(
       JSON.stringify({
