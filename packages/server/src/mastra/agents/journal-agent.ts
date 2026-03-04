@@ -7,7 +7,7 @@
 
 import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
-import { createOllama } from "ollama-ai-provider-v2";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import {
   getJournalsTool,
   getNotesTool,
@@ -20,18 +20,16 @@ import {
   deleteMemoryTool,
 } from "../tools/index.js";
 
-// Create Ollama provider with custom base URL
-// Note: ollama-ai-provider-v2 expects baseURL to include /api suffix
+// Create OpenAI-compatible provider with Ollama's /v1 endpoint
 const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
-const ollama = createOllama({
-  baseURL: `${ollamaBaseUrl}/api`,
+const ollama = createOpenAICompatible({
+  name: "ollama",
+  baseURL: `${ollamaBaseUrl}/v1`,
+  apiKey: "ollama", // Ollama doesn't require a real API key
 });
 
 // Get model name from env or use default
 const modelName = process.env.OLLAMA_MODEL || "llama3.2:3b";
-
-// Check if thinking mode is enabled (default: true for models like Qwen3)
-const enableThinking = process.env.OLLAMA_THINKING !== 'false';
 
 // Get maxSteps from env or use default (higher for multi-tool scenarios)
 const maxSteps = parseInt(process.env.OLLAMA_MAX_STEPS || '10', 10);
@@ -55,13 +53,6 @@ export const journalAgent: any = new Agent({
   // Ensure the agent can take multiple steps (tool calls + response)
   defaultOptions: {
     maxSteps,
-    ...(enableThinking && {
-      providerOptions: {
-        ollama: {
-          think: true,
-        },
-      },
-    }),
   },
 
   // Dynamic instructions that include current date/time

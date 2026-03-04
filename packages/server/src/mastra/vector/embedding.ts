@@ -5,12 +5,14 @@
  */
 
 import { embed, embedMany } from "ai";
-import { createOllama } from "ollama-ai-provider-v2";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
-// Create Ollama provider with custom base URL
+// Create OpenAI-compatible provider with Ollama's /v1 endpoint
 const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
-const ollama = createOllama({
-  baseURL: `${ollamaBaseUrl}/api`,
+const ollama = createOpenAICompatible({
+  name: "ollama",
+  baseURL: `${ollamaBaseUrl}/v1`,
+  apiKey: "ollama", // Ollama doesn't require a real API key
 });
 
 // Get embedding model name from env or use default
@@ -18,7 +20,7 @@ const embeddingModelName = process.env.OLLAMA_EMBEDDING_MODEL || "mxbai-embed-la
 
 // Create the embedding model
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const embeddingModel: any = ollama.embedding(embeddingModelName);
+const embeddingModel: any = ollama.embeddingModel(embeddingModelName);
 
 /**
  * Generate an embedding for a single text

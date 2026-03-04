@@ -232,9 +232,6 @@ User message: ${currentMessage}`;
         }
       }
 
-      // Check if thinking mode is enabled (default: true for models like Qwen3)
-      const enableThinking = process.env.OLLAMA_THINKING !== 'false';
-
       // Get maxSteps from env or use default (higher for multi-tool scenarios)
       const maxSteps = parseInt(process.env.OLLAMA_MAX_STEPS || '10', 10);
 
@@ -248,13 +245,6 @@ User message: ${currentMessage}`;
             resource: session.user.id,
           },
           maxSteps,
-          ...(enableThinking && {
-            providerOptions: {
-              ollama: {
-                think: true,
-              },
-            },
-          }),
           onStepFinish: ({ text, toolCalls, toolResults, finishReason }: {
             text?: string;
             toolCalls?: unknown[];
@@ -274,118 +264,20 @@ User message: ${currentMessage}`;
         const fullStream = result.fullStream;
         const reader = fullStream.getReader();
 
-        // Create a TransformStream to allow us to continue the stream after it ends
+        // Create a TransformStream to forward chunks to the client
         const { readable, writable } = new TransformStream();
         const writer = writable.getWriter();
         const encoder = new TextEncoder();
 
-        // Recursive stream processor with Ollama tool-call workaround
-        // This handles the case where Ollama stops streaming after tool calls without generating text
-        const processStreamWithWorkaround = async (
-          reader: ReadableStreamDefaultReader,
-          currentDepth: number
-        ): Promise<void> => {
-          // Track what we've seen for the workaround
-          let hasToolCalls = false;
-          let hasTextContent = false;
-          let hasReasoningContent = false;
-          const toolResults: Array<{ toolName: string; result: unknown }> = [];
-
+        // Stream processor - forwards all chunks to the client
+        const processStream = async (): Promise<void> => {
           try {
             while (true) {
               const { done, value } = await reader.read();
               if (done) {
-                console.log(`[Mastra] Stream completed (depth: ${currentDepth}), tool calls:`, hasToolCalls, "text:", hasTextContent);
-
-                // Check if we need the workaround
-                if (hasToolCalls && !hasTextContent && toolResults.length > 0) {
-                  // Check recursion depth to prevent infinite loops
-                  if (currentDepth >= maxSteps) {
-                    console.warn(`[Mastra] Max recursion depth (${maxSteps}) reached, stopping workaround`);
-                    // Send a message about hitting the limit
-                    await writer.write(encoder.encode(JSON.stringify({
-                      type: 'text-delta',
-                      payload: { text: '\n\n[Note: Maximum tool call iterations reached. Some operations may not be complete.]' }
-                    }) + '\n'));
-                  } else {
-                    console.log(`[Mastra] Applying Ollama tool-call workaround (depth: ${currentDepth + 1}/${maxSteps})...`);
-                    console.log("[Mastra] Tool results collected:", toolResults.length);
-
-                    // If we had reasoning content, close it before the follow-up
-                    // This ensures the follow-up's reasoning appears in a separate block
-                    if (hasReasoningContent) {
-                      await writer.write(encoder.encode(JSON.stringify({ type: 'reasoning-end' }) + '\n'));
-                      console.log("[Mastra] Closed reasoning block before follow-up");
-                    }
-
-                    try {
-                      // Build a follow-up message that includes the tool results
-                      const toolResultsSummary = toolResults.map(tr =>
-                        `Tool: ${tr.toolName}\nResult: ${JSON.stringify(tr.result, null, 2)}`
-                      ).join('\n\n');
-
-                      const followUpMessage = `The following tool calls were executed and returned these results:
-
-${toolResultsSummary}
-
-Based on these results, please provide your response to my original question.`;
-
-                      // Make a follow-up STREAM call with memory for context
-                      // Memory will include the previous conversation from this thread
-                      const followUpResult = await agent.stream(followUpMessage, {
-                        memory: {
-                          thread: threadId,
-                          resource: session.user.id,
-                        },
-                        maxSteps: 1,
-                        ...(enableThinking && {
-                          providerOptions: {
-                            ollama: {
-                              think: true,
-                            },
-                          },
-                        }),
-                      });
-
-                      // Recursively process the follow-up stream with incremented depth
-                      // This allows the workaround to apply to follow-up streams too
-                      const followUpReader = followUpResult.fullStream.getReader();
-                      await processStreamWithWorkaround(followUpReader, currentDepth + 1);
-                      return; // Return after recursive call completes
-                    } catch (followUpError) {
-                      console.error("[Mastra] Follow-up stream error:", followUpError);
-                      // Continue to finish the stream even if follow-up fails
-                    }
-                  }
-                }
-
-                // Send finish and close (only at the top level or when no workaround needed)
                 await writer.write(encoder.encode(JSON.stringify({ type: 'finish' }) + '\n'));
                 await writer.close();
                 return;
-              }
-
-              // Track what we've seen
-              if (value.type.startsWith('tool-')) {
-                hasToolCalls = true;
-              }
-              if (value.type === 'text-delta' && (value as { payload?: { text?: string } }).payload?.text) {
-                hasTextContent = true;
-              }
-              // Track if we have reasoning content (to properly close it before follow-up)
-              if (value.type === 'reasoning-delta' || value.type === 'reasoning-start') {
-                hasReasoningContent = true;
-              }
-
-              // Collect tool results for potential follow-up
-              if (value.type === 'tool-result') {
-                const payload = (value as { payload?: { toolName?: string; result?: unknown } }).payload;
-                if (payload?.toolName && payload?.result) {
-                  toolResults.push({
-                    toolName: payload.toolName,
-                    result: payload.result
-                  });
-                }
               }
 
               // Forward the chunk to the client
@@ -409,9 +301,9 @@ Based on these results, please provide your response to my original question.`;
           }
         };
 
-        // Start processing in the background with depth 0 (initial call)
+        // Start processing in the background
         // This async function is created within withRequestContext, so it maintains the context
-        processStreamWithWorkaround(reader, 0);
+        processStream();
 
         return new Response(readable, {
           headers: {
