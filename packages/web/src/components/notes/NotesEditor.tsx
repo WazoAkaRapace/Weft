@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef, useMemo } from 'react';
+import { useEffect, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
 import {
   MDXEditor,
   type MDXEditorMethods,
@@ -24,6 +24,7 @@ import {
   UndoRedo,
 } from '@mdxeditor/editor';
 import { SlashCommandMenu, useSlashCommandDetection, type SlashCommand } from './SlashCommandPlugin';
+import { tableLineBreakPlugin } from './TableLineBreakPlugin';
 
 export interface NotesEditorRef {
   save: () => Promise<void>;
@@ -38,7 +39,7 @@ interface NotesEditorProps {
   className?: string;
 }
 
-const AUTOSAVE_DELAY = 30000;
+const AUTOSAVE_DELAY = 5000; // 5 seconds
 
 export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
   notes: initialNotes,
@@ -47,32 +48,27 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
   isSaving = false,
   className = '',
 }, ref) => {
-  // Use a ref for unsaved changes - avoids closure issues in useImperativeHandle
+  // Use refs only - no state that would cause re-renders during typing
   const hasUnsavedChangesRef = useRef(false);
-  const [localEdits, setLocalEdits] = useState<string | null>(null);
+  const lastSavedContentRef = useRef<string | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mdxEditorRef = useRef<MDXEditorMethods>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const markJustSelectedRef = useRef<(() => void) | null>(null);
 
-  // Compute current markdown - use local edits if available, otherwise use initial notes
-  const currentMarkdown = useMemo(() => {
-    return localEdits ?? (initialNotes || '');
-  }, [localEdits, initialNotes]);
-
   const saveNotes = useCallback(
     async (notesToSave: string) => {
       await onSave(notesToSave);
-      setLocalEdits(null);
-      hasUnsavedChangesRef.current = false; // Reset on save
+      lastSavedContentRef.current = notesToSave;
+      hasUnsavedChangesRef.current = false;
     },
     [onSave]
   );
 
   const handleChange = useCallback(
-    (newMarkdown: string) => {
-      setLocalEdits(newMarkdown);
-      hasUnsavedChangesRef.current = true; // Set on keystroke
+    (_newMarkdown: string) => {
+      // Mark as having unsaved changes - don't update any state that causes re-renders
+      hasUnsavedChangesRef.current = true;
 
       // Clear existing timeout
       if (saveTimeoutRef.current) {
@@ -81,7 +77,10 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
 
       // Set new timeout for auto-save
       saveTimeoutRef.current = setTimeout(() => {
-        saveNotes(newMarkdown);
+        const latestMarkdown = mdxEditorRef.current?.getMarkdown();
+        if (latestMarkdown !== undefined) {
+          saveNotes(latestMarkdown);
+        }
       }, AUTOSAVE_DELAY);
     },
     [saveNotes]
@@ -94,11 +93,11 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
       }
-      const currentContent = mdxEditorRef.current?.getMarkdown() || currentMarkdown;
+      const currentContent = mdxEditorRef.current?.getMarkdown() || initialNotes || '';
       await saveNotes(currentContent);
     },
-    hasUnsavedChanges: () => hasUnsavedChangesRef.current, // Return ref value directly
-  }), [currentMarkdown, saveNotes]);
+    hasUnsavedChanges: () => hasUnsavedChangesRef.current,
+  }), [initialNotes, saveNotes]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -111,7 +110,6 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
 
   // Handle slash command selection
   const handleSlashCommandSelect = useCallback((command: SlashCommand) => {
-    // Mark that we just selected a command to prevent menu from re-opening
     markJustSelectedRef.current?.();
 
     const selection = window.getSelection();
@@ -120,33 +118,26 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
     const range = selection.getRangeAt(0);
     const currentNode = range.endContainer;
 
-    // Get text content up to cursor to find the slash command
     let textBeforeCursor = '';
 
     if (currentNode.nodeType === Node.TEXT_NODE) {
       textBeforeCursor = currentNode.textContent?.substring(0, range.endOffset) || '';
     }
 
-    // Find the slash command in the text before cursor
-    // Captures the text after the slash (e.g., "/q" captures "q", "/h1" captures "h1", "/" or "//" captures "")
     const slashMatch = textBeforeCursor.match(/\/\/?([a-zA-Z0-9]*)$/);
     if (!slashMatch) {
       return;
     }
 
-    const query = slashMatch[1]; // The captured text after slash: "q", "h1", "note", or "" for just "/" or "//"
+    const query = slashMatch[1];
     const isDoubleSlash = textBeforeCursor.match(/\/\/([a-zA-Z0-9]*)$/);
 
-    // Get the ACTUAL current markdown from the editor (not React state which might be stale)
-    const markdown = mdxEditorRef.current?.getMarkdown() || currentMarkdown;
+    const markdown = mdxEditorRef.current?.getMarkdown() || initialNotes || '';
 
-    // Build pattern to find the slash command in the markdown
-    // Look for the slash command at the end of a line (e.g., "/q", "/", "//", "/h1")
     const pattern = isDoubleSlash
       ? (query ? new RegExp(`//${query}$`) : /\/\/$/)
       : (query ? new RegExp(`/${query}$`) : /\/$/);
 
-    // Find the last line that ends with the slash command
     const lines = markdown.split('\n');
     let foundLineIndex = -1;
 
@@ -161,41 +152,30 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
       return;
     }
 
-    // Remove the slash command from the line
     lines[foundLineIndex] = lines[foundLineIndex].replace(pattern, '');
 
-    // Insert the command text with a marker for cursor position
-    // Resolve insertText if it's a function (for dynamic values like today's date)
     const insertText = typeof command.insertText === 'function'
       ? command.insertText()
       : command.insertText;
     const CURSOR_MARKER = '%%CURSOR%%';
 
     if (insertText.startsWith(':::')) {
-      // Admonition - insert on next line with cursor inside the block
-      // e.g., ":::note\n%%CURSOR%%\n:::"
       const admonitionLines = insertText.split('\n');
-      // Insert marker after the first line (inside the admonition)
       admonitionLines.splice(1, 0, CURSOR_MARKER);
       lines.splice(foundLineIndex + 1, 0, ...admonitionLines);
     } else {
-      // Inline - append to the same line
-      // For inline commands, place cursor after the inserted text
       lines[foundLineIndex] = lines[foundLineIndex] + insertText + CURSOR_MARKER;
     }
 
     const newMarkdown = lines.join('\n');
 
-    // Update the editor with the new markdown
     if (mdxEditorRef.current) {
       mdxEditorRef.current.setMarkdown(newMarkdown);
 
-      // After markdown is set, find the marker and move cursor there
       setTimeout(() => {
         const editorContent = editorContainerRef.current;
         if (!editorContent) return;
 
-        // Find the marker text node
         const walker = document.createTreeWalker(
           editorContent,
           NodeFilter.SHOW_TEXT,
@@ -212,11 +192,9 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
         if (markerNode && markerNode.textContent) {
           const markerOffset = markerNode.textContent.indexOf(CURSOR_MARKER);
 
-          // Remove the marker from the text
           const textContent = markerNode.textContent.replace(CURSOR_MARKER, '');
           markerNode.textContent = textContent;
 
-          // Move cursor to the marker position
           const newRange = document.createRange();
           newRange.setStart(markerNode, markerOffset);
           newRange.collapse(true);
@@ -228,17 +206,15 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
       }, 0);
     }
 
-    // Update React state without the marker
     const finalMarkdown = newMarkdown.replace(CURSOR_MARKER, '');
     handleChange(finalMarkdown);
-  }, [currentMarkdown, handleChange]);
+  }, [initialNotes, handleChange]);
 
-  // Set up slash command detection (only in edit mode)
+  // Set up slash command detection
   const { menuOpen, menuPosition, query, isDoubleSlash, closeMenu, markJustSelected } = useSlashCommandDetection(
     handleSlashCommandSelect
   );
 
-  // Store the markJustSelected function for use in handleSlashCommandSelect
   useEffect(() => {
     markJustSelectedRef.current = markJustSelected;
   }, [markJustSelected]);
@@ -247,9 +223,9 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
     <div className={`flex flex-col gap-1.5 sm:gap-4 h-full ${className}`}>
       <div ref={editorContainerRef} className="flex-1 overflow-y-auto" style={{ overflowX: 'auto' }}>
         <MDXEditor
-          key={isEditing ? 'editing' : 'viewing'}
+          key={isEditing ? 'edit' : 'view'}
           ref={mdxEditorRef}
-          markdown={currentMarkdown}
+          markdown={initialNotes || ''}
           onChange={handleChange}
           contentEditableClassName="prose min-h-[300px] focus:outline-none px-3 sm:px-4 py-2 sm:py-3"
           plugins={[
@@ -262,6 +238,7 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
             thematicBreakPlugin(),
             linkPlugin(),
             tablePlugin(),
+            tableLineBreakPlugin(),
             markdownShortcutPlugin(),
             ...(isEditing
               ? [
@@ -281,14 +258,13 @@ export const NotesEditor = forwardRef<NotesEditorRef, NotesEditorProps>(({
                       </>
                     ),
                   }),
+                  diffSourcePlugin(),
                 ]
               : []),
-            diffSourcePlugin(),
           ]}
           readOnly={isSaving || !isEditing}
         />
       </div>
-      {/* Slash command menu - only show when editing */}
       {isEditing && (
         <SlashCommandMenu
           isOpen={menuOpen}

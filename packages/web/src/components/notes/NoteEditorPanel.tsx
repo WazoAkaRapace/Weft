@@ -12,7 +12,7 @@ import type { Journal, Note } from '@weft/shared';
 import { getApiUrl } from '../../lib/config';
 
 export function NoteEditorPanel() {
-  const { getSelectedNote, updateNote } = useNotesContext();
+  const { getSelectedNote, updateNote, selectedNoteId } = useNotesContext();
   const { registerUnsavedChangesChecker } = useNavigationContext();
   const navigate = useNavigate();
   const selectedNote = getSelectedNote();
@@ -59,9 +59,9 @@ export function NoteEditorPanel() {
     }
   }, [selectedNote]);
 
-  // Fetch note content when selected note changes
+  // Fetch note content when selected note changes (by ID, not object reference)
   useEffect(() => {
-    if (!selectedNote) {
+    if (!selectedNoteId) {
       setNoteContent(null);
       return;
     }
@@ -69,7 +69,7 @@ export function NoteEditorPanel() {
     const fetchNoteContent = async () => {
       setIsLoadingContent(true);
       try {
-        const response = await fetch(`${getApiUrl()}/api/notes/${selectedNote.note.id}`, {
+        const response = await fetch(`${getApiUrl()}/api/notes/${selectedNoteId}`, {
           credentials: 'include',
         });
         if (response.ok) {
@@ -84,7 +84,7 @@ export function NoteEditorPanel() {
     };
 
     fetchNoteContent();
-  }, [selectedNote]);
+  }, [selectedNoteId]);
 
   // Warn user when leaving page with unsaved changes
   useEffect(() => {
@@ -116,10 +116,10 @@ export function NoteEditorPanel() {
 
   // Fetch linked journals
   const fetchLinkedJournals = useCallback(async () => {
-    if (!selectedNote) return;
+    if (!selectedNoteId) return;
     setIsJournalsLoading(true);
     try {
-      const response = await fetch(`${getApiUrl()}/api/notes/${selectedNote.note.id}/journals`, {
+      const response = await fetch(`${getApiUrl()}/api/notes/${selectedNoteId}/journals`, {
         credentials: 'include',
       });
       if (response.ok) {
@@ -131,13 +131,13 @@ export function NoteEditorPanel() {
     } finally {
       setIsJournalsLoading(false);
     }
-  }, [selectedNote]);
+  }, [selectedNoteId]);
 
   // Link a journal to the note
   const handleLinkJournal = useCallback(async (journalId: string) => {
-    if (!selectedNote) return;
+    if (!selectedNoteId) return;
     try {
-      const response = await fetch(`${getApiUrl()}/api/notes/${selectedNote.note.id}/journals/${journalId}`, {
+      const response = await fetch(`${getApiUrl()}/api/notes/${selectedNoteId}/journals/${journalId}`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -147,13 +147,13 @@ export function NoteEditorPanel() {
     } catch (err) {
       console.error('Failed to link journal:', err);
     }
-  }, [selectedNote, fetchLinkedJournals]);
+  }, [selectedNoteId, fetchLinkedJournals]);
 
   // Unlink a journal from the note
   const handleUnlinkJournal = useCallback(async (journalId: string) => {
-    if (!selectedNote) return;
+    if (!selectedNoteId) return;
     try {
-      const response = await fetch(`${getApiUrl()}/api/notes/${selectedNote.note.id}/journals/${journalId}`, {
+      const response = await fetch(`${getApiUrl()}/api/notes/${selectedNoteId}/journals/${journalId}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -163,7 +163,7 @@ export function NoteEditorPanel() {
     } catch (err) {
       console.error('Failed to unlink journal:', err);
     }
-  }, [selectedNote]);
+  }, [selectedNoteId]);
 
   // Handle journal click - check for unsaved changes before navigating
   const handleJournalClick = useCallback((journalId: string) => {
@@ -267,15 +267,27 @@ export function NoteEditorPanel() {
 
   const handleSaveContent = useCallback(
     async (content: string) => {
-      if (!selectedNote) return;
+      if (!selectedNoteId) return;
 
-      const updateData: UpdateNoteData = {
-        content,
-      };
+      setSaveStatus('saving');
+      try {
+        const updateData: UpdateNoteData = {
+          content,
+        };
 
-      await updateNote(selectedNote.note.id, updateData);
+        await updateNote(selectedNoteId, updateData);
+        setSaveStatus('saved');
+        setTimeout(() => {
+          setSaveStatus('idle');
+        }, 2000);
+      } catch {
+        setSaveStatus('error');
+        setTimeout(() => {
+          setSaveStatus('idle');
+        }, 2000);
+      }
     },
-    [selectedNote, updateNote]
+    [selectedNoteId, updateNote]
   );
 
   if (!selectedNote) {
