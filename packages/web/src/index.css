@@ -174,7 +174,7 @@ body {
   --mdxeditor-colors-prose-headings: var(--color-text-primary);
   --mdxeditor-colors-prose-links: var(--color-primary-500);
   --mdxeditor-colors-prose-strong: var(--color-text-primary);
-  --mdxeditor-colors-prose-code: var(--color-error-dark-main);
+  --mdxeditor-colors-prose-code: var(--color-error-main);
   --mdxeditor-colors-backgroundColor: var(--color-bg-secondary);
   --mdxeditor-colors-border: var(--color-border);
 }
@@ -337,13 +337,13 @@ body {
 .dark .prose code,
 [data-theme='dark'] .prose code {
   background-color: var(--color-bg-tertiary) !important;
-  color: var(--color-error-dark-main) !important;
+  color: var(--color-error-main) !important;
 }
 
 .dark .prose [class*="_code"],
 [data-theme='dark'] .prose [class*="_code"] {
   background-color: var(--color-bg-tertiary) !important;
-  color: var(--color-error-dark-main) !important;
+  color: var(--color-error-main) !important;
 }
 
 .dark .prose pre,
@@ -553,14 +553,14 @@ body {
 
 .dark .prose [class*="admonitionNote"],
 [data-theme='dark'] .prose [class*="admonitionNote"] {
-  border-color: var(--color-info-dark-main) !important;
-  background-color: var(--color-info-dark-light) !important;
+  border-color: var(--color-info-main) !important;
+  background-color: var(--color-info-light) !important;
 }
 
 .dark .prose [class*="admonitionTip"],
 [data-theme='dark'] .prose [class*="admonitionTip"] {
-  border-color: var(--color-success-dark-main) !important;
-  background-color: var(--color-success-dark-light) !important;
+  border-color: var(--color-success-main) !important;
+  background-color: var(--color-success-light) !important;
 }
 
 .dark .prose [class*="admonitionInfo"],
@@ -571,14 +571,14 @@ body {
 
 .dark .prose [class*="admonitionCaution"],
 [data-theme='dark'] .prose [class*="admonitionCaution"] {
-  border-color: var(--color-warning-dark-main) !important;
-  background-color: var(--color-warning-dark-light) !important;
+  border-color: var(--color-warning-main) !important;
+  background-color: var(--color-warning-light) !important;
 }
 
 .dark .prose [class*="admonitionDanger"],
 [data-theme='dark'] .prose [class*="admonitionDanger"] {
-  border-color: var(--color-error-dark-main) !important;
-  background-color: var(--color-error-dark-light) !important;
+  border-color: var(--color-error-main) !important;
+  background-color: var(--color-error-light) !important;
 }
 
 /* Dark mode admonition content text color */
@@ -586,14 +586,14 @@ body {
 .dark .prose [class*="admonitionNote"],
 [data-theme='dark'] .prose [class*="admonitionNote"] p,
 [data-theme='dark'] .prose [class*="admonitionNote"] {
-  color: var(--color-info-dark-text) !important;
+  color: var(--color-info-text) !important;
 }
 
 .dark .prose [class*="admonitionTip"] p,
 .dark .prose [class*="admonitionTip"],
 [data-theme='dark'] .prose [class*="admonitionTip"] p,
 [data-theme='dark'] .prose [class*="admonitionTip"] {
-  color: var(--color-success-dark-text) !important;
+  color: var(--color-success-text) !important;
 }
 
 .dark .prose [class*="admonitionInfo"] p,
@@ -607,14 +607,14 @@ body {
 .dark .prose [class*="admonitionCaution"],
 [data-theme='dark'] .prose [class*="admonitionCaution"] p,
 [data-theme='dark'] .prose [class*="admonitionCaution"] {
-  color: var(--color-warning-dark-text) !important;
+  color: var(--color-warning-text) !important;
 }
 
 .dark .prose [class*="admonitionDanger"] p,
 .dark .prose [class*="admonitionDanger"],
 [data-theme='dark'] .prose [class*="admonitionDanger"] p,
 [data-theme='dark'] .prose [class*="admonitionDanger"] {
-  color: var(--color-error-dark-text) !important;
+  color: var(--color-error-text) !important;
 }
 
 /* Hide MDXEditor toolbar in view mode */
